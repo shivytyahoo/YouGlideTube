@@ -1,0 +1,20 @@
+SHIVFLOW CHANGE LOG
+VERSION: 0.2.0
+DATE: 2026-10-21
+
+NEW FEATURES
+- Sign in with a TV code: ShivFlow shows a short code and a QR — approve it on any device at google.com/device. Made for TVs, works on phones too.
+- New setup flow: sign in first (or skip), then subscribe to channels you like.
+
+THE YOUTUBE MODEL
+- Home is now YouTube's own feed: signed in, it is exactly your account's home; signed out, the regular home. No local feed assembly anymore.
+- Subscriptions tab comes straight from your account — new uploads from the channels you actually follow on YouTube.
+- History shows your account's watch history when you are signed in, just like youtube.com.
+- Subscribe buttons subscribe on your real account. Signed out, subscribing asks you to sign in first — no local subscriptions anymore.
+- Topic chips on Home are YouTube's own chips now, each loading its real topic feed.
+
+IMPROVEMENTS
+- TV smoothness: lighter feed paging on TV and a deeper default playback buffer on TV devices.
+- The header wears the ShivFlow badge and name properly, and every icon variant (including monochrome and TV) uses the ShivFlow logo.
+
+Signing in stays optional — ShivFlow keeps working signed out, with the regular home feed.
