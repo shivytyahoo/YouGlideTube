@@ -1,0 +1,10 @@
+SHIVFLOW CHANGE LOG
+VERSION: 0.1.0
+DATE: 2026-10-21
+
+NEW FEATURES
+- First ShivFlow release by Shivyt: buttery-smooth playback with adjacent preloading.
+- Background audio and picture-in-picture playback.
+- Offline downloads with quality and format choice.
+- SponsorBlock, Return YouTube Dislike and DeArrow built in.
+- Music mode with lyrics and on-device recommendations.
