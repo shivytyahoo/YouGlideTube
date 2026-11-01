@@ -1,5 +1,8 @@
 package io.github.aedev.flow.innertube
 
+import io.github.aedev.flow.utils.ShivLog
+import io.github.aedev.flow.utils.liveChatSendParams
+
 import android.util.Log
 import io.github.aedev.flow.FlowApplication
 import io.github.aedev.flow.data.local.PlayerPreferences
@@ -22,6 +25,7 @@ import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.compression.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
+import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
@@ -29,6 +33,12 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.json.put
 import okhttp3.ConnectionPool
 import okhttp3.OkHttpClient
 import okhttp3.Protocol
@@ -45,6 +55,13 @@ private const val TAG = "InnerTube"
  */
 class InnerTube {
     private var httpClient = createClient()
+
+    private val json =
+        Json {
+            ignoreUnknownKeys = true
+            explicitNulls = false
+            encodeDefaults = true
+        }
 
     var locale =
         sanitizeLocale(
@@ -261,9 +278,16 @@ class InnerTube {
             if (setLogin && client.loginSupported) {
                 cookie?.let { cookie ->
                     append("cookie", cookie)
-                    if ("SAPISID" !in cookieMap) return@let
+                    // Current Google sessions often carry the id only under its __Secure-
+                    // names. Without a value here no Authorization proof is sent at all —
+                    // reads tolerate that; sensitive writes (comment create) do not.
+                    val sapisid =
+                        cookieMap["SAPISID"]
+                            ?: cookieMap["__Secure-3PSAPISID"]
+                            ?: cookieMap["__Secure-1PSAPISID"]
+                            ?: return@let
                     val currentTime = System.currentTimeMillis() / 1000
-                    val sapisidHash = sha1("$currentTime ${cookieMap["SAPISID"]} $origin")
+                    val sapisidHash = sha1("$currentTime $sapisid $origin")
                     append("Authorization", "SAPISIDHASH ${currentTime}_$sapisidHash")
                 }
                 if (cookie == null) {
@@ -433,6 +457,32 @@ class InnerTube {
         )
     }
 
+    /**
+     * A playlist page browse WITH the account's login. The channel browse above travels
+     * through mainSitePost, which sends no cookie and no authorization at all: public
+     * playlists answer a guest, but the account's own system lists (Liked videos LL, Liked
+     * music LM, Watch later WL) never do — their fetches came back empty, which is why a
+     * server-accepted video like never reappeared on reopen (an empty like seed). Same
+     * session-client rule as the guide: cookie session speaks WEB, an OAuth-only session
+     * speaks TVHTML5.
+     */
+    suspend fun playlistBrowse(
+        browseId: String? = null,
+        params: String? = null,
+        continuation: String? = null,
+    ) = browseMainSite(
+        client =
+            if (cookie.isNullOrBlank() && oauthAccessToken != null) {
+                YouTubeClient.TVHTML5
+            } else {
+                YouTubeClient.WEB.copy(loginSupported = true)
+            },
+        browseId = browseId,
+        params = params,
+        continuation = continuation,
+        setLogin = true,
+    )
+
     /** What a youtube.com link points at, as the endpoint the site would follow for it. */
     suspend fun resolveUrl(
         client: YouTubeClient,
@@ -541,6 +591,7 @@ class InnerTube {
         cpn: String?,
         reloadToken: String? = null,
         client: YouTubeClient = YouTubeClient.WEB,
+        withAuth: Boolean = false,
     ) = withRetry {
         httpClient.post("https://www.youtube.com/youtubei/v1/player") {
             headers {
@@ -550,6 +601,28 @@ class InnerTube {
                 append("X-Origin", "https://www.youtube.com")
                 append("Referer", "https://www.youtube.com/")
                 visitorData?.let { append("X-Goog-Visitor-Id", it) }
+                if (withAuth) {
+                    // The tracking fetch wants an ACCOUNT-minted blob, not a
+                    // guest-visitor one: the beacon later presents the same
+                    // auth, so the server can attribute the blob to the
+                    // account's history. Kept off the SABR path (default)
+                    // so working streams never change shape.
+                    cookie?.let { cookieValue ->
+                        append("cookie", cookieValue)
+                        val sapisid =
+                            cookieMap["SAPISID"]
+                                ?: cookieMap["__Secure-3PSAPISID"]
+                                ?: cookieMap["__Secure-1PSAPISID"]
+                        if (sapisid != null) {
+                            val currentTime = System.currentTimeMillis() / 1000
+                            val sapisidHash = sha1("$currentTime $sapisid https://www.youtube.com")
+                            append("Authorization", "SAPISIDHASH ${currentTime}_$sapisidHash")
+                        }
+                    }
+                    if (cookie == null) {
+                        oauthAccessToken?.let { token -> append("Authorization", "Bearer $token") }
+                    }
+                }
             }
             contentType(ContentType.Application.Json)
             userAgent(client.userAgent)
@@ -609,6 +682,86 @@ class InnerTube {
         }
     }
 
+    /**
+     * The official client's watch-history beacon (YouTube.js MediaInfo.addToWatchHistory):
+     * one GET to the player response's videostatsPlaybackUrl, s. host swapped for www.,
+     * with the playback nonce and the fmt/rtn/rt params. This is what makes a watch
+     * land in the account's server history; the video player never sent it, so the
+     * server never learned of app watches.
+     */
+    /**
+     * Rebuilds a stats URL with the given params SET, not appended — exactly
+     * like the official client's (YouTube.js Actions.stats uses
+     * URL.searchParams.set). Ktor's parameter() appends, so a tracking URL
+     * that already carries cpn/ver/c would go out with each of them twice,
+     * and the server may honour the wrong copy. The URL's own cpn is the
+     * server-issued session nonce, so it is kept whenever present and the
+     * fallback is only used when the URL carries none (0.3.48–0.3.51 all
+     * answered 204 with an appended random cpn and recorded nothing).
+     */
+    private fun statsUrl(
+        url: String,
+        client: YouTubeClient,
+        params: Map<String, String>,
+        cpnFallback: String,
+    ): String {
+        val queryIndex = url.indexOf('?')
+        val base = if (queryIndex >= 0) url.substring(0, queryIndex) else url
+        val query = LinkedHashMap<String, String>()
+        if (queryIndex >= 0) {
+            url.substring(queryIndex + 1).split('&').forEach { pair ->
+                val equals = pair.indexOf('=')
+                if (equals > 0) query.putIfAbsent(pair.substring(0, equals), pair.substring(equals + 1))
+            }
+        }
+        query["ver"] = "2"
+        query["c"] = client.clientName.lowercase()
+        query["cbrver"] = client.clientVersion
+        query["cver"] = client.clientVersion
+        params.forEach { (key, value) -> query[key] = value }
+        if (!query.containsKey("cpn")) query["cpn"] = cpnFallback
+        return base + "?" + query.entries.joinToString("&") { "${it.key}=${it.value}" }
+    }
+
+    suspend fun statsPlayback(
+        url: String,
+        cpn: String,
+        client: YouTubeClient,
+    ) = httpClient.get(
+        statsUrl(url, client, mapOf("fmt" to "251", "rtn" to "0", "rt" to "0"), cpn),
+    ) {
+        // The stats host is www.youtube.com (after the s. replacement), so the
+        // request must carry that origin: with apiUrl=null ytClient computes
+        // the SAPISIDHASH for music.youtube.com, which www.youtube.com cannot
+        // validate — the ping then goes out effectively unauthenticated and
+        // YouTube answers 204 without recording anything (0.3.48–0.3.50).
+        ytClient(client, true, apiUrl = YouTubeClient.API_URL_YOUTUBE)
+    }
+
+    /** The progress beacon: same session cpn as the playback beacon, position in
+     * seconds with three decimals in st, et and cmt alike, always final=1. */
+    suspend fun statsWatchtime(
+        url: String,
+        cpn: String,
+        positionSec: Double,
+        client: YouTubeClient,
+    ) = httpClient.get(
+        statsUrl(
+            url,
+            client,
+            mapOf(
+                "st" to "%.3f".format(Locale.US, positionSec),
+                "et" to "%.3f".format(Locale.US, positionSec),
+                "cmt" to "%.3f".format(Locale.US, positionSec),
+                "final" to "1",
+            ),
+            cpn,
+        ),
+    ) {
+        // Same www origin as the playback beacon (see above).
+        ytClient(client, true, apiUrl = YouTubeClient.API_URL_YOUTUBE)
+    }
+
     suspend fun browse(
         client: YouTubeClient,
         browseId: String? = null,
@@ -631,6 +784,61 @@ class InnerTube {
                     params = params,
                     continuation = continuation,
                     formData = formData,
+                ),
+            )
+        }
+    }
+
+    /**
+     * A browse against youtube.com itself, with the session attached when [setLogin]:
+     * the plain [browse] above rides the YouTube Music host (this engine's home), which
+     * does not serve the main feeds (FEwhat_to_watch, FEsubscriptions, FEhistory) at all.
+     * The auth headers come from the same [ytClient] builder the music calls use, with
+     * the main site as its origin.
+     */
+    suspend fun browseMainSite(
+        client: YouTubeClient,
+        browseId: String? = null,
+        params: String? = null,
+        continuation: String? = null,
+        setLogin: Boolean = false,
+    ) = withRetry {
+        httpClient.post("https://www.youtube.com/youtubei/v1/browse") {
+            ytClient(client, setLogin = setLogin || useLoginForBrowse, apiUrl = YouTubeClient.API_URL_YOUTUBE)
+            setBody(
+                BrowseBody(
+                    context =
+                        client.toContext(
+                            locale,
+                            visitorData,
+                            if (setLogin || useLoginForBrowse) dataSyncId else null,
+                        ),
+                    browseId = browseId,
+                    params = params,
+                    continuation = continuation,
+                ),
+            )
+        }
+    }
+
+    /**
+     * The account's guide. Its subscriptions section lists every channel the account
+     * follows — the complete membership list the subscription feed only ever samples.
+     */
+    suspend fun guide() = withRetry {
+        // Same client rule as browse: an OAuth (TV-code) token is a TV client's token, and
+        // YouTube rejects it in a WEB context with 400 — the guide must speak TVHTML5 too.
+        val client =
+            if (cookie.isNullOrBlank() && oauthAccessToken != null) {
+                YouTubeClient.TVHTML5
+            } else {
+                YouTubeClient.WEB.copy(loginSupported = true)
+            }
+        httpClient.post("https://www.youtube.com/youtubei/v1/guide") {
+            ytClient(client, setLogin = true, apiUrl = YouTubeClient.API_URL_YOUTUBE)
+            setBody(
+                GuideBody(
+                    context = client.toContext(locale, visitorData, dataSyncId),
                 ),
             )
         }
@@ -749,6 +957,182 @@ class InnerTube {
         }
     }
 
+    /**
+     * The same `next` call with the account attached. The guest call's comment section has no
+     * create box; only the logged-in section carries the params a comment post is made with.
+     */
+    suspend fun nextWatchAuthed(
+        videoId: String? = null,
+        continuation: String? = null,
+    ) = withRetry {
+        // Same client rule as browse/guide: an OAuth (TV-code) token is a TV client's
+        // token; in a WEB context YouTube refuses it. Cookie sessions keep WEB.
+        val client =
+            if (cookie.isNullOrBlank() && oauthAccessToken != null) {
+                YouTubeClient.TVHTML5
+            } else {
+                YouTubeClient.WEB.copy(loginSupported = true)
+            }
+        httpClient.post("https://www.youtube.com/youtubei/v1/next") {
+            ytClient(client, setLogin = true, apiUrl = YouTubeClient.API_URL_YOUTUBE)
+            setBody(
+                NextBody(
+                    context = client.toContext(locale, visitorData, dataSyncId),
+                    videoId = videoId,
+                    playlistId = null,
+                    playlistSetVideoId = null,
+                    index = null,
+                    params = null,
+                    continuation = continuation,
+                ),
+            )
+        }
+    }
+
+    /** Posts a top-level comment; [createCommentParams] is the token the section's create box carried. */
+    suspend fun createComment(
+        createCommentParams: String,
+        commentText: String,
+    ): HttpResponse {
+        // What the request actually carries, as facts only — the create has answered a bare
+        // 404 to a genuine box token from the same session, and every static property of
+        // this request matches the working ones. These are the values left to check.
+        ShivLog.i("commentCreateReq tokenLen=${createCommentParams.length} " +
+                "sapisidExact=${"SAPISID" in cookieMap} " +
+                "sapisidAny=${listOf("SAPISID", "__Secure-3PSAPISID", "__Secure-1PSAPISID").any { it in cookieMap }} " +
+                "datasync=${dataSyncId != null} visitor=${!visitorData.isNullOrBlank()}",
+        )
+        val first = runCatching { postCreateComment(createCommentParams, commentText, authUser = false) }
+        if (first.isSuccess) return first.getOrThrow()
+        val firstError = first.exceptionOrNull()
+        val firstStatus = (firstError as? ClientRequestException)?.response?.status
+        ShivLog.i("commentCreate attempt=1 failed status=$firstStatus")
+        if (firstStatus?.value != 404) throw firstError ?: IllegalStateException("comment create failed")
+        // A delegated (brand) channel's box token is bound to the account-slot identity the
+        // web sends as X-Goog-AuthUser; without it YouTube cannot resolve the token and
+        // answers the same bare 404. Retry once carrying it.
+        ShivLog.i("commentCreate attempt=2 with X-Goog-AuthUser")
+        return postCreateComment(createCommentParams, commentText, authUser = true)
+    }
+
+    private suspend fun postCreateComment(
+        createCommentParams: String,
+        commentText: String,
+        authUser: Boolean,
+    ): HttpResponse {
+        val client = YouTubeClient.WEB.copy(loginSupported = true)
+        // The endpoint is comment/create_comment — every working InnerTube client
+        // (YouTube.js, SmartTube's MediaServiceCore, OpenCLI) posts there. The old
+        // comment/create path is an unregistered route: it answered a bare 404 with an
+        // empty body to every request, whatever token, headers or identity it carried
+        // (the long comment-post hunt of 0.3.1–0.3.10 was fought against that 404).
+        return httpClient.post("https://www.youtube.com/youtubei/v1/comment/create_comment") {
+            ytClient(client, setLogin = true, apiUrl = YouTubeClient.API_URL_YOUTUBE)
+            if (authUser) header("X-Goog-AuthUser", "0")
+            setBody(
+                CreateCommentBody(
+                    context = client.toContext(locale, visitorData, dataSyncId),
+                    createCommentParams = createCommentParams,
+                    commentText = commentText,
+                ),
+            )
+        }
+    }
+
+    /**
+     * Runs one of a comment's own toolbar commands (like/dislike and their undos).
+     * [endpointJson] is the command's `performCommentActionEndpoint` object, replayed
+     * verbatim: it carries either an `actions` list or a single encoded `action`.
+     */
+    suspend fun performCommentAction(endpointJson: String): HttpResponse {
+        val endpoint =
+            Json.parseToJsonElement(endpointJson) as? JsonObject
+                ?: throw IllegalArgumentException("comment action endpoint is not an object")
+        val actions: List<JsonElement> =
+            (endpoint["actions"] as? JsonArray)?.toList()
+                ?: endpoint["action"]?.let { listOf(it) }
+                ?: throw IllegalArgumentException("comment action endpoint carries no actions")
+        ShivLog.i("commentActionReq actions=${actions.size}")
+        val first = runCatching { postCommentAction(actions, authUser = false) }
+        if (first.isSuccess) return first.getOrThrow()
+        val firstError = first.exceptionOrNull()
+        val firstStatus = (firstError as? ClientRequestException)?.response?.status
+        ShivLog.i("commentAction attempt=1 failed status=$firstStatus")
+        if (firstStatus?.value != 404) throw firstError ?: IllegalStateException("comment action failed")
+        // Same delegated-channel identity case as comment create: retry carrying it.
+        ShivLog.i("commentAction attempt=2 with X-Goog-AuthUser")
+        return postCommentAction(actions, authUser = true)
+    }
+
+    private suspend fun postCommentAction(
+        actions: List<JsonElement>,
+        authUser: Boolean,
+    ): HttpResponse {
+        val client = YouTubeClient.WEB.copy(loginSupported = true)
+        return httpClient.post("https://www.youtube.com/youtubei/v1/comment/perform_comment_action") {
+            ytClient(client, setLogin = true, apiUrl = YouTubeClient.API_URL_YOUTUBE)
+            if (authUser) header("X-Goog-AuthUser", "0")
+            setBody(
+                PerformCommentActionBody(
+                    context = client.toContext(locale, visitorData, dataSyncId),
+                    actions = actions,
+                ),
+            )
+        }
+    }
+
+    /**
+     * One server-issued comment write whose body is a params token plus the text under
+     * caller-chosen field names: a reply (`createReplyParams`/`commentText` to
+     * `comment/create_comment_reply`), an edit (`updateCommentParams`/`commentText`), or a
+     * reply's edit (`updateReplyParams`/`replyText`). Same delegated-channel 404 ladder as
+     * the create and the vote: the token is bound to the account-slot identity.
+     */
+    suspend fun postCommentWrite(
+        path: String,
+        paramsField: String,
+        params: String,
+        textField: String,
+        text: String,
+    ): HttpResponse {
+        ShivLog.i("commentWrite path=$path field=$paramsField tok=${params.take(8)} len=${params.length} attempt=1 start")
+        val first = runCatching { postCommentWriteAttempt(path, paramsField, params, textField, text, authUser = false) }
+        if (first.isSuccess) return first.getOrThrow()
+        val firstError = first.exceptionOrNull()
+        val firstStatus = (firstError as? ClientRequestException)?.response?.status
+        ShivLog.i("commentWrite path=$path attempt=1 failed status=$firstStatus")
+        if (firstStatus?.value != 404) throw firstError ?: IllegalStateException("comment write failed")
+        ShivLog.i("commentWrite path=$path attempt=2 with X-Goog-AuthUser")
+        return postCommentWriteAttempt(path, paramsField, params, textField, text, authUser = true)
+    }
+
+    private suspend fun postCommentWriteAttempt(
+        path: String,
+        paramsField: String,
+        params: String,
+        textField: String,
+        text: String,
+        authUser: Boolean,
+    ): HttpResponse {
+        val client = YouTubeClient.WEB.copy(loginSupported = true)
+        // Typed bodies, like the proven create: the client's JSON encodes the context with
+        // its defaults on. A hand-built JSON body dropped the context's defaulted parts and
+        // the write endpoints refused the shape (the 0.3.16 reply/edit failures).
+        val context = client.toContext(locale, visitorData, dataSyncId)
+        val body: Any =
+            when (paramsField) {
+                "createReplyParams" -> CreateReplyBody(context, params, text)
+                "updateCommentParams" -> UpdateCommentBody(context, params, text)
+                "updateReplyParams" -> UpdateReplyBody(context, params, text)
+                else -> throw IllegalArgumentException("unknown comment write field: $paramsField")
+            }
+        return httpClient.post("https://www.youtube.com/youtubei/v1/$path") {
+            ytClient(client, setLogin = true, apiUrl = YouTubeClient.API_URL_YOUTUBE)
+            if (authUser) header("X-Goog-AuthUser", "0")
+            setBody(body)
+        }
+    }
+
     suspend fun getLiveChat(
         continuation: String,
         offsetMs: Long? = null,
@@ -766,6 +1150,60 @@ class InnerTube {
                         },
                 ),
             )
+        }
+    }
+
+    /**
+     * One live-chat message, per YouTube.js `LiveChat.sendMessage`: POST
+     * `live_chat/send_message` with the proto-encoded video/channel params. Same WEB+login
+     * write path as the proven comment writes. The response carries `addChatItemAction` on
+     * success and sometimes `runAttestationCommand` (a bot challenge) instead of the message.
+     */
+    suspend fun sendLiveChatMessage(
+        videoId: String,
+        channelId: String,
+        text: String,
+    ): HttpResponse {
+        val client = YouTubeClient.WEB.copy(loginSupported = true)
+        val context = client.toContext(locale, visitorData, dataSyncId)
+        val body =
+            LiveChatSendBody(
+                context = context,
+                richMessage = LiveChatSendBody.RichMessage(listOf(LiveChatSendBody.TextSegment(text))),
+                clientMessageId = UUID.randomUUID().toString(),
+                params = liveChatSendParams(videoId, channelId),
+            )
+        ShivLog.i("liveChatSend video=${videoId.take(8)} start")
+        return httpClient.post("https://www.youtube.com/youtubei/v1/live_chat/send_message") {
+            ytClient(client, setLogin = true, apiUrl = YouTubeClient.API_URL_YOUTUBE)
+            setBody(body)
+        }
+    }
+
+    /**
+     * POSTs one InnerTube endpoint whose body is [fields] plus the signed-in WEB context.
+     * The generic replay for menu endpoints (the live-chat item menu, then its DELETE
+     * action): the endpoint object itself carries the fields, so no typed body exists for it.
+     */
+    suspend fun postInnertubeEndpoint(
+        apiUrl: String,
+        fields: JsonObject,
+    ): HttpResponse {
+        val client = YouTubeClient.WEB.copy(loginSupported = true)
+        // commandMetadata apiUrl values arrive as "/youtubei/v1/<endpoint>";
+        // prefixing those again would double the path and 404 every call.
+        val path = apiUrl.removePrefix("/").removePrefix("youtubei/v1/")
+        val url =
+            if (apiUrl.startsWith("http")) apiUrl
+            else "https://www.youtube.com/youtubei/v1/$path"
+        val body =
+            buildJsonObject {
+                put("context", json.encodeToJsonElement(client.toContext(locale, visitorData, dataSyncId)))
+                fields.forEach { (key, value) -> put(key, value) }
+            }
+        return httpClient.post(url) {
+            ytClient(client, setLogin = true, apiUrl = YouTubeClient.API_URL_YOUTUBE)
+            setBody(body)
         }
     }
 
