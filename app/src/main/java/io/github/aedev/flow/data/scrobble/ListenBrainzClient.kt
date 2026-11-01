@@ -166,7 +166,7 @@ internal fun listensJson(
                                         "additional_info",
                                         buildJsonObject {
                                             if (entry.durationSec > 0) put("duration_ms", entry.durationSec * 1000L)
-                                            put("submission_client", "ShivFlow")
+                                            put("submission_client", "YouGlideTube")
                                             put("submission_client_version", BuildConfig.VERSION_NAME)
                                             if (entry.fromYouTube) put("music_service", "music.youtube.com")
                                         },
