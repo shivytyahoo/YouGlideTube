@@ -138,7 +138,7 @@ private fun HeroMark(step: OnboardingStep) {
         Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.fillMaxWidth(HERO_ICON_SHARE).aspectRatio(1f))
     } else {
         Image(
-            painter = painterResource(R.drawable.ic_splash_logo),
+            painter = painterResource(R.drawable.ic_launcher_foreground),
             contentDescription = null,
             modifier = Modifier.fillMaxWidth(LOGO_SHARE).aspectRatio(1f),
         )
