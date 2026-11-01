@@ -46,7 +46,15 @@ internal class AccountViewModel
         /** Signs out of the active account (the next saved one takes over, or guest). */
         fun signOut() {
             if (accountSessionManager.isSignedIn) {
+                // An OAuth entry carries no cookie: removing its row alone would
+                // leave its token live and the app signed in with no account.
+                val wasOAuth = activeAccount.value?.cookie.isNullOrBlank()
                 accountSessionManager.signOutActive()
+                if (wasOAuth) {
+                    oauthSessionManager.signOut()
+                    YouTube.useLoginForBrowse = false
+                    HomeFeedCache.clear()
+                }
             } else {
                 oauthSessionManager.signOut()
                 YouTube.useLoginForBrowse = false
