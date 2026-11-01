@@ -9,7 +9,6 @@ import coil3.PlatformContext
 import coil3.SingletonImageLoader
 import dagger.hilt.android.HiltAndroidApp
 import io.github.aedev.flow.data.local.PlayerPreferences
-import io.github.aedev.flow.data.local.SubscriptionRepository
 import io.github.aedev.flow.data.repository.NewPipeDownloader
 import io.github.aedev.flow.data.repository.YouTubeRepository
 import io.github.aedev.flow.discord.DiscordPresenceRuntime
@@ -75,6 +74,12 @@ class FlowApplication :
     lateinit var accountCookieStore: AccountCookieStore
 
     @Inject
+    lateinit var accountSessionManager: io.github.aedev.flow.data.account.AccountSessionManager
+
+    @Inject
+    lateinit var oauthSessionManager: io.github.aedev.flow.data.account.OAuthSessionManager
+
+    @Inject
     internal lateinit var homeFeedLanguageReset: HomeFeedLanguageReset
 
     override fun newImageLoader(context: PlatformContext): ImageLoader = imageLoader
@@ -93,6 +98,7 @@ class FlowApplication :
     override fun onCreate() {
         super.onCreate()
         appContext = applicationContext
+        purgeRemovedContentStores()
         YouTube.cacheDirectory = cacheDir.resolve("innertube_http_cache")
 
         DiscordPresenceRuntime.initialize(this, okHttpClient)
@@ -185,13 +191,19 @@ class FlowApplication :
 
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             try {
-                accountCookieStore.restore()?.let { cookie ->
-                    YouTube.cookie = cookie
-                    YouTube.useLoginForBrowse = true
-                    Log.d(TAG, "Account session restored")
-                }
+                accountSessionManager.restore()
+                Log.d(TAG, "Account session restored")
             } catch (e: Exception) {
                 Log.w(TAG, "Account session restore error: ${e.message}")
+            }
+        }
+
+        oauthSessionManager.bind()
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            try {
+                oauthSessionManager.restore()
+            } catch (e: Exception) {
+                Log.w(TAG, "OAuth session restore error: ${e.message}")
             }
         }
 
@@ -241,25 +253,7 @@ class FlowApplication :
             }
         }
 
-        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
-            try {
-                val repository = SubscriptionRepository.getInstance(this@FlowApplication)
-                val youtubeRepository = YouTubeRepository.getInstance(playerPreferences)
-                val repaired =
-                    repository.repairVideoThumbnailSubscriptions { channelId ->
-                        // Startup's own fetches hold the InnerTube connections for a while; nothing waits on this.
-                        withTimeoutOrNull(20_000L) {
-                            youtubeRepository.fetchChannelAvatarById(channelId)
-                        }.orEmpty()
-                    }
-                if (repaired > 0) {
-                    Log.i(TAG, "Repaired $repaired subscription thumbnails")
-                }
-            } catch (e: Exception) {
-                Log.w(TAG, "Subscription thumbnail repair failed: ${e.message}")
-            }
-        }
-    }
+   }
 
     private fun applyProxyConfig(
         config: io.github.aedev.flow.network.AppProxyConfig,
@@ -300,6 +294,58 @@ class FlowApplication :
             CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
                 okHttpClient.connectionPool.evictAll()
             }
+        }
+    }
+}
+
+/**
+ * One-time-per-launch cleanup of the on-disk stores the account-only build removed: the local
+ * content DataStores, the recommendation engines' brain/ledger files and the recap/sync stores.
+ * The downloads store, the download records and every settings/session store are kept — nothing
+ * here touches them. Idempotent: deleting a missing file is a no-op.
+ */
+private fun FlowApplication.purgeRemovedContentStores() {
+    CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+        runCatching {
+            val dataStoreDir = java.io.File(filesDir, "datastore")
+            val doomedStores =
+                listOf(
+                    "subscriptions",
+                    "liked_videos",
+                    "playlists",
+                    "search_history",
+                    "view_history",
+                    "video_queue",
+                    "music_queue",
+                    "favourite_artists",
+                    "flow_recap",
+                    "flow_recap_images",
+                    "sync_brain_crdt",
+                    "sync_identity",
+                    "sync_music_brain_crdt",
+                    "saved_playlist_sync",
+                    "local_media",
+                )
+            doomedStores.forEach { name -> java.io.File(dataStoreDir, "$name.preferences_pb").delete() }
+            val doomedFiles =
+                listOf(
+                    "flow_neuro_brain_v10.json",
+                    "flow_neuro_brain_v9.json",
+                    "flow_neuro_brain_v8.json",
+                    "flow_neuro_brain_v7.json",
+                    "flow_music_brain_v1.json",
+                    "flow_music_stats_hot_v1.json",
+                    "flow_music_stats_v1.json",
+                    "flow_video_stats_hot_v1.json",
+                    "flow_video_stats_v1.json",
+                )
+            doomedFiles.forEach { name -> java.io.File(dataStoreDir, name).delete() }
+            java.io.File(filesDir, "user_neuro_brain.json").delete()
+            java.io.File(filesDir, "neuro").deleteRecursively()
+            java.io.File(filesDir, "flow_recap_images").deleteRecursively()
+            noBackupFilesDir
+                .listFiles { file -> file.name.startsWith("neuro_brain_before_v") }
+                ?.forEach { it.delete() }
         }
     }
 }
