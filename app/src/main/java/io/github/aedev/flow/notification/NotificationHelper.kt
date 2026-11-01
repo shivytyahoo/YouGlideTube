@@ -222,7 +222,7 @@ object NotificationHelper {
         val builder =
             NotificationCompat
                 .Builder(context, CHANNEL_IMPORTS)
-                .setSmallIcon(R.drawable.ic_notification_logo)
+                .setSmallIcon(R.drawable.ic_launcher_dynamic_foreground)
                 .setContentTitle(context.getString(R.string.notification_importing, label))
                 .setContentText(contentText)
                 .apply {
@@ -251,7 +251,7 @@ object NotificationHelper {
         val builder =
             NotificationCompat
                 .Builder(context, CHANNEL_IMPORTS)
-                .setSmallIcon(R.drawable.ic_notification_logo)
+                .setSmallIcon(R.drawable.ic_launcher_dynamic_foreground)
                 .setContentTitle(context.getString(R.string.notification_import_complete))
                 .setContentText(message ?: context.getString(R.string.notification_imported, count, label.lowercase()))
                 .setAutoCancel(true)
@@ -304,7 +304,7 @@ object NotificationHelper {
         val builder =
             NotificationCompat
                 .Builder(context, CHANNEL_DOWNLOADS)
-                .setSmallIcon(R.drawable.ic_notification_logo)
+                .setSmallIcon(R.drawable.ic_launcher_dynamic_foreground)
                 .setContentTitle(context.getString(R.string.notification_downloading, videoTitle))
                 .setContentText(contentText)
                 .setProgress(100, progress, false)
@@ -354,7 +354,7 @@ object NotificationHelper {
         val builder =
             NotificationCompat
                 .Builder(context, CHANNEL_DOWNLOADS)
-                .setSmallIcon(R.drawable.ic_notification_logo)
+                .setSmallIcon(R.drawable.ic_launcher_dynamic_foreground)
                 .setContentTitle(context.getString(R.string.notification_download_complete))
                 .setContentText(videoTitle)
                 .setContentIntent(openPendingIntent)
@@ -405,7 +405,7 @@ object NotificationHelper {
         val notification =
             NotificationCompat
                 .Builder(context, CHANNEL_DOWNLOADS)
-                .setSmallIcon(R.drawable.ic_notification_logo)
+                .setSmallIcon(R.drawable.ic_launcher_dynamic_foreground)
                 .setContentTitle(context.getString(R.string.notification_download_failed))
                 .setContentText(videoTitle)
                 .setStyle(
@@ -471,7 +471,7 @@ object NotificationHelper {
             val builder =
                 NotificationCompat
                     .Builder(context, CHANNEL_SUBSCRIPTIONS)
-                    .setSmallIcon(R.drawable.ic_notification_logo)
+                    .setSmallIcon(R.drawable.ic_launcher_dynamic_foreground)
                     .setContentTitle(v.channelName)
                     .setContentText(v.videoTitle)
                     .setContentIntent(watchPendingIntent)
@@ -523,7 +523,7 @@ object NotificationHelper {
         val summaryNotification =
             NotificationCompat
                 .Builder(context, CHANNEL_SUBSCRIPTIONS)
-                .setSmallIcon(R.drawable.ic_notification_logo)
+                .setSmallIcon(R.drawable.ic_launcher_dynamic_foreground)
                 .setContentTitle(context.getString(R.string.notification_new_videos))
                 .setContentText(
                     context.resources.getQuantityString(
@@ -581,7 +581,7 @@ object NotificationHelper {
         val builder =
             NotificationCompat
                 .Builder(context, CHANNEL_SUBSCRIPTIONS)
-                .setSmallIcon(R.drawable.ic_notification_logo)
+                .setSmallIcon(R.drawable.ic_launcher_dynamic_foreground)
                 .setContentTitle(channelName)
                 .setContentText(videoTitle)
                 .setContentIntent(watchPendingIntent)
@@ -620,7 +620,7 @@ object NotificationHelper {
         val summaryNotification =
             NotificationCompat
                 .Builder(context, CHANNEL_SUBSCRIPTIONS)
-                .setSmallIcon(R.drawable.ic_notification_logo)
+                .setSmallIcon(R.drawable.ic_launcher_dynamic_foreground)
                 .setContentTitle(context.getString(R.string.notification_new_videos))
                 .setContentText(
                     context.resources.getQuantityString(
@@ -666,7 +666,7 @@ object NotificationHelper {
         val notification =
             NotificationCompat
                 .Builder(context, CHANNEL_UPDATES)
-                .setSmallIcon(R.drawable.ic_notification_logo)
+                .setSmallIcon(R.drawable.ic_launcher_dynamic_foreground)
                 .setContentTitle(context.getString(R.string.notification_update_available, release.version))
                 .setContentText(context.getString(R.string.notification_tap_to_update))
                 .setContentIntent(pendingIntent)
@@ -707,7 +707,7 @@ object NotificationHelper {
         val notification =
             NotificationCompat
                 .Builder(context, CHANNEL_GENERAL)
-                .setSmallIcon(R.drawable.ic_notification_logo)
+                .setSmallIcon(R.drawable.ic_launcher_dynamic_foreground)
                 .setContentTitle(title)
                 .setContentText(message)
                 .setContentIntent(pendingIntent)
@@ -748,7 +748,7 @@ object NotificationHelper {
         val notification =
             NotificationCompat
                 .Builder(context, CHANNEL_GENERAL)
-                .setSmallIcon(R.drawable.ic_notification_logo)
+                .setSmallIcon(R.drawable.ic_launcher_dynamic_foreground)
                 .setContentTitle(context.getString(R.string.notification_watch_later_reminder))
                 .setContentText(videoTitle)
                 .setContentIntent(watchPendingIntent)
@@ -843,7 +843,7 @@ object NotificationHelper {
         val builder =
             NotificationCompat
                 .Builder(context, CHANNEL_REMINDERS)
-                .setSmallIcon(R.drawable.ic_notification_logo)
+                .setSmallIcon(R.drawable.ic_launcher_dynamic_foreground)
                 .setContentTitle(context.getString(R.string.notification_video_live))
                 .setContentText(liveText)
                 .setStyle(NotificationCompat.BigTextStyle().bigText(liveText))
