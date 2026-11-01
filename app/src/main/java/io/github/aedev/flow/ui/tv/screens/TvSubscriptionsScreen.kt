@@ -77,7 +77,10 @@ fun TvSubscriptionsScreen(
                 )
             }
 
-            uiState.subscribedChannels.isEmpty() -> {
+            // A feed whose videos parsed but whose channel rail did not (a
+            // TVHTML5 shape the rail parser misses) used to hide everything
+            // behind the empty state. Only a truly empty feed earns it now.
+            uiState.subscribedChannels.isEmpty() && uiState.recentVideos.isEmpty() -> {
                 SubscriptionsEmptyState(modifier = Modifier.fillMaxSize())
             }
 
