@@ -1,6 +1,8 @@
 package io.github.aedev.flow.ui.tv.navigation
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -18,6 +20,7 @@ import io.github.aedev.flow.data.music.DownloadedTrack
 import io.github.aedev.flow.data.video.DownloadedVideo
 import io.github.aedev.flow.data.music.model.toMusicTrack
 import io.github.aedev.flow.data.music.model.toVideo
+import io.github.aedev.flow.data.shorts.queue.ShortsQueueSource
 import io.github.aedev.flow.ui.components.layout.navigation.FlowTab
 import io.github.aedev.flow.ui.components.shared.MediaKind
 import io.github.aedev.flow.ui.screens.channel.ChannelScreen
@@ -31,12 +34,14 @@ import io.github.aedev.flow.ui.screens.onboarding.OnboardingScreen
 import io.github.aedev.flow.ui.screens.playlists.PlaylistDetailScreen
 import io.github.aedev.flow.ui.screens.playlists.PlaylistsScreen
 import io.github.aedev.flow.ui.screens.search.SearchViewModel
+import io.github.aedev.flow.ui.screens.shorts.ShortsScreen
 import io.github.aedev.flow.ui.screens.subscriptions.SubscriptionsViewModel
 import io.github.aedev.flow.ui.tv.components.TvScreenFrame
 import io.github.aedev.flow.ui.tv.screens.TvHomeScreen
 import io.github.aedev.flow.ui.tv.screens.TvLibraryScreen
 import io.github.aedev.flow.ui.tv.screens.TvSearchScreen
 import io.github.aedev.flow.ui.tv.screens.TvSubscriptionsScreen
+import io.github.aedev.flow.ui.tv.theme.LocalTvDimens
 
 /** Top-level TV navigation graph plus detail routes (channel, …). */
 @androidx.annotation.OptIn(UnstableApi::class)
@@ -74,14 +79,25 @@ fun TvNavHost(
         modifier = modifier,
     ) {
         composable("onboarding") {
+            // TvScreenFrame covers the top and end edges only: the rail owns the start
+            // edge on other pages, but it is hidden during onboarding, and nothing
+            // reserves the bottom edge — so the frame is closed here, or the title and
+            // the button sit in the cropped overscan zone on every TV.
+            val dimens = LocalTvDimens.current
             TvScreenFrame {
-                OnboardingScreen(
-                    onComplete = {
-                        navController.navigate(onboardingTargetRoute) {
-                            popUpTo("onboarding") { inclusive = true }
-                        }
-                    },
-                )
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .padding(start = dimens.overscanHorizontal, bottom = dimens.overscanVertical),
+                ) {
+                    OnboardingScreen(
+                        onComplete = {
+                            navController.navigate(onboardingTargetRoute) {
+                                popUpTo("onboarding") { inclusive = true }
+                            }
+                        },
+                    )
+                }
             }
         }
         composable(FlowTab.Home.route) {
@@ -100,6 +116,15 @@ fun TvNavHost(
                 viewModel = subscriptionsViewModel,
                 onVideoClick = onPlayVideo,
                 onChannelClick = { channel -> openChannel(channel.url.ifBlank { channel.id }) },
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+        composable(FlowTab.Shorts.route) {
+            ShortsScreen(
+                source = ShortsQueueSource.Feed,
+                enableDpadPaging = true,
+                onBack = { navController.popBackStack() },
+                onChannelClick = { channelId -> openChannel(channelId) },
                 modifier = Modifier.fillMaxSize(),
             )
         }
