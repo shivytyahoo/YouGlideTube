@@ -15,13 +15,6 @@ sealed interface ShortsQueueSource {
         override fun encode(): String = "$FEED:$startVideoId"
     }
 
-    /** The user's saved Shorts, in saved order. Finite by design. */
-    data class Saved(
-        val startVideoId: String = "",
-    ) : ShortsQueueSource {
-        override fun encode(): String = if (startVideoId.isBlank()) SAVED else "$SAVED:$startVideoId"
-    }
-
     /**
      * A channel's Shorts tab, paginated, in the sort order the tab is showing.
      *
@@ -53,7 +46,6 @@ sealed interface ShortsQueueSource {
 
     companion object {
         private const val FEED = "feed"
-        private const val SAVED = "saved"
         private const val CHANNEL = "channel"
         private const val SUBSCRIPTIONS = "subs"
         private const val SNAPSHOT = "snap"
@@ -72,10 +64,6 @@ sealed interface ShortsQueueSource {
             return when (kind) {
                 FEED -> {
                     if (rest.isBlank()) Feed else SeededFeed(rest)
-                }
-
-                SAVED -> {
-                    Saved(rest)
                 }
 
                 SUBSCRIPTIONS -> {
@@ -110,7 +98,7 @@ sealed interface ShortsQueueSource {
  * Named distinctly from the `startVideoId` constructor properties on purpose: an extension property
  * sharing their name reads as recursive at the call site and resolves to the member silently.
  *
- * [ShortsQueueSource.Feed] and [ShortsQueueSource.Saved] have no anchor: they start at the top.
+ * [ShortsQueueSource.Feed] has no anchor: it starts at the top.
  */
 val ShortsQueueSource.openAtVideoId: String?
     get() =
@@ -118,7 +106,6 @@ val ShortsQueueSource.openAtVideoId: String?
             is ShortsQueueSource.SeededFeed -> this.startVideoId.takeIf { it.isNotBlank() }
             is ShortsQueueSource.Channel -> this.startVideoId.takeIf { it.isNotBlank() }
             is ShortsQueueSource.Snapshot -> this.startVideoId.takeIf { it.isNotBlank() }
-            is ShortsQueueSource.Saved -> this.startVideoId.takeIf { it.isNotBlank() }
             is ShortsQueueSource.Subscriptions -> this.startVideoId.takeIf { it.isNotBlank() }
             ShortsQueueSource.Feed -> null
         }
@@ -130,8 +117,6 @@ val ShortsQueueSource.openAtVideoId: String?
  * and #823 are about staying inside the chosen source while it still has Shorts to give, not about
  * stopping once it runs dry.
  *
- * Saved Shorts is the exception — it is a deliberate collection, and silently trailing
- * recommendations onto it would misrepresent it.
  */
 val ShortsQueueSource.continuesIntoFeed: Boolean
     get() =
@@ -141,12 +126,12 @@ val ShortsQueueSource.continuesIntoFeed: Boolean
             is ShortsQueueSource.Subscriptions,
             -> true
 
-            ShortsQueueSource.Feed, is ShortsQueueSource.Saved, is ShortsQueueSource.SeededFeed -> false
+            ShortsQueueSource.Feed, is ShortsQueueSource.SeededFeed -> false
         }
 
 /**
  * Whether the queue's own items come from the algorithmic feed, and so may absorb a late discovery
- * pass. A shelf snapshot, a channel tab and saved Shorts must not — see
+ * pass. A shelf snapshot and a channel tab must not — see
  * [ShortsQueueController]'s `acceptsDiscovery`.
  */
 val ShortsQueueSource.isAlgorithmicFeed: Boolean
@@ -156,7 +141,6 @@ val ShortsQueueSource.isAlgorithmicFeed: Boolean
 
             is ShortsQueueSource.Snapshot,
             is ShortsQueueSource.Channel,
-            is ShortsQueueSource.Saved,
             is ShortsQueueSource.Subscriptions,
             -> false
         }
