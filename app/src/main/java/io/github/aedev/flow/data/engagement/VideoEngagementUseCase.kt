@@ -144,6 +144,9 @@ class VideoEngagementUseCase
             signalVideo: Video? = null,
             onApplied: () -> Unit = {},
         ) {
+            // Likes are account actions: without a sign-in there is no account to
+            // attach one to, and recording it anyway fakes the count and the shelf.
+            if (!YouTube.isSignedIn()) return
             sessionLikes.like(
                 LikedVideoInfo(
                     videoId = video.id,
@@ -169,6 +172,8 @@ class VideoEngagementUseCase
             signalVideo: Video? = null,
             onApplied: () -> Unit = {},
         ) {
+            // Same account rule as like: no sign-in, no recorded dislike, no count move.
+            if (!YouTube.isSignedIn()) return
             sessionLikes.dislike(videoId)
             onApplied()
             if (signalVideo == null) return
@@ -180,6 +185,7 @@ class VideoEngagementUseCase
         }
 
         suspend fun removeLike(videoId: String) {
+            if (!YouTube.isSignedIn()) return
             sessionLikes.removeLikeState(videoId)
         }
     }
