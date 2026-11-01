@@ -23,9 +23,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Comment
 import androidx.compose.material.icons.automirrored.outlined.PlaylistAdd
 import androidx.compose.material.icons.outlined.ClosedCaption
+import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.ThumbDown
+import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalToggleButtonDefaults
@@ -83,6 +86,11 @@ internal class TvPlayerUtilityActions(
     val onLiveChat: () -> Unit,
     val onInfo: () -> Unit,
     val onSettings: () -> Unit,
+    val onDownload: () -> Unit,
+    val onLike: () -> Unit,
+    val onDislike: () -> Unit,
+    val isLiked: Boolean = false,
+    val isDisliked: Boolean = false,
 )
 
 /**
@@ -285,12 +293,17 @@ private fun TvPlayerUtilities(
 ) {
     val utilities =
         buildList {
+            add(TvPlayerUtility(Icons.Outlined.ThumbUp, R.string.like, actions.onLike, actions.isLiked))
+            add(TvPlayerUtility(Icons.Outlined.ThumbDown, R.string.dislike, actions.onDislike, actions.isDisliked))
             if (subtitlesAvailable) {
                 add(
                     TvPlayerUtility(Icons.Outlined.ClosedCaption, R.string.filter_subtitles, actions.onCaptions, subtitlesOn),
                 )
             }
             add(TvPlayerUtility(Icons.AutoMirrored.Outlined.PlaylistAdd, R.string.save, actions.onSave))
+            if (!isLive) {
+                add(TvPlayerUtility(Icons.Outlined.Download, R.string.download, actions.onDownload))
+            }
             if (isLive) {
                 add(TvPlayerUtility(Icons.Outlined.Forum, R.string.live_chat, actions.onLiveChat))
             } else {
