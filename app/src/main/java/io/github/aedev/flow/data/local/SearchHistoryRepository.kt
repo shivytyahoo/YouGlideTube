@@ -1,19 +1,14 @@
 package io.github.aedev.flow.data.local
 
 import android.content.Context
-import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.*
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
-
-private val Context.searchDataStore: DataStore<Preferences> by safePreferencesDataStore(name = "search_history")
 
 data class SearchHistoryItem(
     val id: String = UUID.randomUUID().toString(),
@@ -47,32 +42,31 @@ enum class SuggestionType {
     TRENDING,
 }
 
+/**
+ * Search history for this session only. It used to live in a DataStore; that store is gone,
+ * so recent searches behave as before while the app runs and start empty on a fresh launch.
+ * The settings below are session-scoped for the same reason.
+ */
 @Singleton
 class SearchHistoryRepository
     @Inject
     constructor(
         @ApplicationContext private val context: Context,
     ) {
-        private val gson = Gson()
-
         companion object {
-            private val SEARCH_HISTORY_KEY = stringPreferencesKey("search_history")
-            private val MUSIC_SEARCH_HISTORY_KEY = stringPreferencesKey("music_search_history")
-            private val SEARCH_HISTORY_ENABLED_KEY = booleanPreferencesKey("search_history_enabled")
-            private val SEARCH_SUGGESTIONS_ENABLED_KEY = booleanPreferencesKey("search_suggestions_enabled")
-            private val MAX_HISTORY_SIZE_KEY = intPreferencesKey("max_history_size")
-            private val AUTO_DELETE_HISTORY_KEY = booleanPreferencesKey("auto_delete_history")
-            private val HISTORY_RETENTION_DAYS_KEY = intPreferencesKey("history_retention_days")
-
             private const val DEFAULT_MAX_HISTORY_SIZE = 50
             private const val DEFAULT_RETENTION_DAYS = 90
-
-            private fun historyKey(scope: SearchHistoryScope) =
-                when (scope) {
-                    SearchHistoryScope.VIDEO -> SEARCH_HISTORY_KEY
-                    SearchHistoryScope.MUSIC -> MUSIC_SEARCH_HISTORY_KEY
-                }
         }
+
+        private val histories =
+            MutableStateFlow<Map<SearchHistoryScope, List<SearchHistoryItem>>>(
+                SearchHistoryScope.entries.associateWith { emptyList() },
+            )
+        private val historyEnabled = MutableStateFlow(true)
+        private val suggestionsEnabled = MutableStateFlow(true)
+        private val maxHistorySize = MutableStateFlow(DEFAULT_MAX_HISTORY_SIZE)
+        private val autoDeleteHistory = MutableStateFlow(false)
+        private val historyRetentionDays = MutableStateFlow(DEFAULT_RETENTION_DAYS)
 
         // Save search query
         suspend fun saveSearchQuery(
@@ -84,25 +78,22 @@ class SearchHistoryRepository
             if (!isSearchHistoryEnabled()) return
             if (query.isBlank()) return
 
-            context.searchDataStore.edit { preferences ->
-                val updated =
-                    getSearchHistoryList(preferences, scope).withSearch(
-                        query = query,
-                        type = type,
-                        filters = filters,
-                        maxSize = preferences[MAX_HISTORY_SIZE_KEY] ?: DEFAULT_MAX_HISTORY_SIZE,
-                        now = System.currentTimeMillis(),
-                    )
-                preferences[historyKey(scope)] = gson.toJson(updated)
-            }
+            val updated =
+                histories.value.getValue(scope).withSearch(
+                    query = query,
+                    type = type,
+                    filters = filters,
+                    maxSize = maxHistorySize.value,
+                    now = System.currentTimeMillis(),
+                )
+            histories.value = histories.value + (scope to updated)
         }
 
         // Get search history as Flow
         fun getSearchHistoryFlow(scope: SearchHistoryScope = SearchHistoryScope.VIDEO): Flow<List<SearchHistoryItem>> =
-            context.searchDataStore.data.map { preferences ->
-                if (preferences[SEARCH_HISTORY_ENABLED_KEY] != false) {
-                    val history = getSearchHistoryList(preferences, scope)
-                    filterExpiredHistory(history, preferences)
+            histories.map { all ->
+                if (historyEnabled.value) {
+                    filterExpiredHistory(all.getValue(scope))
                 } else {
                     emptyList()
                 }
@@ -116,39 +107,26 @@ class SearchHistoryRepository
             itemId: String,
             scope: SearchHistoryScope = SearchHistoryScope.VIDEO,
         ) {
-            context.searchDataStore.edit { preferences ->
-                val currentHistory = getSearchHistoryList(preferences, scope)
-                val updatedHistory = currentHistory.filter { it.id != itemId }
-                preferences[historyKey(scope)] = gson.toJson(updatedHistory)
-            }
+            histories.value = histories.value + (scope to histories.value.getValue(scope).filter { it.id != itemId })
         }
 
         suspend fun clearSearchHistory(scope: SearchHistoryScope) {
-            context.searchDataStore.edit { preferences ->
-                preferences[historyKey(scope)] = gson.toJson(emptyList<SearchHistoryItem>())
-            }
+            histories.value = histories.value + (scope to emptyList())
         }
 
         suspend fun clearSearchHistory() {
-            context.searchDataStore.edit { preferences ->
-                SearchHistoryScope.entries.forEach { scope ->
-                    preferences[historyKey(scope)] = gson.toJson(emptyList<SearchHistoryItem>())
-                }
-            }
+            histories.value = SearchHistoryScope.entries.associateWith { emptyList() }
         }
 
         suspend fun replaceSearchHistory(
             items: List<SearchHistoryItem>,
             scope: SearchHistoryScope = SearchHistoryScope.VIDEO,
         ) {
-            context.searchDataStore.edit { preferences ->
-                val maxSize = preferences[MAX_HISTORY_SIZE_KEY] ?: DEFAULT_MAX_HISTORY_SIZE
-                preferences[historyKey(scope)] = gson.toJson(items.newestUnique(maxSize))
-            }
+            histories.value = histories.value + (scope to items.newestUnique(maxHistorySize.value))
         }
 
         /**
-         * Adds searches from another app's export to the ones kept, newest first, each query once and
+         * Adds searches from another source to the ones kept, newest first, each query once and
          * no more than the viewer's limit. Returns how many of [items] are kept; nothing is added while
          * search history is off, and searches older than an auto-delete window are left out.
          */
@@ -158,14 +136,9 @@ class SearchHistoryRepository
         ): Int {
             if (items.isEmpty() || !isSearchHistoryEnabled()) return 0
             val importedIds = items.mapTo(HashSet()) { it.id }
-            var kept = 0
-            context.searchDataStore.edit { preferences ->
-                val maxSize = preferences[MAX_HISTORY_SIZE_KEY] ?: DEFAULT_MAX_HISTORY_SIZE
-                val merged = filterExpiredHistory(getSearchHistoryList(preferences, scope) + items, preferences).newestUnique(maxSize)
-                kept = merged.count { it.id in importedIds }
-                preferences[historyKey(scope)] = gson.toJson(merged)
-            }
-            return kept
+            val merged = filterExpiredHistory(histories.value.getValue(scope) + items).newestUnique(maxHistorySize.value)
+            histories.value = histories.value + (scope to merged)
+            return merged.count { it.id in importedIds }
         }
 
         private fun List<SearchHistoryItem>.newestUnique(maxSize: Int): List<SearchHistoryItem> =
@@ -178,126 +151,52 @@ class SearchHistoryRepository
 
         // Settings: Enable/disable search history
         suspend fun setSearchHistoryEnabled(enabled: Boolean) {
-            context.searchDataStore.edit { preferences ->
-                preferences[SEARCH_HISTORY_ENABLED_KEY] = enabled
-            }
+            historyEnabled.value = enabled
         }
 
-        fun isSearchHistoryEnabledFlow(): Flow<Boolean> =
-            context.searchDataStore.data.map { preferences ->
-                preferences[SEARCH_HISTORY_ENABLED_KEY] ?: true
-            }
+        fun isSearchHistoryEnabledFlow(): Flow<Boolean> = historyEnabled
 
         suspend fun isSearchHistoryEnabled(): Boolean = isSearchHistoryEnabledFlow().first()
 
         // Settings: Enable/disable search suggestions
         suspend fun setSearchSuggestionsEnabled(enabled: Boolean) {
-            context.searchDataStore.edit { preferences ->
-                preferences[SEARCH_SUGGESTIONS_ENABLED_KEY] = enabled
-            }
+            suggestionsEnabled.value = enabled
         }
 
-        fun isSearchSuggestionsEnabledFlow(): Flow<Boolean> =
-            context.searchDataStore.data.map { preferences ->
-                preferences[SEARCH_SUGGESTIONS_ENABLED_KEY] ?: true
-            }
+        fun isSearchSuggestionsEnabledFlow(): Flow<Boolean> = suggestionsEnabled
 
         suspend fun isSearchSuggestionsEnabled(): Boolean = isSearchSuggestionsEnabledFlow().first()
 
         // Settings: Max history size
         suspend fun setMaxHistorySize(size: Int) {
-            context.searchDataStore.edit { preferences ->
-                preferences[MAX_HISTORY_SIZE_KEY] = size
-
-                SearchHistoryScope.entries.forEach { scope ->
-                    val currentHistory = getSearchHistoryList(preferences, scope)
-                    if (currentHistory.size > size) {
-                        preferences[historyKey(scope)] = gson.toJson(currentHistory.take(size))
-                    }
+            maxHistorySize.value = size
+            histories.value =
+                histories.value.mapValues { (_, current) ->
+                    if (current.size > size) current.take(size) else current
                 }
-            }
         }
 
-        fun getMaxHistorySizeFlow(): Flow<Int> =
-            context.searchDataStore.data.map { preferences ->
-                preferences[MAX_HISTORY_SIZE_KEY] ?: DEFAULT_MAX_HISTORY_SIZE
-            }
+        fun getMaxHistorySizeFlow(): Flow<Int> = maxHistorySize
 
         // Settings: Auto-delete history
         suspend fun setAutoDeleteHistory(enabled: Boolean) {
-            context.searchDataStore.edit { preferences ->
-                preferences[AUTO_DELETE_HISTORY_KEY] = enabled
-            }
+            autoDeleteHistory.value = enabled
         }
 
-        fun isAutoDeleteHistoryEnabledFlow(): Flow<Boolean> =
-            context.searchDataStore.data.map { preferences ->
-                preferences[AUTO_DELETE_HISTORY_KEY] ?: false
-            }
+        fun isAutoDeleteHistoryEnabledFlow(): Flow<Boolean> = autoDeleteHistory
 
         // Settings: History retention days
         suspend fun setHistoryRetentionDays(days: Int) {
-            context.searchDataStore.edit { preferences ->
-                preferences[HISTORY_RETENTION_DAYS_KEY] = days
-            }
+            historyRetentionDays.value = days
         }
 
-        fun getHistoryRetentionDaysFlow(): Flow<Int> =
-            context.searchDataStore.data.map { preferences ->
-                preferences[HISTORY_RETENTION_DAYS_KEY] ?: DEFAULT_RETENTION_DAYS
-            }
-
-        suspend fun getSettingsBackup(): SettingsBackup {
-            val preferences = context.searchDataStore.data.first()
-            return SettingsBackup(
-                booleans =
-                    mapOf(
-                        SEARCH_HISTORY_ENABLED_KEY.name to (preferences[SEARCH_HISTORY_ENABLED_KEY] ?: true),
-                        SEARCH_SUGGESTIONS_ENABLED_KEY.name to (preferences[SEARCH_SUGGESTIONS_ENABLED_KEY] ?: true),
-                        AUTO_DELETE_HISTORY_KEY.name to (preferences[AUTO_DELETE_HISTORY_KEY] ?: false),
-                    ),
-                ints =
-                    mapOf(
-                        MAX_HISTORY_SIZE_KEY.name to (preferences[MAX_HISTORY_SIZE_KEY] ?: DEFAULT_MAX_HISTORY_SIZE),
-                        HISTORY_RETENTION_DAYS_KEY.name to (preferences[HISTORY_RETENTION_DAYS_KEY] ?: DEFAULT_RETENTION_DAYS),
-                    ),
-            )
-        }
-
-        suspend fun restoreSettings(backup: SettingsBackup) {
-            context.searchDataStore.edit { preferences ->
-                backup.booleans[SEARCH_HISTORY_ENABLED_KEY.name]?.let { preferences[SEARCH_HISTORY_ENABLED_KEY] = it }
-                backup.booleans[SEARCH_SUGGESTIONS_ENABLED_KEY.name]?.let { preferences[SEARCH_SUGGESTIONS_ENABLED_KEY] = it }
-                backup.booleans[AUTO_DELETE_HISTORY_KEY.name]?.let { preferences[AUTO_DELETE_HISTORY_KEY] = it }
-                backup.ints[MAX_HISTORY_SIZE_KEY.name]?.let { preferences[MAX_HISTORY_SIZE_KEY] = it }
-                backup.ints[HISTORY_RETENTION_DAYS_KEY.name]?.let { preferences[HISTORY_RETENTION_DAYS_KEY] = it }
-            }
-        }
-
-        // Helper: Parse JSON to list
-        private fun getSearchHistoryList(
-            preferences: Preferences,
-            scope: SearchHistoryScope,
-        ): List<SearchHistoryItem> {
-            val json = preferences[historyKey(scope)] ?: return emptyList()
-            return try {
-                val type = object : TypeToken<List<SearchHistoryItem>>() {}.type
-                gson.fromJson<List<SearchHistoryItem>>(json, type)?.map(SearchHistoryItem::sanitized) ?: emptyList()
-            } catch (e: Exception) {
-                emptyList()
-            }
-        }
+        fun getHistoryRetentionDaysFlow(): Flow<Int> = historyRetentionDays
 
         // Helper: Filter expired history
-        private fun filterExpiredHistory(
-            history: List<SearchHistoryItem>,
-            preferences: Preferences,
-        ): List<SearchHistoryItem> {
-            val autoDelete = preferences[AUTO_DELETE_HISTORY_KEY] ?: false
-            if (!autoDelete) return history
+        private fun filterExpiredHistory(history: List<SearchHistoryItem>): List<SearchHistoryItem> {
+            if (!autoDeleteHistory.value) return history
 
-            val retentionDays = preferences[HISTORY_RETENTION_DAYS_KEY] ?: DEFAULT_RETENTION_DAYS
-            val cutoffTime = System.currentTimeMillis() - (retentionDays * 24 * 60 * 60 * 1000L)
+            val cutoffTime = System.currentTimeMillis() - (historyRetentionDays.value * 24 * 60 * 60 * 1000L)
 
             return history.filter { it.timestamp >= cutoffTime }
         }
