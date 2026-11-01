@@ -1,7 +1,11 @@
 package io.github.aedev.flow.innertube
 
+import io.github.aedev.flow.utils.ShivLog
+
 import android.util.Log
+import io.github.aedev.flow.data.model.LiveChatMessage
 import io.github.aedev.flow.data.model.VideoCollaborator
+import io.github.aedev.flow.data.repository.LiveChatSendStatus
 import io.github.aedev.flow.innertube.models.AccountInfo
 import io.github.aedev.flow.innertube.models.AlbumItem
 import io.github.aedev.flow.innertube.models.Artist
@@ -51,6 +55,7 @@ import io.github.aedev.flow.innertube.pages.ExplorePage
 import io.github.aedev.flow.innertube.pages.HistoryPage
 import io.github.aedev.flow.innertube.pages.HomePage
 import io.github.aedev.flow.innertube.pages.ServerFeedPage
+import io.github.aedev.flow.innertube.pages.renderer.harvestFeedPage
 import io.github.aedev.flow.innertube.pages.toServerFeedPage
 import io.github.aedev.flow.innertube.pages.LibraryContinuationPage
 import io.github.aedev.flow.innertube.pages.LibraryPage
@@ -109,6 +114,8 @@ import io.github.aedev.flow.innertube.pages.search.SearchSuggestion
 import io.github.aedev.flow.innertube.pages.search.parseSearchSuggestions
 import io.github.aedev.flow.innertube.pages.search.toSearchResultsPage
 import io.github.aedev.flow.innertube.pages.toCommentRepliesPage
+import io.github.aedev.flow.innertube.pages.findCreateCommentParams
+import io.github.aedev.flow.innertube.pages.toGuideChannels
 import io.github.aedev.flow.innertube.pages.toVideoCommentsPage
 import io.github.aedev.flow.innertube.pages.toVideoDescriptionPage
 import io.github.aedev.flow.innertube.pages.toVideoPlaylistPage
@@ -118,6 +125,7 @@ import io.github.aedev.flow.utils.avatarImageIdentityKey
 import io.github.aedev.flow.utils.relativedate.RelativeUploadDateParser
 import io.ktor.client.call.body
 import io.ktor.client.statement.bodyAsText
+import io.ktor.http.isSuccess
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -130,10 +138,12 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
 import org.schabi.newpipe.extractor.services.youtube.YoutubeParsingHelper
 import java.net.Proxy
 import java.time.Instant
@@ -220,6 +230,22 @@ object YouTube {
     fun hasOAuthSession(): Boolean = oauthAccessToken != null || oauthRefreshToken != null
 
     fun isSignedIn(): Boolean = !cookie.isNullOrBlank() || hasOAuthSession()
+
+    /**
+     * The client the session's own calls use: cookie sessions browse as WEB,
+     * OAuth (TV-code) sessions as TVHTML5 — the client their token was issued
+     * to (a WEB-context browse carrying an OAuth token 400s, device log
+     * 2026-10-22). History beacons must ride this client, not the
+     * extractor's playback client: on device every extraction came back
+     * VISIONOS, and VISIONOS-context beacons never landed in the account
+     * history (0.3.47–0.3.52, all 204).
+     */
+    fun sessionClient(): YouTubeClient =
+        when {
+            !cookie.isNullOrBlank() -> WEB.copy(loginSupported = true)
+            hasOAuthSession() -> YouTubeClient.TVHTML5
+            else -> WEB
+        }
 
     suspend fun searchSuggestions(query: String): Result<SearchSuggestions> =
         runCatching {
@@ -563,13 +589,28 @@ object YouTube {
     ): JsonElement {
         // Channel rows carry server-rendered times ("Scheduled for 9/16/26, 6:45 PM"); the WEB
         // client's zero offset would print them in UTC.
+        val client = currentWebClient().copy(utcOffsetMinutes = localUtcOffsetMinutes())
         val response =
-            innerTube.channelBrowse(
-                client = currentWebClient().copy(utcOffsetMinutes = localUtcOffsetMinutes()),
-                channelId = browseId,
-                params = params,
-                continuation = continuation,
-            )
+            if (isSignedIn()) {
+                // Signed in, the channel page must be the account's: only the logged-in
+                // response carries the subscribe button's real state, and the guest post
+                // (mainSitePost) never sends auth headers at all. Reuse the proven main-site
+                // browse — cookie/Bearer + dataSyncId — with the guest body's semantics.
+                innerTube.browseMainSite(
+                    client = client.copy(loginSupported = true),
+                    browseId = if (continuation == null) browseId else null,
+                    params = if (continuation == null) params else null,
+                    continuation = continuation,
+                    setLogin = true,
+                )
+            } else {
+                innerTube.channelBrowse(
+                    client = client,
+                    channelId = browseId,
+                    params = params,
+                    continuation = continuation,
+                )
+            }
         return Json.parseToJsonElement(response.bodyAsText())
     }
 
@@ -876,13 +917,18 @@ object YouTube {
     ): Result<VideoPlaylistPage> =
         runCatching {
             val response =
-                innerTube.channelBrowse(
-                    client = WEB,
-                    channelId = "VL$playlistId".takeIf { continuation == null },
+                innerTube.playlistBrowse(
+                    browseId = "VL$playlistId".takeIf { continuation == null },
                     params = params.takeIf { continuation == null },
                     continuation = continuation,
                 )
-            Json.parseToJsonElement(response.bodyAsText()).toVideoPlaylistPage()
+            val page = Json.parseToJsonElement(response.bodyAsText()).toVideoPlaylistPage()
+            ShivLog.i("playlistPage id=$playlistId videos=${page.videos.size} title=${page.title != null}",
+            )
+            page
+        }.onFailure { e ->
+            ShivLog.i("playlistPage id=$playlistId FAILED ${e.message?.take(200)}",
+            )
         }
 
     private suspend fun communityPostsPage(
@@ -1926,6 +1972,21 @@ object YouTube {
     suspend fun serverSubscriptions(continuation: String? = null): Result<ServerFeedPage> =
         serverBrowse("FEsubscriptions", null, continuation)
 
+    /** Every channel the account subscribes to, from the guide — the full list, not a feed sample. */
+    suspend fun guideSubscriptions(): Result<List<io.github.aedev.flow.data.model.Channel>> =
+        runCatching {
+            val channels =
+                Json
+                    .parseToJsonElement(innerTube.guide().bodyAsText())
+                    .toGuideChannels()
+            ShivLog.i("guide subs=${channels.size}")
+            channels
+        }
+
+    /** The account's own playlists (FEplaylists). Empty when signed out. */
+    suspend fun serverPlaylists(continuation: String? = null): Result<ServerFeedPage> =
+        serverBrowse("FEplaylists", null, continuation)
+
     /** The account's watch history (FEhistory), newest first. Empty when signed out. */
     suspend fun serverHistory(continuation: String? = null): Result<ServerFeedPage> =
         serverBrowse("FEhistory", null, continuation)
@@ -1937,21 +1998,39 @@ object YouTube {
     ): Result<ServerFeedPage> =
         runCatching {
             val loggedIn = isSignedIn()
-            val client = if (loggedIn) WEB.copy(loginSupported = true) else WEB
+            // A TV-code (OAuth) session's token is issued to the TV client: YouTube answers
+            // a WEB-context browse carrying it with 400 INVALID_ARGUMENT, every time (device
+            // log, 2026-10-22). OAuth sessions browse as TVHTML5 — the client the token is
+            // for — while cookie sessions keep the WEB path the phone is proven on.
+            val client =
+                when {
+                    !cookie.isNullOrBlank() -> WEB.copy(loginSupported = true)
+                    hasOAuthSession() -> YouTubeClient.TVHTML5
+                    else -> WEB
+                }
+            val mode =
+                when {
+                    !cookie.isNullOrBlank() -> "cookie"
+                    hasOAuthSession() -> "oauth"
+                    else -> "guest"
+                }
+            ShivLog.i("browse start id=$browseId mode=$mode cont=${continuation != null} " +
+                    "visitor=${!innerTube.visitorData.isNullOrBlank()} sync=${!innerTube.dataSyncId.isNullOrBlank()}",
+            )
 
-            suspend fun fetch(): Pair<Int, JsonObject> {
+            suspend fun fetch(): Pair<Int, String> {
                 val response =
-                    innerTube.browse(
+                    innerTube.browseMainSite(
                         client,
                         browseId = if (continuation == null) browseId else null,
                         params = params,
                         continuation = continuation,
                         setLogin = loggedIn,
                     )
-                return response.status.value to response.body<JsonObject>()
+                return response.status.value to response.bodyAsText()
             }
 
-            var (status, body) = fetch()
+            var (status, text) = fetch()
             if (status == 401 && cookie.isNullOrBlank() && hasOAuthSession()) {
                 // The OAuth token aged out mid-session: refresh once and retry.
                 val fresh = onOAuthTokenExpired?.invoke()
@@ -1959,11 +2038,95 @@ object YouTube {
                     oauthAccessToken = fresh
                     val retry = fetch()
                     status = retry.first
-                    body = retry.second
+                    text = retry.second
                 }
             }
-            body.toServerFeedPage()
+            ShivLog.i("browse resp id=$browseId status=$status chars=${text.length} " +
+                    "videoRenderer=${text.countOccurrences("videoRenderer")} " +
+                    "lockup=${text.countOccurrences("lockupViewModel")} " +
+                    "richGrid=${text.countOccurrences("richGridRenderer")} " +
+                    "hasContents=${text.contains("\"contents\"")} hasError=${text.contains("\"error\"")}",
+            )
+            val root = Json.parseToJsonElement(text)
+            if (browseId == "FEwhat_to_watch" && continuation == null) {
+                // Where do this response's filter chips actually live? Log every chip-ish key
+                // and the rich grid header's keys so the chip parser can target the real shape.
+                val chipKeys = linkedSetOf<String>()
+                var richHeader = "none"
+                fun scanKeys(node: JsonElement) {
+                    when (node) {
+                        is JsonObject -> {
+                            for ((key, value) in node) {
+                                if (key.contains("chip", ignoreCase = true)) chipKeys += key
+                                if (key == "richGridRenderer" && richHeader == "none") {
+                                    richHeader =
+                                        (value as? JsonObject)
+                                            ?.get("header")
+                                            ?.jsonObject
+                                            ?.keys
+                                            ?.joinToString(",")
+                                            ?: "noheader"
+                                }
+                                scanKeys(value)
+                            }
+                        }
+                        is JsonArray -> node.forEach(::scanKeys)
+                        else -> Unit
+                    }
+                }
+                scanKeys(root)
+                ShivLog.i("chipscan keys=${chipKeys.take(10)} richHeader=$richHeader")
+            }
+            val strictPage = root.toServerFeedPage()
+            var page = strictPage
+            if (strictPage.videos.isEmpty()) {
+                // The strict parser found none of this response's long videos. Census the
+                // renderer keys so the real shape is on record, then harvest whatever video
+                // items the tree carries instead of settling for a page without them.
+                ShivLog.i("census id=$browseId keys=" + rendererKeyCensus(text))
+                val harvested = root.harvestFeedPage()
+                ShivLog.i("harvest id=$browseId videos=${harvested.videos.size} shorts=${harvested.shorts.size}",
+                )
+                page =
+                    if (strictPage.shorts.isEmpty() && strictPage.channels.isEmpty()) {
+                        harvested.copy(
+                            chips = strictPage.chips,
+                            continuation = harvested.continuation ?: strictPage.continuation,
+                        )
+                    } else {
+                        // A half-known shape (the TV home is one: its Shorts parse strictly,
+                        // its long videos ride renderers only the harvester reads). The
+                        // strict page keeps its shorts, channels and chips; the harvester
+                        // contributes the long videos it alone could see.
+                        val knownIds =
+                            (strictPage.videos + strictPage.shorts).mapTo(mutableSetOf()) { it.id }
+                        strictPage.copy(
+                            videos = harvested.videos.filterNot { it.id in knownIds },
+                            continuation = strictPage.continuation ?: harvested.continuation,
+                        )
+                    }
+            }
+            ShivLog.i("browse parsed id=$browseId videos=${page.videos.size} shorts=${page.shorts.size} " +
+                    "channels=${page.channels.size} chips=${page.chips.size} cont=${page.continuation != null}",
+            )
+            page
+        }.onFailure {
+            ShivLog.i("browse FAILED id=$browseId err=${it.javaClass.simpleName}: ${it.message}")
         }
+
+    private fun String.countOccurrences(needle: String): Int = split(needle).size - 1
+
+    /** The most frequent renderer/view-model keys in a raw response, for the GlideFeed census line. */
+    private fun rendererKeyCensus(text: String): String =
+        Regex("\"([A-Za-z][A-Za-z0-9_]*(?:Renderer|ViewModel))\"")
+            .findAll(text)
+            .map { it.groupValues[1] }
+            .groupingBy { it }
+            .eachCount()
+            .entries
+            .sortedByDescending { it.value }
+            .take(18)
+            .joinToString(",") { "${it.key}:${it.value}" }
 
     private suspend fun homeContinuation(continuation: String): Result<HomePage> =
         runCatching {
@@ -2311,11 +2474,19 @@ object YouTube {
         videoId: String,
         like: Boolean,
     ) = runCatching {
-        if (like) {
-            innerTube.likeVideo(WEB_REMIX, videoId)
-        } else {
-            innerTube.unlikeVideo(WEB_REMIX, videoId)
-        }
+        // This result used to be swallowed whole: a refused like looked exactly like a
+        // saved one until the video was reopened. Say what the server answered.
+        val response =
+            if (like) {
+                innerTube.likeVideo(WEB_REMIX, videoId)
+            } else {
+                innerTube.unlikeVideo(WEB_REMIX, videoId)
+            }
+        ShivLog.i("videoLike id=$videoId like=$like status=${response.status.value}",
+        )
+        Unit
+    }.onFailure { e ->
+        ShivLog.i("videoLike id=$videoId like=$like FAILED ${e.message?.take(200)}")
     }
 
     suspend fun likePlaylist(
@@ -2454,10 +2625,13 @@ object YouTube {
         cpn: String?,
         reloadToken: String? = null,
         client: YouTubeClient = YouTubeClient.WEB,
+        withAuth: Boolean = false,
     ): Result<PlayerResponse> =
         runCatching {
             innerTube
-                .playerWeb(videoId, signatureTimestamp, poToken, visitorData, locale, cpn, reloadToken, client)
+                .playerWeb(
+                    videoId, signatureTimestamp, poToken, visitorData, locale, cpn, reloadToken, client, withAuth,
+                )
                 .body<PlayerResponse>()
         }
 
@@ -2505,14 +2679,99 @@ object YouTube {
     /** The continuation that opens [videoId]'s comment section, from an already-fetched watch response. */
     fun commentsContinuation(watchNext: JsonElement): String? = watchNext.videoCommentsContinuation()
 
+    /**
+     * The comments continuation from an account watch response for [videoId]. The create
+     * box token a section carries is minted against the lineage of the continuation that
+     * opened the section: a token grown from the guest watch response's continuation is
+     * one YouTube cannot find again when the post arrives (device logs: the section's one
+     * token answered 404, empty body, on every video) — so signed in, the whole chain,
+     * continuation included, comes from the account's own watch response.
+     */
+    suspend fun commentsContinuationAuthed(videoId: String): String? =
+        runCatching {
+            val text = innerTube.nextWatchAuthed(videoId = videoId).bodyAsText()
+            Json.parseToJsonElement(text).videoCommentsContinuation()
+        }.getOrNull()
+
     suspend fun comments(
         continuation: String,
         ownVideoId: String?,
     ): Result<VideoCommentsPage> =
         runCatching {
-            Json
-                .parseToJsonElement(innerTube.nextWatch(continuation = continuation).bodyAsText())
-                .toVideoCommentsPage(ownVideoId)
+            // Signed in, the section is fetched as the account: only then does it carry the
+            // create box a comment post is made with (and the section knows the viewer).
+            val response =
+                if (isSignedIn()) {
+                    innerTube.nextWatchAuthed(continuation = continuation)
+                } else {
+                    innerTube.nextWatch(continuation = continuation)
+                }
+            val root = Json.parseToJsonElement(response.bodyAsText())
+            root.toVideoCommentsPage(ownVideoId)
+        }
+
+    /**
+     * The create box token for [videoId]'s comments. It is not in the comments section payload —
+     * it rides the watch response itself, and only an account response carries a usable one.
+     */
+    suspend fun createCommentParams(videoId: String): String? =
+        runCatching {
+            val text = innerTube.nextWatchAuthed(videoId = videoId).bodyAsText()
+            val params = Json.parseToJsonElement(text).findCreateCommentParams()
+            ShivLog.i("commentBox scan len=${text.length} simplebox=${text.contains("commentSimpleboxRenderer")} " +
+                    "createKey=${text.contains("createCommentParams")} found=${params != null}",
+            )
+            params
+        }.getOrNull()
+
+    /** Posts a top-level comment on a video, with the create box token its section carried. */
+    suspend fun createComment(
+        createCommentParams: String,
+        commentText: String,
+    ): Result<Unit> =
+        runCatching {
+            val response = innerTube.createComment(createCommentParams, commentText)
+            val bodyText = runCatching { response.bodyAsText() }.getOrDefault("")
+            ShivLog.i("commentCreate status=${response.status.value} body=${bodyText.take(200)}",
+            )
+            check(response.status.isSuccess()) { "comment create answered ${response.status.value}" }
+            Unit
+        }.onFailure { e ->
+            // The HTTP client throws on a non-2xx answer, so a refusal arrives here, not at
+            // the status line above; its message carries the status and YouTube's own words.
+            ShivLog.i("commentCreate FAILED ${e.message?.take(240)}")
+        }
+
+    /** Runs a comment's own toolbar vote command; see InnerTube.performCommentAction. */
+    /** Runs one server-issued comment write (reply or edit) with its own token and path. */
+    suspend fun commentWrite(
+        path: String,
+        paramsField: String,
+        params: String,
+        textField: String,
+        text: String,
+    ): Result<String> =
+        runCatching {
+            val response = innerTube.postCommentWrite(path, paramsField, params, textField, text)
+            val bodyText = runCatching { response.bodyAsText() }.getOrDefault("")
+            ShivLog.i("commentWrite path=$path status=${response.status.value} textLen=${text.length} mut=${bodyText.contains("entityBatchUpdate")} body=${bodyText.take(700)}",
+            )
+            check(response.status.isSuccess()) { "comment write answered ${response.status.value}" }
+            bodyText
+        }.onFailure { e ->
+            ShivLog.i("commentWrite path=$path FAILED ${e.message?.take(240)}")
+        }
+
+    suspend fun performCommentAction(endpointJson: String): Result<Unit> =
+        runCatching {
+            val response = innerTube.performCommentAction(endpointJson)
+            val bodyText = runCatching { response.bodyAsText() }.getOrDefault("")
+            ShivLog.i("commentAction status=${response.status.value} body=${bodyText.take(200)}",
+            )
+            check(response.status.isSuccess()) { "comment action answered ${response.status.value}" }
+            Unit
+        }.onFailure { e ->
+            ShivLog.i("commentAction FAILED ${e.message?.take(240)}")
         }
 
     suspend fun commentReplies(
@@ -2520,8 +2779,17 @@ object YouTube {
         ownVideoId: String?,
     ): Result<VideoCommentsPage> =
         runCatching {
+            // Same rule as the top-level comments(): a guest thread never knows the
+            // viewer, so own replies come back isOwn=false with no menu tokens — the
+            // retry match (and every reply action) fails before it starts.
+            val response =
+                if (isSignedIn()) {
+                    innerTube.nextWatchAuthed(continuation = continuation)
+                } else {
+                    innerTube.nextWatch(continuation = continuation)
+                }
             Json
-                .parseToJsonElement(innerTube.nextWatch(continuation = continuation).bodyAsText())
+                .parseToJsonElement(response.bodyAsText())
                 .toCommentRepliesPage(ownVideoId)
         }
 
@@ -2541,6 +2809,103 @@ object YouTube {
             innerTube
                 .getLiveChat(continuation, offsetMs)
                 .body<io.github.aedev.flow.innertube.models.response.GetLiveChatResponse>()
+        }
+
+    /**
+     * Posts one live-chat message; the outcome is read off the response actions.
+     * addChatItemAction wins over runAttestationCommand: YouTube.js returns both
+     * together, and report __26__0 proved both attestation sends still posted.
+     */
+    suspend fun sendLiveChatMessage(
+        videoId: String,
+        channelId: String,
+        text: String,
+    ): Result<LiveChatSendStatus> =
+        runCatching {
+            val response = innerTube.sendLiveChatMessage(videoId, channelId, text)
+            val body = response.bodyAsText()
+            val hasAttestation = body.contains("runAttestationCommand")
+            val hasChatItem = body.contains("addChatItemAction")
+            val status =
+                when {
+                    hasChatItem -> LiveChatSendStatus.POSTED
+                    hasAttestation -> LiveChatSendStatus.ATTESTATION
+                    else -> LiveChatSendStatus.FAILED
+                }
+            ShivLog.i("liveChatSend video=${videoId.take(8)} attestation=$hasAttestation addChat=$hasChatItem status=$status")
+            status
+        }
+
+    /**
+     * Deletes one own live-chat message: fetch its context menu, pick the DELETE
+     * item (YouTube.js ItemMenu.selectItem('DELETE')), and replay its endpoint.
+     * The menu response key is spelled both ways in the wild, so both are tried;
+     * the menu item's own apiUrl is replayed, never a guessed one.
+     */
+    suspend fun deleteLiveChatMessage(
+        message: LiveChatMessage,
+    ): Result<Boolean> =
+        runCatching {
+            val params = message.menuParams ?: error("no-menu-params")
+            // The youtubei menu endpoint is get_item_context_menu (YouTube.js
+            // LiveChatItemContextMenuEndpoint); get_live_chat_item_context_menu
+            // only exists on the legacy /live_chat/ path and 404s here.
+            val menuApi = message.menuApiUrl?.takeIf { it.isNotBlank() } ?: "live_chat/get_item_context_menu"
+            val menuBody =
+                innerTube.postInnertubeEndpoint(
+                    menuApi,
+                    buildJsonObject { put("params", params) },
+                ).bodyAsText()
+            val menuRoot =
+                Json {
+                    ignoreUnknownKeys = true
+                    explicitNulls = false
+                }.parseToJsonElement(menuBody).jsonObject
+            val renderers =
+                menuRoot["liveChatItemContextMenuSupportedRenderers"]?.jsonObject
+                    ?: menuRoot["live_chat_item_context_menu_supported_renderers"]?.jsonObject
+                    ?: error("no-menu-renderers")
+            // Real responses nest the items under menuRenderer (the userscript
+            // reads liveChatItemContextMenuSupportedRenderers.menuRenderer.items);
+            // direct items is kept as a fallback for any flatter shape.
+            val items =
+                renderers["menuRenderer"]?.jsonObject?.get("items")?.jsonArray
+                    ?: renderers["items"]?.jsonArray.orEmpty()
+            val deleteEndpoint =
+                items.firstNotNullOfOrNull { item ->
+                    val renderer = item.jsonObject["menuServiceItemRenderer"]?.jsonObject ?: return@firstNotNullOfOrNull null
+                    val iconType = renderer["icon"]?.jsonObject?.get("iconType")?.jsonPrimitive?.contentOrNull
+                    if (iconType?.uppercase() != "DELETE") return@firstNotNullOfOrNull null
+                    renderer["serviceEndpoint"]?.jsonObject
+                } ?: run {
+                    val icons = items.mapNotNull { it.jsonObject["menuServiceItemRenderer"]?.jsonObject?.get("icon")?.jsonObject?.get("iconType")?.jsonPrimitive?.contentOrNull }
+                    ShivLog.i("liveChatDelete id=${message.id} menu=${items.size} deleteFound=false icons=$icons")
+                    error("no-delete-item")
+                }
+            val deleteApi =
+                deleteEndpoint["commandMetadata"]?.jsonObject?.get("webCommandMetadata")?.jsonObject?.get("apiUrl")?.jsonPrimitive?.contentOrNull
+                    ?: error("no-delete-api")
+            // The youtubei body carries the endpoint's inner fields, not the
+            // wrapper key: Remove's serviceEndpoint is
+            // { moderateLiveChatEndpoint: { params } }, but moderate expects
+            // { params } — sending the wrapper 400s with INVALID_ARGUMENT.
+            val stripped =
+                deleteEndpoint.filterKeys { it != "clickTrackingParams" && it != "commandMetadata" }
+            val fields =
+                buildJsonObject {
+                    val singleInner = stripped.values.singleOrNull() as? JsonObject
+                    if (stripped.size == 1 && singleInner != null) {
+                        singleInner.filterKeys { it != "clickTrackingParams" && it != "commandMetadata" }
+                            .forEach { (key, value) -> put(key, value) }
+                    } else {
+                        stripped.forEach { (key, value) -> put(key, value) }
+                    }
+                }
+            val deleteResponse = innerTube.postInnertubeEndpoint(deleteApi, fields)
+            val ok = deleteResponse.status.value in 200..299
+            ShivLog.i("liveChatDelete id=${message.id} menu=${items.size} deleteFound=true api=$deleteApi status=${deleteResponse.status.value}")
+            if (!ok) error("delete-http-${deleteResponse.status.value}")
+            true
         }
 
     suspend fun watchMetadata(videoId: String): Result<io.github.aedev.flow.innertube.models.response.WatchMetadataResponse> =
@@ -2571,6 +2936,51 @@ object YouTube {
             innerTube
                 .next(WEB, videoId, null, null, null, null, null)
                 .body<io.github.aedev.flow.innertube.models.response.WatchMetadataResponse>()
+        }
+
+    /** One nonce per playback session: the playback beacon and every watchtime
+     * ping of that session carry the same cpn (YouTube.js MediaInfo). */
+    fun newPlaybackCpn(): String =
+        (1..16)
+            .map {
+                "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_"[
+                    Random.Default.nextInt(0, 64),
+                ]
+            }.joinToString("")
+
+    /**
+     * Pings a playback session's videostatsPlaybackUrl, the official client's
+     * watch-history beacon (YouTube.js MediaInfo.addToWatchHistory). The URL
+     * must come from the player response that produced the streams: a separately
+     * fetched player response came back without one on device (0.3.47, -2), so
+     * callers pass the session's own URL, cpn and client. Returns the ping's status.
+     */
+    suspend fun pingWatchHistoryPlayback(url: String, cpn: String, client: YouTubeClient): Result<Int> =
+        runCatching {
+            innerTube.statsPlayback(
+                url = url.replace("https://s.", "https://www."),
+                cpn = cpn,
+                client = client,
+            ).status.value
+        }
+
+    /** The progress beacon (YouTube.js MediaInfo.updateWatchTime): the same
+     * session cpn, the current position in seconds. A start beacon alone (204)
+     * did not put plays in the account history on device (0.3.48), so the
+     * progress beacon rides along with it. */
+    suspend fun pingWatchTime(
+        url: String,
+        cpn: String,
+        positionSec: Double,
+        client: YouTubeClient,
+    ): Result<Int> =
+        runCatching {
+            innerTube.statsWatchtime(
+                url = url.replace("https://s.", "https://www."),
+                cpn = cpn,
+                positionSec = positionSec,
+                client = client,
+            ).status.value
         }
 
     suspend fun registerPlayback(
