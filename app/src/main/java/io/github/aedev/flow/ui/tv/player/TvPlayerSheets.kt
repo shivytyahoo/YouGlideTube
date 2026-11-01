@@ -57,6 +57,7 @@ internal fun BoxScope.TvPlayerSheets(
     commentsUiState: PlayerCommentsUiState,
     onNavigateToChannel: (String) -> Unit,
     onClose: () -> Unit,
+    onRequireSignIn: (() -> Unit)? = null,
 ) {
     val sheet = screenState.activeSheet
     // The panel keeps drawing the sheet it closed while it slides away.
@@ -199,6 +200,7 @@ internal fun BoxScope.TvPlayerSheets(
                             artworkUrl = video.thumbnailUrl,
                             onNavigateToChannel = onNavigateToChannel,
                             onClose = onClose,
+                            onRequireSignIn = onRequireSignIn,
                             modifier = Modifier.fillMaxSize(),
                         )
                     }
