@@ -2,6 +2,7 @@ package io.github.aedev.flow.ui.screens.shorts
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -27,6 +28,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -70,6 +78,7 @@ fun ShortsScreen(
     onBack: () -> Unit,
     onChannelClick: (String) -> Unit,
     bottomNavOverlayPadding: Dp = 0.dp,
+    enableDpadPaging: Boolean = false,
     modifier: Modifier = Modifier,
     viewModel: ShortsViewModel = hiltViewModel(),
 ) {
@@ -182,9 +191,39 @@ fun ShortsScreen(
                     viewModel = viewModel,
                 )
 
+                // TV has no swipe: with D-pad paging, up/down move between
+                // shorts and consume the key before focus search can steal it
+                // for the reel's own buttons. Left/right still reach the actions.
+                val pagerFocusRequester = remember { FocusRequester() }
+                LaunchedEffect(enableDpadPaging) {
+                    if (enableDpadPaging) pagerFocusRequester.requestFocus()
+                }
                 VerticalPager(
                     state = pagerState,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .then(
+                                if (enableDpadPaging) {
+                                    Modifier
+                                        .focusRequester(pagerFocusRequester)
+                                        .focusable()
+                                        .onKeyEvent { event ->
+                                            if (event.type != KeyEventType.KeyDown) return@onKeyEvent false
+                                            val target =
+                                                when (event.key) {
+                                                    Key.DirectionUp -> pagerState.currentPage - 1
+                                                    Key.DirectionDown -> pagerState.currentPage + 1
+                                                    else -> return@onKeyEvent false
+                                                }
+                                            if (target !in 0 until pagerState.pageCount) return@onKeyEvent false
+                                            scope.launch { pagerState.animateScrollToPage(target) }
+                                            true
+                                        }
+                                } else {
+                                    Modifier
+                                },
+                            ),
                     beyondViewportPageCount = 1,
                     key = { uiState.shorts[it].id },
                 ) { page ->
