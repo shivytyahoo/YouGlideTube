@@ -40,8 +40,72 @@ class AccountCookieStore
             prefs.edit().remove(KEY_COOKIE).apply()
         }
 
+        /** Every saved account for switching, in the order they were added. */
+        fun savedAccounts(): List<SavedAccount> =
+            prefs
+                .getString(KEY_ACCOUNTS, null)
+                ?.takeIf { it.isNotBlank() }
+                ?.let { runCatching { accountJson.decodeFromString<List<SavedAccount>>(it) }.getOrNull() }
+                .orEmpty()
+
+        /** The identity key of the account currently in use, when one is chosen. */
+        fun activeAccountKey(): String? = prefs.getString(KEY_ACTIVE_ACCOUNT, null)?.takeIf { it.isNotBlank() }
+
+        /** Persists the whole account list and which of them is active. */
+        fun saveAccounts(
+            accounts: List<SavedAccount>,
+            activeKey: String?,
+        ) {
+            prefs
+                .edit()
+                .putString(KEY_ACCOUNTS, accountJson.encodeToString(accounts))
+                .putString(KEY_ACTIVE_ACCOUNT, activeKey)
+                .apply()
+        }
+
+        /** OAuth tokens from a TV-code sign-in; the cookie session above is the other sign-in kind. */
+        data class OAuthTokens(
+            val accessToken: String,
+            val refreshToken: String?,
+            val expiresAtMs: Long,
+        )
+
+        fun saveOAuth(tokens: OAuthTokens) {
+            prefs
+                .edit()
+                .putString(KEY_OAUTH_ACCESS, tokens.accessToken)
+                .putString(KEY_OAUTH_REFRESH, tokens.refreshToken)
+                .putLong(KEY_OAUTH_EXPIRES_AT, tokens.expiresAtMs)
+                .apply()
+        }
+
+        fun restoreOAuth(): OAuthTokens? {
+            val access = prefs.getString(KEY_OAUTH_ACCESS, null)?.takeIf { it.isNotBlank() } ?: return null
+            return OAuthTokens(
+                accessToken = access,
+                refreshToken = prefs.getString(KEY_OAUTH_REFRESH, null),
+                expiresAtMs = prefs.getLong(KEY_OAUTH_EXPIRES_AT, 0L),
+            )
+        }
+
+        fun clearOAuth() {
+            prefs
+                .edit()
+                .remove(KEY_OAUTH_ACCESS)
+                .remove(KEY_OAUTH_REFRESH)
+                .remove(KEY_OAUTH_EXPIRES_AT)
+                .apply()
+        }
+
         private companion object {
             const val PREFS_NAME = "youtube_account"
             const val KEY_COOKIE = "session_cookie"
+            const val KEY_ACCOUNTS = "saved_accounts"
+            const val KEY_ACTIVE_ACCOUNT = "active_account_key"
+
+            val accountJson = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+            const val KEY_OAUTH_ACCESS = "oauth_access_token"
+            const val KEY_OAUTH_REFRESH = "oauth_refresh_token"
+            const val KEY_OAUTH_EXPIRES_AT = "oauth_expires_at"
         }
     }
