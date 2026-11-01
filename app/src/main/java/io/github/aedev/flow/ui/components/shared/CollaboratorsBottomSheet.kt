@@ -1,14 +1,17 @@
 package io.github.aedev.flow.ui.components.shared
 
+import android.content.Intent
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.aedev.flow.R
 import io.github.aedev.flow.data.model.VideoCollaborator
+import io.github.aedev.flow.innertube.YouTube
 import io.github.aedev.flow.ui.components.layout.navigation.LocalMediaNavigator
 import io.github.aedev.flow.ui.components.shared.quickactions.QuickActionRow
 import io.github.aedev.flow.ui.components.shared.quickactions.QuickActionsDefaults
@@ -16,6 +19,7 @@ import io.github.aedev.flow.ui.components.shared.quickactions.QuickActionsGroup
 import io.github.aedev.flow.ui.components.shared.quickactions.QuickActionsSheet
 import io.github.aedev.flow.ui.components.shared.quickactions.QuickActionsViewModel
 import io.github.aedev.flow.ui.components.shared.quickactions.sharedQuickActionsViewModel
+import io.github.aedev.flow.ui.screens.settings.account.GoogleLoginActivity
 
 /** The channels behind a collaboration, each one openable and subscribable. */
 @Composable
@@ -53,6 +57,7 @@ internal fun collaboratorRows(
 ): List<QuickActionRow> {
     val subscribedChannelIds = subscribedCollaboratorIds(collaborators, viewModel)
     val navigator = LocalMediaNavigator.current
+    val context = LocalContext.current
     val fallbackName = stringResource(R.string.collaborator)
     val ringColor = MaterialTheme.colorScheme.surfaceContainerHigh
 
@@ -81,7 +86,11 @@ internal fun collaboratorRows(
                     if (canOpen) {
                         {
                             val toggle = {
-                                viewModel.toggleSubscription(collaborator.channelId, collaborator.name, collaborator.thumbnailUrl)
+                                if (!YouTube.isSignedIn()) {
+                                    context.startActivity(Intent(context, GoogleLoginActivity::class.java))
+                                } else {
+                                    viewModel.toggleSubscription(collaborator.channelId, collaborator.name, collaborator.thumbnailUrl)
+                                }
                             }
                             FlowSubscribeButton(
                                 isSubscribed = collaborator.channelId in subscribedChannelIds,
