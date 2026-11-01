@@ -23,7 +23,9 @@ import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
+import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import io.github.aedev.flow.R
 import io.github.aedev.flow.data.account.AccountCookieStore
@@ -37,9 +39,9 @@ import io.github.aedev.flow.ui.screens.home.HomeFeedCache
  * [AccountCookieStore] and applied to the InnerTube client. The WebView's own cookie store is
  * wiped afterwards, so the stored cookie is the only copy of the session in the app.
  *
- * The frame around Google's page is YouGlideTube's own: a brand bar that sits below the status bar
- * (which takes the same violet), a saffron load line under it, and a branded loading veil that
- * fades away when the page lands — so the screen reads as part of the app, not a foreign window.
+ * The frame around Google's page is YouGlideTube's own: a darker-violet status band, a brand bar
+ * below it, a saffron load line under that, and a branded loading veil that fades away when the
+ * page lands — so the screen reads as part of the app, not a foreign window.
  */
 class GoogleLoginActivity : ComponentActivity() {
     private var completed = false
@@ -130,10 +132,23 @@ class GoogleLoginActivity : ComponentActivity() {
                 )
             }
 
+        // The status band's own strip: its height tracks the real status inset, so the
+        // brand bar always starts below the phone's icons instead of under them.
+        val statusStrip =
+            View(this).apply {
+                setBackgroundColor(DEEP_VIOLET)
+                layoutParams =
+                    LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        0,
+                    )
+            }
+
         val root =
             LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 setBackgroundColor(BRAND_VIOLET)
+                addView(statusStrip)
                 addView(buildBrandBar(::dp))
                 addView(progressBar)
                 addView(
@@ -145,6 +160,15 @@ class GoogleLoginActivity : ComponentActivity() {
                     ),
                 )
             }
+        ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            statusStrip.layoutParams.height = bars.top
+            statusStrip.requestLayout()
+            // The page ends above the navigation band, so Google's own footer never
+            // sits under the system bar. Consumed here so nothing below pads twice.
+            webFrame.setPadding(0, 0, 0, bars.bottom)
+            WindowInsetsCompat.CONSUMED
+        }
         setContentView(root)
 
         // Back walks the sign-in flow's own history before leaving the activity.
@@ -255,14 +279,23 @@ class GoogleLoginActivity : ComponentActivity() {
     }
 
     /**
-     * The status bar takes a darker violet than the brand bar, so the phone's status icons
-     * read as phone chrome instead of merging into the title. Light icons on both.
+     * Edge-to-edge on purpose, with the bars' bands owned by the layout itself: targeting
+     * SDK 36 means Android 15+ enforces edge-to-edge, and decor fitting no longer insets
+     * this Views screen's content at all — which is exactly how the brand bar ended up
+     * under the status icons and the page footer under the navigation band. So the
+     * window goes transparent and the insets listener above places the bands by hand.
+     * Light icons over the dark status strip, dark icons over the page-white nav band.
      */
     private fun styleSystemBars() {
-        WindowCompat.setDecorFitsSystemWindows(window, true)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         @Suppress("DEPRECATION")
-        window.statusBarColor = DEEP_VIOLET
-        WindowInsetsControllerCompat(window, window.decorView).isAppearanceLightStatusBars = false
+        window.statusBarColor = Color.TRANSPARENT
+        @Suppress("DEPRECATION")
+        window.navigationBarColor = Color.TRANSPARENT
+        WindowInsetsControllerCompat(window, window.decorView).apply {
+            isAppearanceLightStatusBars = false
+            isAppearanceLightNavigationBars = true
+        }
     }
 
     /**
