@@ -1,7 +1,7 @@
 package io.github.aedev.flow.data.shorts
 
-import io.github.aedev.flow.data.local.ViewHistory
-import io.github.aedev.flow.data.local.dao.WatchProgress
+import io.github.aedev.flow.data.local.SessionHistory
+import io.github.aedev.flow.data.local.WatchProgress
 import io.github.aedev.flow.data.model.ShortVideo
 import javax.inject.Inject
 
@@ -35,7 +35,7 @@ internal fun shortHistoryPosition(
 class ShortsWatchHistory
     @Inject
     constructor(
-        private val viewHistory: ViewHistory,
+        private val viewHistory: SessionHistory,
     ) {
         suspend fun save(
             short: ShortVideo,
