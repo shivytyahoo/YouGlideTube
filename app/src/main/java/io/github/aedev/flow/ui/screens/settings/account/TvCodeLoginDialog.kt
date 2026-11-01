@@ -27,6 +27,7 @@ import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.aedev.flow.R
+import io.github.aedev.flow.data.account.AccountSessionManager
 import io.github.aedev.flow.data.account.OAuthSessionManager
 import io.github.aedev.flow.data.account.TvOAuth
 import kotlinx.coroutines.Job
@@ -55,6 +56,7 @@ class TvCodeLoginViewModel
     @Inject
     constructor(
         private val oauthSessionManager: OAuthSessionManager,
+        private val accountSessionManager: AccountSessionManager,
     ) : ViewModel() {
         private val _state = MutableStateFlow<TvCodeUiState>(TvCodeUiState.Loading)
         val state = _state.asStateFlow()
@@ -78,6 +80,11 @@ class TvCodeLoginViewModel
                         when (val result = TvOAuth.pollToken(session.deviceCode)) {
                             is TvOAuth.PollResult.Success -> {
                                 oauthSessionManager.onSignedIn(result.tokens)
+                                // The token alone leaves the account page nameless:
+                                // register the OAuth session as an account, like a
+                                // WebView sign-in, so its identity shows and it can
+                                // be switched away from and back to.
+                                accountSessionManager.onOAuthLogin()
                                 _state.value = TvCodeUiState.Success
                                 return@launch
                             }
