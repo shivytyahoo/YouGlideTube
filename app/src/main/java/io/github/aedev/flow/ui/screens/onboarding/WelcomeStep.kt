@@ -119,7 +119,7 @@ internal fun WelcomeStep(
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(BrandSpacing), verticalAlignment = Alignment.CenterVertically) {
             Image(
-                painter = painterResource(R.drawable.ic_splash_logo),
+                painter = painterResource(R.drawable.ic_launcher_foreground),
                 contentDescription = null,
                 modifier =
                     Modifier
