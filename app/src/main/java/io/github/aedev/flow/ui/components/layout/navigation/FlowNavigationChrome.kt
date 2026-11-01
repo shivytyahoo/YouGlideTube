@@ -17,8 +17,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ShortNavigationBarDefaults
 import androidx.compose.material3.WideNavigationRailDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -64,6 +67,7 @@ fun FlowNavigationChrome(
     modifier: Modifier = Modifier,
     onBarHeightChanged: (Dp) -> Unit = {},
     onRailWidthChanged: (Dp) -> Unit = {},
+    onAnyTap: () -> Unit = {},
     content: @Composable BoxScope.() -> Unit,
 ) {
     val usesRail = flowUsesNavigationRail()
@@ -71,7 +75,7 @@ fun FlowNavigationChrome(
     val density = LocalDensity.current
     val railInsets = WideNavigationRailDefaults.windowInsets
 
-    Row(modifier = modifier.fillMaxSize()) {
+    Row(modifier = modifier.fillMaxSize().revealOnTap(onAnyTap)) {
         if (showRail) {
             FlowNavigationRail(
                 tabs = tabs,
@@ -105,6 +109,24 @@ fun FlowNavigationChrome(
                     visible = barVisible,
                     onHeightChanged = onBarHeightChanged,
                 )
+            }
+        }
+    }
+}
+
+/**
+ * Observes every press without consuming it, so taps still reach buttons, lists and the
+ * player: a stuck-hidden bar comes back on the first tap anywhere, instead of waiting for
+ * an upward scroll that may never come.
+ */
+@Composable
+private fun Modifier.revealOnTap(onTap: () -> Unit): Modifier {
+    val latestTap = rememberUpdatedState(onTap)
+    return pointerInput(Unit) {
+        awaitPointerEventScope {
+            while (true) {
+                val event = awaitPointerEvent(pass = PointerEventPass.Initial)
+                if (event.changes.any { it.pressed }) latestTap.value()
             }
         }
     }
