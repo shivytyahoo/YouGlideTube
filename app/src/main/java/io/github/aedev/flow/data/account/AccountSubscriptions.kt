@@ -128,6 +128,9 @@ class AccountSubscriptions
             channel: Channel,
             subscribed: Boolean,
         ) {
+            // Subscriptions are account-only: an optimistic local write for a guest
+            // sticks when the server call fails, and the button reads subscribed.
+            if (!YouTube.isSignedIn()) return
             _ids.update { if (subscribed) it + channel.id else it - channel.id }
             _channels.update { list ->
                 if (subscribed) {
