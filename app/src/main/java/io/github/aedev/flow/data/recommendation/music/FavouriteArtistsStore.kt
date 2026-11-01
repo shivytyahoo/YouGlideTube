@@ -1,13 +1,8 @@
 package io.github.aedev.flow.data.recommendation.music
 
-import android.content.Context
-import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.stringPreferencesKey
-import dagger.hilt.android.qualifiers.ApplicationContext
-import io.github.aedev.flow.data.local.safePreferencesDataStore
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import javax.inject.Inject
@@ -20,49 +15,38 @@ data class FavouriteArtist(
     val thumbnailUrl: String = "",
 )
 
-private val Context.favouriteArtistsDataStore by safePreferencesDataStore(name = "favourite_artists")
-
 /**
- * The artists the viewer picked by hand. The music brain only keeps their affinity, which listening
- * keeps changing, so the picks themselves live here for the picker to show.
+ * The artists the viewer picked by hand, for this session. They used to persist in their own
+ * DataStore and feed the music brain's affinity; both stores are gone, so the picker keeps its
+ * picks in memory and they reset on a fresh launch.
  */
 @Singleton
 class FavouriteArtistsStore
     @Inject
-    constructor(
-        @ApplicationContext private val context: Context,
-        private val musicBrain: MusicBrainEngine,
-    ) {
-        private val key = stringPreferencesKey("artists")
+    constructor() {
         private val json = Json { ignoreUnknownKeys = true }
+        private val state = MutableStateFlow<List<FavouriteArtist>>(emptyList())
 
-        val artists: Flow<List<FavouriteArtist>> = context.favouriteArtistsDataStore.data.map { decode(it[key]) }
+        val artists: Flow<List<FavouriteArtist>> = state
 
         suspend fun setFavourite(
             artist: FavouriteArtist,
             favourite: Boolean,
         ) {
-            context.favouriteArtistsDataStore.edit { preferences ->
-                val others = decode(preferences[key]).filterNot { it.id == artist.id }
-                preferences[key] = json.encodeToString(if (favourite) others + artist else others)
-            }
-            musicBrain.setFavouriteArtist(artist.id, artist.name, favourite)
+            val others = state.value.filterNot { it.id == artist.id }
+            state.value = if (favourite) others + artist else others
         }
 
         suspend fun currentIds(): Set<String> = artists.first().mapTo(HashSet(), FavouriteArtist::id)
 
-        /** The picks for the master backup; null when there are none. */
-        suspend fun export(): ByteArray? = artists.first().takeIf { it.isNotEmpty() }?.let { json.encodeToString(it).toByteArray() }
+        /** The picks serialized; null when there are none. */
+        suspend fun export(): ByteArray? = state.value.takeIf { it.isNotEmpty() }?.let { json.encodeToString(it).toByteArray() }
 
-        /** Adds the backed-up picks to the current ones and lifts each again in the music brain the backup just restored. */
+        /** Adds serialized picks to the current ones. */
         suspend fun restore(bytes: ByteArray) {
             val restored = decode(bytes.toString(Charsets.UTF_8))
             if (restored.isEmpty()) return
-            context.favouriteArtistsDataStore.edit { preferences ->
-                val current = decode(preferences[key])
-                preferences[key] = json.encodeToString((current + restored).distinctBy { it.id })
-            }
-            restored.forEach { musicBrain.setFavouriteArtist(it.id, it.name, favourite = true) }
+            state.value = (state.value + restored).distinctBy { it.id }
         }
 
         private fun decode(raw: String?): List<FavouriteArtist> =
