@@ -112,6 +112,33 @@ class YouTubePlaylistRepository
             return complete
         }
 
+        /** Adds a video to an account playlist; the cached list is dropped so readers re-fetch the truth. */
+        suspend fun addVideo(
+            playlistId: String,
+            videoId: String,
+        ): Boolean {
+            if (!YouTube.isSignedIn()) return false
+            val ok = YouTube.addToPlaylist(playlistId, videoId).isSuccess
+            if (ok) completeLists.remove(playlistId)
+            return ok
+        }
+
+        /**
+         * Removes a video from an account playlist. Removal needs the entry's setVideoId, which
+         * only the playlist's own page carries — an unknown entry cannot be removed this way.
+         */
+        suspend fun removeVideo(
+            playlistId: String,
+            videoId: String,
+        ): Boolean {
+            if (!YouTube.isSignedIn()) return false
+            val page = complete(playlistId) ?: return false
+            val setVideoId = page.videos.firstOrNull { it.id == videoId }?.playlistSetVideoId ?: return false
+            val ok = YouTube.removeFromPlaylist(playlistId, videoId, setVideoId).isSuccess
+            if (ok) completeLists.remove(playlistId)
+            return ok
+        }
+
         private suspend fun fetch(block: suspend () -> Result<VideoPlaylistPage>): VideoPlaylistPage? =
             withContext(PerformanceDispatcher.networkIO) {
                 block()
