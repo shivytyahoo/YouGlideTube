@@ -22,10 +22,8 @@ import coil3.size.Scale
 import coil3.toBitmap
 import io.github.aedev.flow.MainActivity
 import io.github.aedev.flow.R
-import io.github.aedev.flow.data.local.AppDatabase
 import io.github.aedev.flow.data.local.PlayerPreferences
 import io.github.aedev.flow.data.local.ThumbnailQuality
-import io.github.aedev.flow.data.local.entity.NotificationEntity
 import io.github.aedev.flow.data.update.AppRelease
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -65,23 +63,6 @@ object NotificationHelper {
     private const val NOTIFICATION_BITMAP_MAX_PX = 512
 
     private var channelsCreated = false
-
-    /**
-     * Store notification in database
-     */
-    private suspend fun storeNotification(
-        context: Context,
-        entity: NotificationEntity,
-    ) {
-        withContext(Dispatchers.IO) {
-            try {
-                val db = AppDatabase.getDatabase(context)
-                db.notificationDao().insertNotification(entity)
-            } catch (e: Exception) {
-                android.util.Log.e("NotificationHelper", "Failed to store notification", e)
-            }
-        }
-    }
 
     /**
      * Initialize all notification channels
@@ -468,19 +449,6 @@ object NotificationHelper {
         if (!PlayerPreferences(context).notifNewVideosEnabled.first()) return
         if (videos.isEmpty()) return
 
-        videos.forEach { v ->
-            storeNotification(
-                context,
-                NotificationEntity(
-                    videoId = v.videoId,
-                    title = v.videoTitle,
-                    channelName = v.channelName,
-                    thumbnailUrl = v.thumbnailUrl,
-                    type = "NEW_VIDEO",
-                ),
-            )
-        }
-
         val manager = NotificationManagerCompat.from(context)
         val multiple = videos.size > 1
 
@@ -590,18 +558,6 @@ object NotificationHelper {
     ) {
         if (!hasNotificationPermission(context)) return
         if (!PlayerPreferences(context).notifNewVideosEnabled.first()) return
-
-        // Save to database
-        storeNotification(
-            context,
-            NotificationEntity(
-                videoId = videoId,
-                title = videoTitle,
-                channelName = channelName,
-                thumbnailUrl = thumbnailUrl,
-                type = "NEW_VIDEO",
-            ),
-        )
 
         // Generate unique notification ID based on video ID
         val notificationId = NOTIFICATION_NEW_VIDEO + videoId.hashCode().and(0xFFFF)
