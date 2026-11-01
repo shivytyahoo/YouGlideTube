@@ -123,7 +123,7 @@ fun TvPlayerScreen(
         uiState = uiState,
         viewModel = viewModel,
     )
-    TvPlayerSheetEffects(video.id, screenState, viewModel, prefs.commentsEnabled)
+    TvPlayerSheetEffects(video.id, screenState, viewModel, prefs.commentsEnabled, commentsUiState.canPostComment)
 
     fun openSheet(sheet: PlayerSheet) {
         screenState.open(sheet)
@@ -390,6 +390,9 @@ fun TvPlayerScreen(
             commentsUiState = commentsUiState,
             onNavigateToChannel = onOpenChannel,
             onClose = ::closeSheet,
+            // The prompt is only for a signed-out viewer: a signed-in TV-code
+            // session without create params must not be told to sign in again.
+            onRequireSignIn = if (!YouTube.isSignedIn()) ({ showSignIn = true }) else null,
         )
 
         Box(modifier = Modifier.fillMaxSize().focusRequester(countdownFocusRequester)) {
