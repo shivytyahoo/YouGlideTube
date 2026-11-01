@@ -10,7 +10,6 @@ import androidx.navigation.navArgument
 import io.github.aedev.flow.ui.components.settings.SettingsDestination
 import io.github.aedev.flow.ui.screens.settings.SettingsHost
 import io.github.aedev.flow.ui.screens.settings.SettingsHostOptions
-import io.github.aedev.flow.ui.screens.settings.about.DonationsScreen
 import io.github.aedev.flow.ui.screens.update.UPDATE_ROUTE
 import io.github.aedev.flow.ui.screens.update.UpdateScreen
 import io.github.aedev.flow.ui.tv.components.TvScreenFrame
@@ -32,14 +31,10 @@ internal fun NavGraphBuilder.tvSettingsRoutes(navController: NavHostController) 
             SettingsHost(
                 start = null,
                 onExit = { navController.popBackStack() },
-                onOpenDonations = { navController.navigate(TvRoutes.DONATIONS) },
                 onOpenUpdate = { navController.navigate(UPDATE_ROUTE) },
                 options = options,
             )
         }
-    }
-    composable(TvRoutes.DONATIONS) {
-        TvScreenFrame { DonationsScreen(onNavigateBack = { navController.popBackStack() }) }
     }
     composable(UPDATE_ROUTE) {
         TvScreenFrame { UpdateScreen(onClose = { navController.popBackStack() }) }
