@@ -4,69 +4,20 @@ import androidx.room.AutoMigration
 import androidx.room.Database
 import androidx.room.Room.databaseBuilder
 import androidx.room.RoomDatabase
-import io.github.aedev.flow.data.local.dao.CacheDao
 import io.github.aedev.flow.data.local.dao.DownloadCollectionDao
 import io.github.aedev.flow.data.local.dao.DownloadDao
-import io.github.aedev.flow.data.local.dao.HomeFeedCacheDao
-import io.github.aedev.flow.data.local.dao.MusicGraphDao
-import io.github.aedev.flow.data.local.dao.NoteDao
-import io.github.aedev.flow.data.local.dao.NotificationDao
-import io.github.aedev.flow.data.local.dao.PlaylistDao
-import io.github.aedev.flow.data.local.dao.RecognitionHistoryDao
-import io.github.aedev.flow.data.local.dao.SubscriptionGroupDao
-import io.github.aedev.flow.data.local.dao.SyncLogDao
-import io.github.aedev.flow.data.local.dao.SyncPeerDao
-import io.github.aedev.flow.data.local.dao.VideoDao
-import io.github.aedev.flow.data.local.dao.WatchHistoryDao
 import io.github.aedev.flow.data.local.entity.DownloadCollectionEntity
 import io.github.aedev.flow.data.local.entity.DownloadCollectionItemEntity
 import io.github.aedev.flow.data.local.entity.DownloadEntity
 import io.github.aedev.flow.data.local.entity.DownloadItemEntity
-import io.github.aedev.flow.data.local.entity.HomeFeedCacheEntity
-import io.github.aedev.flow.data.local.entity.MusicGraphAlbumEntity
-import io.github.aedev.flow.data.local.entity.MusicGraphArtistEntity
-import io.github.aedev.flow.data.local.entity.MusicGraphEdgeEntity
-import io.github.aedev.flow.data.local.entity.MusicGraphPlaylistEntity
-import io.github.aedev.flow.data.local.entity.MusicGraphTrackEntity
-import io.github.aedev.flow.data.local.entity.MusicHomeCacheEntity
-import io.github.aedev.flow.data.local.entity.MusicHomeChipEntity
-import io.github.aedev.flow.data.local.entity.NoteEntity
-import io.github.aedev.flow.data.local.entity.NotificationEntity
-import io.github.aedev.flow.data.local.entity.PlaylistEntity
-import io.github.aedev.flow.data.local.entity.PlaylistVideoCrossRef
-import io.github.aedev.flow.data.local.entity.RecognitionHistoryEntity
-import io.github.aedev.flow.data.local.entity.SubscriptionFeedEntity
-import io.github.aedev.flow.data.local.entity.SubscriptionGroupEntity
-import io.github.aedev.flow.data.local.entity.SyncLogEntity
-import io.github.aedev.flow.data.local.entity.SyncPeerEntity
-import io.github.aedev.flow.data.local.entity.VideoEntity
-import io.github.aedev.flow.data.local.entity.WatchHistoryEntity
 import io.github.aedev.flow.data.local.migrations.MIGRATIONS
 import io.github.aedev.flow.data.local.migrations.Migration24To25
+import io.github.aedev.flow.data.local.migrations.Migration32To33
 
 @Database(
     entities = [
-        VideoEntity::class,
-        PlaylistEntity::class,
-        PlaylistVideoCrossRef::class,
-        NotificationEntity::class,
-        SubscriptionFeedEntity::class,
-        MusicHomeCacheEntity::class,
-        MusicHomeChipEntity::class,
         DownloadEntity::class,
         DownloadItemEntity::class,
-        WatchHistoryEntity::class,
-        HomeFeedCacheEntity::class,
-        SubscriptionGroupEntity::class,
-        RecognitionHistoryEntity::class,
-        SyncLogEntity::class,
-        SyncPeerEntity::class,
-        MusicGraphTrackEntity::class,
-        MusicGraphArtistEntity::class,
-        MusicGraphAlbumEntity::class,
-        MusicGraphPlaylistEntity::class,
-        MusicGraphEdgeEntity::class,
-        NoteEntity::class,
         DownloadCollectionEntity::class,
         DownloadCollectionItemEntity::class,
     ],
@@ -79,39 +30,24 @@ import io.github.aedev.flow.data.local.migrations.Migration24To25
         AutoMigration(from = 29, to = 30),
         AutoMigration(from = 30, to = 31),
         AutoMigration(from = 31, to = 32),
-        AutoMigration(from = 32, to = 33),
+        AutoMigration(from = 32, to = 33, spec = Migration32To33::class),
     ],
     version = 33,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
-    abstract fun videoDao(): VideoDao
 
-    abstract fun playlistDao(): PlaylistDao
 
-    abstract fun notificationDao(): NotificationDao
 
-    abstract fun noteDao(): NoteDao
 
-    abstract fun cacheDao(): CacheDao
+
+
+
+
 
     abstract fun downloadDao(): DownloadDao
 
     abstract fun downloadCollectionDao(): DownloadCollectionDao
-
-    abstract fun watchHistoryDao(): WatchHistoryDao
-
-    abstract fun homeFeedCacheDao(): HomeFeedCacheDao
-
-    abstract fun subscriptionGroupDao(): SubscriptionGroupDao
-
-    abstract fun recognitionHistoryDao(): RecognitionHistoryDao
-
-    abstract fun syncLogDao(): SyncLogDao
-
-    abstract fun syncPeerDao(): SyncPeerDao
-
-    abstract fun musicGraphDao(): MusicGraphDao
 
     companion object {
         @Volatile
