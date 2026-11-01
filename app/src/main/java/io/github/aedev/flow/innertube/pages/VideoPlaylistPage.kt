@@ -8,6 +8,7 @@ import io.github.aedev.flow.innertube.pages.renderer.forEachObject
 import io.github.aedev.flow.innertube.pages.renderer.largestImageUrl
 import io.github.aedev.flow.innertube.pages.renderer.toFeedItem
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 
 /** One page of a YouTube playlist from the WEB `VL<id>` browse, and the token for the next. */
@@ -80,11 +81,13 @@ internal fun JsonElement.toVideoPlaylistPage(): VideoPlaylistPage {
         videos =
             items
                 .mapNotNull { item ->
-                    when (val feedItem = item.toFeedItem(FeedItemOwner())) {
-                        is FeedItem.VideoItem -> feedItem.video
-                        is FeedItem.ShortItem -> feedItem.video
-                        else -> null
-                    }
+                    val video =
+                        when (val feedItem = item.toFeedItem(FeedItemOwner())) {
+                            is FeedItem.VideoItem -> feedItem.video
+                            is FeedItem.ShortItem -> feedItem.video
+                            else -> null
+                        }
+                    video?.let { it.copy(playlistSetVideoId = item.findSetVideoId()) }
                 }.distinctBy { it.id },
         continuation = items.lastOrNull().continuationToken(),
         isCourse = header["courseProgressViewModel"] != null,
@@ -207,4 +210,26 @@ private fun JsonObject.headerOwner(): FeedItemOwner? {
         owner = FeedItemOwner(id = channelId, name = name)
     }
     return owner
+}
+
+/** A playlist entry's setVideoId, wherever the item's menu endpoints carry it. */
+private fun JsonElement.findSetVideoId(): String? {
+    when (this) {
+        is JsonObject -> {
+            val direct = this["setVideoId"].stringOrNull()
+            if (!direct.isNullOrBlank()) return direct
+            for (child in values) {
+                child.findSetVideoId()?.let { return it }
+            }
+        }
+
+        is JsonArray -> {
+            for (child in this) {
+                child.findSetVideoId()?.let { return it }
+            }
+        }
+
+        else -> Unit
+    }
+    return null
 }
