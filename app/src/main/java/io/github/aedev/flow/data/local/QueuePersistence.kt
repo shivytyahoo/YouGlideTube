@@ -2,15 +2,6 @@ package io.github.aedev.flow.data.local
 
 import android.content.Context
 import android.util.Log
-import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.intPreferencesKey
-import androidx.datastore.preferences.core.longPreferencesKey
-import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.preferencesDataStoreFile
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
 import io.github.aedev.flow.data.music.model.MusicTrack
 import io.github.aedev.flow.data.music.model.withTypedArtists
 import kotlinx.coroutines.CoroutineScope
@@ -18,31 +9,22 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-private const val QUEUE_STORE_NAME = "music_queue"
-
-private val Context.queueDataStore: DataStore<Preferences> by safePreferencesDataStore(name = QUEUE_STORE_NAME)
-
+/**
+ * The music queue lives in memory only. It used to be mirrored to a DataStore so the queue
+ * survived an app restart; that store is gone, so within a session the queue behaves exactly
+ * as before and after a restart playback simply starts fresh.
+ */
 class QueuePersistence private constructor(
-    private val context: Context,
+    @Suppress("unused") private val context: Context,
 ) {
     companion object {
         private const val TAG = "QueuePersistence"
         private const val SAVE_DEBOUNCE_MS = 5_000L // Debounce saves to every 5 seconds
         private const val AUTO_SAVE_INTERVAL_MS = 30_000L // Auto-save every 30 seconds
-
-        private val QUEUE_KEY = stringPreferencesKey("queue_json")
-        private val CURRENT_INDEX_KEY = intPreferencesKey("current_index")
-        private val CURRENT_POSITION_KEY = longPreferencesKey("current_position")
-        private val CURRENT_TRACK_ID_KEY = stringPreferencesKey("current_track_id")
-        private val SHUFFLE_ENABLED_KEY = stringPreferencesKey("shuffle_enabled")
-        private val REPEAT_MODE_KEY = intPreferencesKey("repeat_mode")
-        private val SAVED_AT_KEY = longPreferencesKey("saved_at")
-        private val AUTOMIX_KEY = stringPreferencesKey("automix_json")
 
         @Volatile
         private var instance: QueuePersistence? = null
@@ -53,7 +35,6 @@ class QueuePersistence private constructor(
             }
     }
 
-    private val gson = Gson()
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val saveMutex = Mutex()
 
@@ -61,8 +42,11 @@ class QueuePersistence private constructor(
     private var autoSaveJob: Job? = null
     private var lastSaveTime = 0L
 
+    @Volatile
+    private var savedState: QueueState? = null
+
     /**
-     * Data class holding all queue state for persistence
+     * Data class holding all queue state
      */
     data class QueueState(
         val queue: List<MusicTrack>,
@@ -76,7 +60,7 @@ class QueuePersistence private constructor(
     )
 
     /**
-     * Save queue state with debouncing to prevent excessive disk writes
+     * Save queue state with debouncing
      */
     fun saveQueueDebounced(
         queue: List<MusicTrack>,
@@ -110,66 +94,34 @@ class QueuePersistence private constructor(
         if (queue.isEmpty()) return
 
         saveMutex.withLock {
-            try {
-                val now = System.currentTimeMillis()
-                context.queueDataStore.edit { prefs ->
-                    prefs[QUEUE_KEY] = gson.toJson(queue)
-                    prefs[CURRENT_INDEX_KEY] = currentIndex
-                    prefs[CURRENT_POSITION_KEY] = currentPosition
-                    prefs[CURRENT_TRACK_ID_KEY] = currentTrackId ?: ""
-                    prefs[SHUFFLE_ENABLED_KEY] = shuffleEnabled.toString()
-                    prefs[REPEAT_MODE_KEY] = repeatMode
-                    prefs[SAVED_AT_KEY] = now
-                    prefs[AUTOMIX_KEY] = gson.toJson(automix)
-                }
-                lastSaveTime = now
-                Log.d(TAG, "Queue saved: ${queue.size} tracks, index=$currentIndex, pos=$currentPosition, automix=${automix.size}")
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to save queue", e)
-            }
+            val now = System.currentTimeMillis()
+            savedState =
+                QueueState(
+                    queue = queue,
+                    currentIndex = currentIndex,
+                    currentPosition = currentPosition,
+                    currentTrackId = currentTrackId,
+                    shuffleEnabled = shuffleEnabled,
+                    repeatMode = repeatMode,
+                    savedAt = now,
+                    automix = automix,
+                )
+            lastSaveTime = now
+            Log.d(TAG, "Queue saved: ${queue.size} tracks, index=$currentIndex, pos=$currentPosition, automix=${automix.size}")
         }
     }
 
     /**
-     * Restore queue state from persistent storage
+     * Restore the queue state held for this session, or null when nothing was saved.
      */
     suspend fun restoreQueue(): QueueState? {
-        return try {
-            val prefs = context.queueDataStore.data.first()
-
-            val queueJson = prefs[QUEUE_KEY] ?: return null
-            val type = object : TypeToken<List<MusicTrack>>() {}.type
-            val queue: List<MusicTrack> =
-                gson.fromJson<List<MusicTrack>>(queueJson, type)?.map { it.withTypedArtists() } ?: return null
-
-            if (queue.isEmpty()) return null
-
-            val automixJson = prefs[AUTOMIX_KEY]
-            val automix: List<MusicTrack> =
-                if (!automixJson.isNullOrBlank()) {
-                    gson.fromJson<List<MusicTrack>>(automixJson, type)?.map { it.withTypedArtists() } ?: emptyList()
-                } else {
-                    emptyList()
-                }
-
-            val state =
-                QueueState(
-                    queue = queue,
-                    currentIndex = prefs[CURRENT_INDEX_KEY] ?: 0,
-                    currentPosition = prefs[CURRENT_POSITION_KEY] ?: 0L,
-                    currentTrackId = prefs[CURRENT_TRACK_ID_KEY]?.takeIf { it.isNotBlank() },
-                    shuffleEnabled = prefs[SHUFFLE_ENABLED_KEY]?.toBooleanStrictOrNull() ?: false,
-                    repeatMode = prefs[REPEAT_MODE_KEY] ?: 0,
-                    savedAt = prefs[SAVED_AT_KEY] ?: 0L,
-                    automix = automix,
-                )
-
-            Log.d(TAG, "Queue restored: ${queue.size} tracks, saved ${(System.currentTimeMillis() - state.savedAt) / 1000}s ago")
-            state
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to restore queue", e)
-            null
-        }
+        val state = savedState ?: return null
+        if (state.queue.isEmpty()) return null
+        Log.d(TAG, "Queue restored: ${state.queue.size} tracks, saved ${(System.currentTimeMillis() - state.savedAt) / 1000}s ago")
+        return state.copy(
+            queue = state.queue.map { it.withTypedArtists() },
+            automix = state.automix.map { it.withTypedArtists() },
+        )
     }
 
     /**
@@ -207,10 +159,9 @@ class QueuePersistence private constructor(
     }
 
     /**
-     * Whether a queue was ever saved, from the store's file alone. Only non-empty queues are written
-     * and nothing clears the store, so the file exists exactly when there is a queue to resume. A media
-     * button that cold-starts the music service needs this answer on the main thread, before any read
-     * of the store could finish.
+     * Whether a queue was saved this session. Only non-empty queues are written, so this is
+     * true exactly when there is a queue to resume. A media button that cold-starts the music
+     * service needs this answer on the main thread.
      */
-    fun hasSavedQueueFile(): Boolean = context.preferencesDataStoreFile(QUEUE_STORE_NAME).exists()
+    fun hasSavedQueueFile(): Boolean = savedState != null
 }
