@@ -31,20 +31,35 @@ internal data class GitHubAsset(
 
 internal fun parseGitHubRelease(json: String): GitHubRelease = ReleaseJson.decodeFromString(GitHubRelease.serializer(), json)
 
-/** [release] as an [AppRelease] when it is newer than [currentVersion], otherwise null. */
+/**
+ * [release] as an [AppRelease] when it is newer than [currentVersion], otherwise null.
+ * A same-version rebuild still counts when its asset digest differs from the installed
+ * APK's hash: this release line never bumps its version, so the digest is the only
+ * signal that the release page carries a newer build.
+ */
 internal fun GitHubRelease.toAppReleaseIfNewer(
     currentVersion: String,
     supportedAbis: List<String>,
+    installedSha256: String? = null,
 ): AppRelease? {
-    if (tagName.isBlank() || !AppVersions.isNewer(tagName, currentVersion)) return null
-    return AppRelease(
-        version = AppVersions.normalize(tagName),
-        tag = tagName,
-        notes = body.orEmpty(),
-        publishedAt = publishedAt?.let { runCatching { Instant.parse(it) }.getOrNull() },
-        pageUrl = htmlUrl,
-        apk = selectApk(assets, supportedAbis)?.toReleaseApk(),
-    )
+    if (tagName.isBlank()) return null
+    val apk = selectApk(assets, supportedAbis)?.toReleaseApk()
+    val release =
+        AppRelease(
+            version = AppVersions.normalize(tagName),
+            tag = tagName,
+            notes = body.orEmpty(),
+            publishedAt = publishedAt?.let { runCatching { Instant.parse(it) }.getOrNull() },
+            pageUrl = htmlUrl,
+            apk = apk,
+        )
+    if (AppVersions.isNewer(tagName, currentVersion)) return release
+    if (AppVersions.normalize(tagName) != AppVersions.normalize(currentVersion)) return null
+    val digest = apk?.sha256
+    if (digest != null && installedSha256 != null && !digest.equals(installedSha256, ignoreCase = true)) {
+        return release
+    }
+    return null
 }
 
 /**
