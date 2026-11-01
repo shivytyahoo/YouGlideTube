@@ -62,6 +62,8 @@ import io.github.aedev.flow.ui.startup.splashTone
 import io.github.aedev.flow.ui.startup.themeSettings
 import io.github.aedev.flow.ui.theme.FlowFontFamily
 import io.github.aedev.flow.ui.theme.FlowTheme
+import io.github.aedev.flow.ui.theme.ThemeMode
+import io.github.aedev.flow.ui.theme.ThemeVariant
 import io.github.aedev.flow.ui.tv.FlowTvApp
 import io.github.aedev.flow.ui.utils.ProvideWindowSizeClass
 import io.github.aedev.flow.utils.AppLanguageManager
@@ -216,6 +218,17 @@ class MainActivity : ComponentActivity() {
             val appUiRoot = appUiMode.resolve(deviceFormFactor)
             SideEffect { cachedAppUiRoot = appUiRoot }
 
+            // The TV must not follow its own system theme: with the default SYSTEM mode
+            // a light-system TV resolves the LIGHT variant, so the TV opens light while
+            // the phone opens dark. SYSTEM on TV means the app's default dark theme
+            // instead; an explicitly stored mode still wins.
+            val rootTheme =
+                if (appUiRoot == AppUiRoot.TV && theme.themeMode == ThemeMode.SYSTEM) {
+                    theme.copy(themeMode = ThemeMode.DARK, themeVariant = ThemeVariant.DARK)
+                } else {
+                    theme
+                }
+
             // Check for a crash that happened last session.
             // If found, show the CrashReportScreen instead of the normal UI. It is cleared as soon
             // as it is read, so leaving the screen any way shows it once, not on every launch.
@@ -229,7 +242,7 @@ class MainActivity : ComponentActivity() {
 
             if (pendingCrashLog != null) {
                 SideEffect { splashController.contentReady = true }
-                FlowTheme(theme.copy(fontFamily = FlowFontFamily)) {
+                FlowTheme(rootTheme.copy(fontFamily = FlowFontFamily)) {
                     CrashReportScreen(
                         report = pendingCrashLog!!,
                         onContinue = { pendingCrashLog = null },
@@ -238,7 +251,7 @@ class MainActivity : ComponentActivity() {
                 return@setContent
             }
 
-            FlowTheme(theme) {
+            FlowTheme(rootTheme) {
                 val splashTone = splashTone(MaterialTheme.colorScheme.background)
                 LaunchedEffect(splashTone) { splashController.rememberTheme(splashTone, appIconController.activeSuffix()) }
 
@@ -386,6 +399,17 @@ class MainActivity : ComponentActivity() {
 
         clearWindowBrightnessOverride()
         restoreVideoForPipWindow(isInPictureInPictureMode)
+
+        // Exiting PiP restored nothing, so a player that went audio-only (or left a
+        // surface restore pending) while in PiP stayed that way on fullscreen: the
+        // picture hung while the session played on. restoreVideoOutput defers itself
+        // when the surface is not ready yet, so this is safe to run on every exit.
+        if (!isInPictureInPictureMode) {
+            val playerManager = videoPlayerManager.get()
+            if (playerManager.isInAudioOnlyMode() || playerManager.isVideoSurfaceRestorePending()) {
+                playerManager.restoreVideoOutput()
+            }
+        }
 
         pipDismissCheckJob?.cancel()
         if (!isInPictureInPictureMode) {
