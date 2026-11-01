@@ -2,16 +2,13 @@ package io.github.aedev.flow.data.engagement
 
 import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
-import io.github.aedev.flow.data.local.PlaylistRepository
-import io.github.aedev.flow.data.local.ViewHistory
+import io.github.aedev.flow.data.account.AccountPlaylistIds
+import io.github.aedev.flow.data.repository.YouTubePlaylistRepository
+import io.github.aedev.flow.innertube.YouTube
+import io.github.aedev.flow.data.local.SessionHistory
 import io.github.aedev.flow.data.local.WatchLaterCleanup
 import io.github.aedev.flow.data.model.Video
-import io.github.aedev.flow.data.recommendation.BlockedChannelNames
-import io.github.aedev.flow.data.recommendation.FlowNeuroEngine
-import io.github.aedev.flow.data.recommendation.InteractionType
 import io.github.aedev.flow.data.repository.YouTubeRepository
-import io.github.aedev.flow.data.stats.LedgerAction
-import io.github.aedev.flow.data.stats.VideoStatsRecorder
 import io.github.aedev.flow.utils.ThumbnailUrlResolver
 import javax.inject.Inject
 
@@ -22,7 +19,7 @@ data class BlockedChannel(
 )
 
 /**
- * What a video's menu tells the recommendation engine and the library: Watch later, not interested,
+ * What a video's menu tells the library and the session exclusions: Watch later, not interested,
  * more like this, watched, and hiding a channel. Each call does the writes and the learning signal
  * that belong together, and says nothing to the viewer; the caller decides how to confirm it.
  */
@@ -31,21 +28,21 @@ class VideoFeedbackUseCase
     constructor(
         @ApplicationContext private val context: Context,
         private val repository: YouTubeRepository,
-        private val playlistRepository: PlaylistRepository,
-        private val viewHistory: ViewHistory,
-        private val videoStats: VideoStatsRecorder,
+        private val youTubePlaylistRepository: YouTubePlaylistRepository,
         private val watchLaterCleanup: WatchLaterCleanup,
-        private val blockedNames: BlockedChannelNames,
+        private val viewHistory: SessionHistory,
+        private val sessionExclusions: SessionExclusions,
     ) {
-        /** Adds [video] to Watch later, or takes it out; returns whether it is saved afterwards. */
+        /** Adds [video] to the account's Watch Later, or takes it out; returns whether it is saved afterwards. */
         suspend fun toggleWatchLater(video: Video): Boolean {
-            if (playlistRepository.isInWatchLater(video.id)) {
-                playlistRepository.removeFromWatchLater(video.id)
+            if (!YouTube.isSignedIn()) return false
+            val inWatchLater =
+                youTubePlaylistRepository.complete(AccountPlaylistIds.WATCH_LATER)?.videos?.any { it.id == video.id } == true
+            if (inWatchLater) {
+                youTubePlaylistRepository.removeVideo(AccountPlaylistIds.WATCH_LATER, video.id)
                 return false
             }
-            playlistRepository.addToWatchLater(video)
-            videoStats.onAction(LedgerAction.SAVE)
-            runCatching { FlowNeuroEngine.onVideoInteraction(context, video, InteractionType.SAVED) }
+            youTubePlaylistRepository.addVideo(AccountPlaylistIds.WATCH_LATER, video.id)
             return true
         }
 
@@ -53,7 +50,12 @@ class VideoFeedbackUseCase
             video: Video,
             saved: Boolean,
         ) {
-            if (saved) playlistRepository.addToWatchLater(video) else playlistRepository.removeFromWatchLater(video.id)
+            if (!YouTube.isSignedIn()) return
+            if (saved) {
+                youTubePlaylistRepository.addVideo(AccountPlaylistIds.WATCH_LATER, video.id)
+            } else {
+                youTubePlaylistRepository.removeVideo(AccountPlaylistIds.WATCH_LATER, video.id)
+            }
         }
 
         /**
@@ -65,31 +67,26 @@ class VideoFeedbackUseCase
             val channelId = metadata?.channelId.orEmpty().ifBlank { video.channelId }
             check(channelId.isNotBlank()) { "No channel id for ${video.id}" }
             val channelName = metadata?.channelName.orEmpty().ifBlank { video.channelName }
-            FlowNeuroEngine.blockChannel(context, channelId)
-            blockedNames.remember(channelId, channelName)
-            videoStats.onAction(LedgerAction.BLOCK_CHANNEL)
+            sessionExclusions.blockChannel(channelId, channelName)
             FeedInvalidationBus.emit(FeedInvalidationBus.Event.ChannelBlocked(channelId, video.id))
             return BlockedChannel(channelId, channelName)
         }
 
         suspend fun unblockChannel(channelId: String) {
-            FlowNeuroEngine.unblockChannel(context, channelId)
-            blockedNames.forget(channelId)
+            sessionExclusions.unblockChannel(channelId)
         }
 
         suspend fun markNotInterested(video: Video) {
-            FlowNeuroEngine.markNotInterested(context, video)
-            videoStats.onAction(LedgerAction.NOT_INTERESTED)
+            sessionExclusions.markNotInterested(video)
             FeedInvalidationBus.emit(FeedInvalidationBus.Event.NotInterested(video.id, video.channelId))
         }
 
         suspend fun markInterested(video: Video) {
-            FlowNeuroEngine.onVideoInteraction(context, video, InteractionType.LIKED, percentWatched = 0f)
+            sessionExclusions.undoNotInterested(video)
         }
 
-        /** Records [video] as watched to the end, so every card shows it full and the engine learns from it. */
+        /** Records [video] as watched to the end, so every card shows it full. */
         suspend fun markWatched(video: Video) {
-            FlowNeuroEngine.onVideoInteraction(context, video, InteractionType.WATCHED, percentWatched = 1.0f)
             val durationMs = if (video.duration > 0) video.duration * 1000L else 1000L
             viewHistory.savePlaybackPosition(
                 videoId = video.id,
