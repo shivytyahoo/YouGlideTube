@@ -1,5 +1,6 @@
 package io.github.aedev.flow.ui.components.shorts
 
+import android.content.Intent
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.Toast
@@ -48,6 +49,7 @@ import androidx.media3.ui.PlayerView
 import io.github.aedev.flow.R
 import io.github.aedev.flow.data.model.ShortVideo
 import io.github.aedev.flow.data.model.toVideo
+import io.github.aedev.flow.innertube.YouTube
 import io.github.aedev.flow.player.GlobalPlayerState
 import io.github.aedev.flow.player.shorts.ShortsPlayerPool
 import io.github.aedev.flow.player.toDisplayAspectRatioOrNull
@@ -55,6 +57,7 @@ import io.github.aedev.flow.ui.components.shared.MediaSeekBar
 import io.github.aedev.flow.ui.components.videoplayer.ambient.VideoAmbientBackground
 import io.github.aedev.flow.ui.components.videoplayer.ambient.rememberAmbientFrame
 import io.github.aedev.flow.ui.components.videoplayer.overlay.SpeedBoostOverlay
+import io.github.aedev.flow.ui.screens.settings.account.GoogleLoginActivity
 import io.github.aedev.flow.ui.screens.shorts.ShortsViewModel
 import io.github.aedev.flow.ui.theme.PlayerScrim
 import io.github.aedev.flow.utils.formatViewCount
@@ -187,6 +190,10 @@ internal fun ShortsReelPage(
     }
 
     fun toggleSubscription() {
+        if (!YouTube.isSignedIn()) {
+            context.startActivity(Intent(context, GoogleLoginActivity::class.java))
+            return
+        }
         scope.launch { viewModel.toggleSubscription(short.channelId, short.channelName, short.channelThumbnailUrl) }
         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
     }
@@ -229,7 +236,9 @@ internal fun ShortsReelPage(
                                 }
                             },
                             onDoubleTap = {
-                                if (!isLiked) {
+                                if (!YouTube.isSignedIn()) {
+                                    context.startActivity(Intent(context, GoogleLoginActivity::class.java))
+                                } else if (!isLiked) {
                                     scope.launch { viewModel.toggleLike(short) }
                                     pageState.showLikeAnimation = true
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -331,8 +340,12 @@ internal fun ShortsReelPage(
                     isLiked = isLiked,
                     likeLabel = if (style.showRailLabels) likeCount ?: stringResource(R.string.action_like) else likeCount.orEmpty(),
                     onLikeClick = {
-                        scope.launch { viewModel.toggleLike(short) }
-                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        if (!YouTube.isSignedIn()) {
+                            context.startActivity(Intent(context, GoogleLoginActivity::class.java))
+                        } else {
+                            scope.launch { viewModel.toggleLike(short) }
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        }
                     },
                     commentLabel =
                         if (style.showRailLabels) {
