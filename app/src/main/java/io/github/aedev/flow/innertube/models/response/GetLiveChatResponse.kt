@@ -67,14 +67,38 @@ data class GetLiveChatResponse(
         val message: Message? = null,
         val headerSubtext: Message? = null,
         val authorName: Text? = null,
+        val authorExternalChannelId: String? = null,
         val authorPhoto: ChatImage? = null,
         val timestampText: Text? = null,
         val authorBadges: List<AuthorBadge> = emptyList(),
+        val contextMenuEndpoint: ContextMenuEndpoint? = null,
         // Super-chat only:
         val purchaseAmountText: Text? = null,
         val bodyBackgroundColor: Long? = null,
         val headerBackgroundColor: Long? = null,
     )
+
+    /** The per-message context-menu endpoint (YouTube.js: LiveChatTextMessage.menu_endpoint). */
+    @Serializable
+    data class ContextMenuEndpoint(
+        val liveChatItemContextMenuEndpoint: MenuEndpointParams? = null,
+        val commandMetadata: CommandMetadata? = null,
+    ) {
+        @Serializable
+        data class MenuEndpointParams(
+            val params: String? = null,
+        )
+
+        @Serializable
+        data class CommandMetadata(
+            val webCommandMetadata: WebCommandMetadata? = null,
+        )
+
+        @Serializable
+        data class WebCommandMetadata(
+            val apiUrl: String? = null,
+        )
+    }
 
     @Serializable
     data class Message(
