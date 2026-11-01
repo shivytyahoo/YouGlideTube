@@ -4,14 +4,25 @@ import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.aedev.flow.data.localmedia.LocalMediaIds
 import io.github.aedev.flow.utils.ThumbnailUrlResolver
+import java.io.File
+import javax.inject.Inject
+import javax.inject.Singleton
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
-import javax.inject.Inject
-import javax.inject.Singleton
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 
-/** One history row, kept for the session only; nothing here is persisted. */
+/** One history row, kept in memory and mirrored to disk so it survives a restart. */
+@Serializable
 data class VideoHistoryEntry(
     val videoId: String,
     val position: Long,
@@ -38,12 +49,15 @@ data class WatchProgress(
 )
 
 private const val SESSION_HISTORY_LIMIT = 500
+private const val PERSIST_DEBOUNCE_MS = 3000L
 
 /**
- * Playback positions and the recent-history list for THIS process only. The local history
- * database is gone by the user's choice: resume, progress bars, watched checks and the
- * signed-out History tab all read from here, and the account's own history (server) covers
- * signed-in surfaces. Nothing survives a process restart.
+ * Playback positions and the recent-history list. Resume, progress bars, watched checks and
+ * the signed-out History tab all read from here, and the account's own history (server)
+ * covers signed-in surfaces. Entries are also mirrored to disk, so a restart no longer
+ * empties Home's continue-watching and Library's history while signed out; the account
+ * feed takes over on sign-in as before. The pause-history preference still blocks new
+ * saves (never deletions).
  */
 @Singleton
 class SessionHistory
@@ -52,12 +66,73 @@ class SessionHistory
         @ApplicationContext private val context: Context,
     ) {
         private val entries = MutableStateFlow<List<VideoHistoryEntry>>(emptyList())
+        private val ioScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        private val historyJson = Json { ignoreUnknownKeys = true }
+        private val historyFile: File
+            get() = File(context.filesDir, "guest_history.json")
+        private var persistJob: Job? = null
+
+        init {
+            ioScope.launch { restore() }
+        }
+
+        private suspend fun restore() {
+            val decoded =
+                runCatching {
+                    withContext(Dispatchers.IO) {
+                        val file = historyFile
+                        if (!file.exists()) return@withContext emptyList()
+                        historyJson.decodeFromString<List<VideoHistoryEntry>>(file.readText())
+                    }
+                }.getOrElse { emptyList() }
+            if (decoded.isNotEmpty()) entries.value = decoded.take(SESSION_HISTORY_LIMIT)
+        }
+
+        private fun schedulePersist() {
+            persistJob?.cancel()
+            persistJob =
+                ioScope.launch {
+                    delay(PERSIST_DEBOUNCE_MS)
+                    if (PlayerPreferences(context).isWatchHistorySavingBlocked()) return@launch
+                    writeList(entries.value)
+                }
+        }
+
+        private fun persistRemoval(videoIds: Set<String>) {
+            ioScope.launch {
+                runCatching {
+                    withContext(Dispatchers.IO) {
+                        val file = historyFile
+                        if (!file.exists()) return@withContext
+                        val remaining =
+                            historyJson.decodeFromString<List<VideoHistoryEntry>>(file.readText())
+                                .filter { it.videoId !in videoIds }
+                        if (remaining.isEmpty()) file.delete() else file.writeText(historyJson.encodeToString(remaining))
+                    }
+                }
+            }
+        }
+
+        private fun dropPersistedFile() {
+            ioScope.launch {
+                runCatching { withContext(Dispatchers.IO) { historyFile.delete() } }
+            }
+        }
+
+        private suspend fun writeList(list: List<VideoHistoryEntry>) {
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    historyFile.writeText(historyJson.encodeToString(list.take(SESSION_HISTORY_LIMIT)))
+                }
+            }
+        }
 
         private fun upsert(entry: VideoHistoryEntry) {
             entries.update { current ->
                 val rest = current.filterNot { it.videoId == entry.videoId }
                 (listOf(entry) + rest).take(SESSION_HISTORY_LIMIT)
             }
+            schedulePersist()
         }
 
         private fun find(videoId: String): VideoHistoryEntry? = entries.value.firstOrNull { it.videoId == videoId }
@@ -169,6 +244,7 @@ class SessionHistory
 
         suspend fun clearVideoHistory(videoId: String) {
             entries.update { current -> current.filterNot { it.videoId == videoId } }
+            persistRemoval(setOf(videoId))
         }
 
         /** Marks [videoId] fully watched so it leaves the resume prompt. */
@@ -179,10 +255,13 @@ class SessionHistory
 
         suspend fun clearAllHistory() {
             entries.value = emptyList()
+            dropPersistedFile()
         }
 
         suspend fun clearShortsHistory() {
+            val removed = entries.value.filter { it.isShort }.map { it.videoId }.toSet()
             entries.update { current -> current.filterNot { it.isShort } }
+            if (removed.isNotEmpty()) persistRemoval(removed)
         }
 
         // ── Reads ────────────────────────────────────────────────────────────────
