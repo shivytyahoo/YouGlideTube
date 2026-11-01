@@ -1,6 +1,7 @@
 package io.github.aedev.flow.ui.components.shared.quickactions
 
 import android.content.ClipData
+import android.content.Intent
 import android.os.Build
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.PlaylistAdd
@@ -35,12 +36,14 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.aedev.flow.R
 import io.github.aedev.flow.data.model.Video
 import io.github.aedev.flow.data.model.VideoCollaborator
+import io.github.aedev.flow.innertube.YouTube
 import io.github.aedev.flow.ui.components.layout.navigation.LocalMediaNavigator
 import io.github.aedev.flow.ui.components.shared.ChannelAvatarStack
 import io.github.aedev.flow.ui.components.shared.FlowNavRow
@@ -57,6 +60,7 @@ import io.github.aedev.flow.ui.components.shared.card.rememberCollaboratorItems
 import io.github.aedev.flow.ui.components.shared.card.rememberWatchProgress
 import io.github.aedev.flow.ui.components.shared.collaboratorRows
 import io.github.aedev.flow.ui.components.shared.rememberVideoShareAction
+import io.github.aedev.flow.ui.screens.settings.account.GoogleLoginActivity
 import io.github.aedev.flow.utils.youtubeWatchUrl
 import kotlinx.coroutines.launch
 
@@ -240,6 +244,7 @@ private fun channelRow(
     onOpenCollaborators: () -> Unit,
 ): QuickActionRow {
     val channelLabel = rememberCollaboratorChannelDisplayName(video.channelName, collaborators)
+    val context = LocalContext.current
     val subscribedChannelIds by viewModel.subscribedChannelIds.collectAsStateWithLifecycle()
     val navigator = LocalMediaNavigator.current
     val isCollaboration = collaborators.size > 1
@@ -280,7 +285,13 @@ private fun channelRow(
                     { Icon(imageVector = Icons.Outlined.ChevronRight, contentDescription = null) }
                 } else {
                     {
-                        val toggle = { viewModel.toggleSubscription(video.channelId, video.channelName, video.channelThumbnailUrl) }
+                        val toggle = {
+                            if (!YouTube.isSignedIn()) {
+                                context.startActivity(Intent(context, GoogleLoginActivity::class.java))
+                            } else {
+                                viewModel.toggleSubscription(video.channelId, video.channelName, video.channelThumbnailUrl)
+                            }
+                        }
                         FlowSubscribeButton(
                             isSubscribed = video.channelId in subscribedChannelIds,
                             onSubscribeClick = toggle,
