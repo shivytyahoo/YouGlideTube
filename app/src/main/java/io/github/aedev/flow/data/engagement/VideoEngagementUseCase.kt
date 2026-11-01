@@ -1,19 +1,15 @@
 package io.github.aedev.flow.data.engagement
 
 import android.util.Log
-import io.github.aedev.flow.data.local.ChannelSubscription
+import io.github.aedev.flow.data.account.AccountSubscriptions
 import io.github.aedev.flow.data.local.LikedVideoInfo
-import io.github.aedev.flow.data.local.LikedVideosRepository
-import io.github.aedev.flow.data.local.SubscriptionRepository
 import io.github.aedev.flow.data.model.Video
-import io.github.aedev.flow.data.recommendation.InteractionType
-import io.github.aedev.flow.data.stats.DislikedVideo
-import io.github.aedev.flow.data.stats.LedgerAction
-import io.github.aedev.flow.data.stats.VideoStatsRecorder
+import io.github.aedev.flow.data.engagement.InteractionType
+import io.github.aedev.flow.data.model.Channel
+import io.github.aedev.flow.innertube.YouTube
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.flowOf
 import javax.inject.Inject
 
 private const val TAG = "VideoEngagement"
@@ -42,17 +38,24 @@ data class VideoEngagement(
 class VideoEngagementUseCase
     @Inject
     constructor(
-        private val subscriptionRepository: SubscriptionRepository,
-        private val likedVideosRepository: LikedVideosRepository,
+        private val sessionLikes: SessionLikeState,
         private val signals: VideoEngagementSignals,
-        private val videoStats: VideoStatsRecorder,
+        private val accountSubscriptions: AccountSubscriptions,
     ) {
-        fun subscriptionState(channelId: String): Flow<Boolean> = subscriptionRepository.isSubscribed(channelId)
+        fun subscriptionState(channelId: String): Flow<Boolean> =
+            if (YouTube.isSignedIn()) {
+                // Signed in, the account is the truth, and it lives in ONE place: the guide's
+                // complete membership list. This used to be a header guess plus a feed sample
+                // plus a process cache that froze failed lookups — and the surfaces disagreed.
+                accountSubscriptions.isSubscribed(channelId)
+            } else {
+                // Signed out there is no subscription state: subscriptions are account-only.
+                flowOf(false)
+            }
 
-        fun notificationState(channelId: String): Flow<Boolean> =
-            subscriptionRepository.getSubscription(channelId).map { it?.isNotificationEnabled ?: false }
+        fun notificationState(channelId: String): Flow<Boolean> = flowOf(false)
 
-        fun likeState(videoId: String): Flow<String?> = likedVideosRepository.getLikeState(videoId)
+        fun likeState(videoId: String): Flow<String?> = sessionLikes.likeState(videoId)
 
         /**
          * The three concerns as one flow, so a screen showing all of them holds one collector per
@@ -81,7 +84,9 @@ class VideoEngagementUseCase
             channelThumbnail: String,
             onApplied: (Boolean) -> Unit = {},
         ) {
-            val isSubscribed = subscriptionRepository.isSubscribed(channelId).first()
+            if (!YouTube.isSignedIn()) return
+            accountSubscriptions.awaitLoaded()
+            val isSubscribed = channelId in accountSubscriptions.ids.value
             applySubscription(
                 channelId = channelId,
                 channelName = channelName,
@@ -102,17 +107,17 @@ class VideoEngagementUseCase
             subscribed: Boolean,
             onApplied: (Boolean) -> Unit = {},
         ) {
-            if (subscribed) {
-                subscriptionRepository.subscribe(
-                    ChannelSubscription(
-                        channelId = channelId,
-                        channelName = channelName,
-                        channelThumbnail = channelThumbnail,
-                    ),
-                )
-            } else {
-                subscriptionRepository.unsubscribe(channelId)
-            }
+            if (!YouTube.isSignedIn()) return
+            // The real account action, through the one shared list.
+            accountSubscriptions.setSubscribed(
+                Channel(
+                    id = channelId,
+                    name = channelName,
+                    thumbnailUrl = channelThumbnail,
+                    subscriberCount = 0L,
+                ),
+                subscribed,
+            )
             onApplied(subscribed)
             runCatching {
                 signals.channelSubscriptionChanged(channelId, channelName, subscribed)
@@ -125,7 +130,10 @@ class VideoEngagementUseCase
         suspend fun setNotificationEnabled(
             channelId: String,
             enabled: Boolean,
-        ) = subscriptionRepository.updateNotificationState(channelId, enabled)
+        ) {
+            // Notification preference was a local-store field; subscriptions are account-only now
+            // and the account API surface here carries no per-channel notification level.
+        }
 
         /**
          * Likes [video]. [signalVideo] is the item the engine learns from — the richest version of
@@ -136,18 +144,18 @@ class VideoEngagementUseCase
             signalVideo: Video? = null,
             onApplied: () -> Unit = {},
         ) {
-            likedVideosRepository.likeVideo(
+            sessionLikes.like(
                 LikedVideoInfo(
                     videoId = video.id,
                     title = video.title,
                     thumbnail = video.thumbnailUrl,
                     channelName = video.channelName,
+                    isMusic = video.isMusic,
                     channelId = video.channelId.takeIf(String::isNotBlank),
                     durationSeconds = video.duration,
                 ),
             )
             onApplied()
-            videoStats.onAction(LedgerAction.LIKE)
             if (signalVideo == null) return
             try {
                 signals.videoInteraction(signalVideo, InteractionType.LIKED)
@@ -161,16 +169,8 @@ class VideoEngagementUseCase
             signalVideo: Video? = null,
             onApplied: () -> Unit = {},
         ) {
-            likedVideosRepository.dislikeVideo(videoId)
+            sessionLikes.dislike(videoId)
             onApplied()
-            videoStats.onDislike(
-                DislikedVideo(
-                    videoId = videoId,
-                    title = signalVideo?.title.orEmpty(),
-                    channelName = signalVideo?.channelName.orEmpty(),
-                    at = System.currentTimeMillis(),
-                ),
-            )
             if (signalVideo == null) return
             try {
                 signals.videoInteraction(signalVideo, InteractionType.DISLIKED)
@@ -180,7 +180,6 @@ class VideoEngagementUseCase
         }
 
         suspend fun removeLike(videoId: String) {
-            likedVideosRepository.removeLikeState(videoId)
-            videoStats.onDislikeRemoved(videoId)
+            sessionLikes.removeLikeState(videoId)
         }
     }
