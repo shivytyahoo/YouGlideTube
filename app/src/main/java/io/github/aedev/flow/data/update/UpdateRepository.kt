@@ -19,8 +19,8 @@ import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
-private const val STABLE_RELEASE_API = "https://api.github.com/repos/shivytyahoo/ShivFlow/releases/latest"
-private const val NIGHTLY_RELEASE_API = "https://api.github.com/repos/shivytyahoo/ShivFlow/releases/tags/nightly"
+private const val STABLE_RELEASE_API = "https://api.github.com/repos/shivytyahoo/YouGlideTube/releases/latest"
+private const val NIGHTLY_RELEASE_API = "https://api.github.com/repos/shivytyahoo/YouGlideTube/releases/tags/nightly"
 private const val NIGHTLY_CHANNEL = "nightly"
 private const val GITHUB_JSON = "application/vnd.github+json"
 
