@@ -28,6 +28,9 @@ object FeedInvalidationBus {
         data class ChannelUnsubscribed(
             val channelId: String,
         ) : Event()
+
+        /** The active account changed (switch, sign-in or sign-out): feeds reload from scratch. */
+        data object AccountChanged : Event()
     }
 
     private val _events = MutableSharedFlow<Event>(extraBufferCapacity = 8)
