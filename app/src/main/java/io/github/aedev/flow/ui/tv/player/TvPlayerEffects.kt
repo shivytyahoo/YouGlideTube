@@ -11,6 +11,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import io.github.aedev.flow.innertube.YouTube
 import io.github.aedev.flow.ui.screens.player.VideoPlayerViewModel
 import io.github.aedev.flow.ui.screens.player.state.PlayerScreenState
 import io.github.aedev.flow.ui.screens.player.state.PlayerSheet
@@ -77,11 +78,21 @@ internal fun TvPlayerSheetEffects(
     screenState: PlayerScreenState,
     viewModel: VideoPlayerViewModel,
     commentsEnabled: Boolean,
+    canPostComment: Boolean,
 ) {
     var commentsLoadedFor by remember { mutableStateOf<String?>(null) }
     val commentsOpen = screenState.activeSheet is PlayerSheet.Comments
     LaunchedEffect(videoId, commentsOpen) {
-        if (!commentsOpen || !commentsEnabled || commentsLoadedFor == videoId) return@LaunchedEffect
+        if (!commentsOpen || !commentsEnabled) return@LaunchedEffect
+        if (commentsLoadedFor == videoId) {
+            // A first load while signed out never yields create params, so the composer
+            // stays hidden after signing in on the same video. Reopening refetches once
+            // the session is signed in and the composer is still missing.
+            if (YouTube.isSignedIn() && !canPostComment) {
+                viewModel.loadComments(videoId)
+            }
+            return@LaunchedEffect
+        }
         commentsLoadedFor = videoId
         viewModel.loadComments(videoId)
     }
