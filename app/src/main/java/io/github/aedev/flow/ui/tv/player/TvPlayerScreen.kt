@@ -28,6 +28,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.ui.AspectRatioFrameLayout
 import io.github.aedev.flow.data.local.PlayerOverlayPreferences
 import io.github.aedev.flow.data.model.Video
+import io.github.aedev.flow.innertube.YouTube
 import io.github.aedev.flow.player.EnhancedPlayerManager
 import io.github.aedev.flow.player.GlobalPlayerState
 import io.github.aedev.flow.player.subtitle.SubtitleChoice
@@ -45,6 +46,7 @@ import io.github.aedev.flow.ui.screens.player.state.PlayerSheet
 import io.github.aedev.flow.ui.screens.player.state.rememberPlayerCommentsUiState
 import io.github.aedev.flow.ui.screens.player.state.rememberPlayerScreenState
 import io.github.aedev.flow.ui.screens.player.state.rememberVideoPlayerPreferences
+import io.github.aedev.flow.ui.screens.settings.account.TvCodeLoginDialog
 import io.github.aedev.flow.ui.tv.input.TvPlayerAction
 import io.github.aedev.flow.ui.tv.player.state.TvOverlayMode
 import io.github.aedev.flow.ui.tv.player.state.TvPlayerOverlayController
@@ -86,6 +88,7 @@ fun TvPlayerScreen(
     val overlayState by overlayController.state.collectAsStateWithLifecycle()
     var scrubUiState by remember { mutableStateOf(TvScrubController.ScrubState()) }
     var showSave by remember { mutableStateOf(false) }
+    var showSignIn by remember { mutableStateOf(false) }
 
     val rootFocusRequester = remember { FocusRequester() }
     val seekBarFocusRequester = remember { FocusRequester() }
@@ -337,11 +340,13 @@ fun TvPlayerScreen(
                     onSettings = { openSheet(PlayerSheet.Settings()) },
                     onDownload = { openSheet(PlayerSheet.Download) },
                     onLike = {
-                        if (uiState.likeState == "LIKED") viewModel.removeLikeState(video.id)
+                        if (!YouTube.isSignedIn()) showSignIn = true
+                        else if (uiState.likeState == "LIKED") viewModel.removeLikeState(video.id)
                         else viewModel.likeVideo(video.id, video.title, video.thumbnailUrl, video.channelName)
                     },
                     onDislike = {
-                        if (uiState.likeState == "DISLIKED") viewModel.removeLikeState(video.id)
+                        if (!YouTube.isSignedIn()) showSignIn = true
+                        else if (uiState.likeState == "DISLIKED") viewModel.removeLikeState(video.id)
                         else viewModel.dislikeVideo(video.id)
                     },
                     isLiked = uiState.likeState == "LIKED",
@@ -401,5 +406,8 @@ fun TvPlayerScreen(
 
     if (showSave) {
         SaveVideoSheet(video = video, onDismiss = { showSave = false })
+    }
+    if (showSignIn) {
+        TvCodeLoginDialog(onDismiss = { showSignIn = false })
     }
 }
