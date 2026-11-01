@@ -3,17 +3,13 @@ package io.github.aedev.flow.data.engagement
 import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.aedev.flow.data.model.Video
-import io.github.aedev.flow.data.recommendation.FlowNeuroEngine
-import io.github.aedev.flow.data.recommendation.InteractionType
+import io.github.aedev.flow.data.engagement.InteractionType
 import io.github.aedev.flow.data.repository.YouTubeRepository
 import javax.inject.Inject
 
 /**
- * The learning signals an engagement action feeds the recommendation engine.
- *
- * [FlowNeuroEngine] is still reached through a context-keyed global, so this is the one place that
- * touches it: every engagement caller injects this instead, which keeps the global access isolated
- * behind a dependency a test can replace.
+ * The learning signals an engagement action used to feed the recommendation engine. The engine
+ * is gone; these stay as no-ops so every engagement caller keeps its shape and ordering.
  */
 class VideoEngagementSignals
     @Inject
@@ -25,13 +21,13 @@ class VideoEngagementSignals
             channelId: String,
             channelName: String,
             subscribed: Boolean,
-        ) = FlowNeuroEngine.onChannelSubscriptionChanged(context, channelId, channelName, subscribed)
+        ) = Unit
 
         suspend fun videoInteraction(
             video: Video,
             interactionType: InteractionType,
-        ) = FlowNeuroEngine.onVideoInteraction(context, video, interactionType)
+        ) = Unit
 
-        /** Learns a newly subscribed channel's declared keyword tags. */
-        suspend fun channelTagsLearned(channelId: String) = repository.learnChannelTags(context, channelId)
+        /** A newly subscribed channel's declared keyword tags used to teach the engine. */
+        suspend fun channelTagsLearned(channelId: String) = Unit
     }
