@@ -54,11 +54,11 @@ android {
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "shivyt.android.flow"
+        applicationId = "shivyt.android.glidetube"
         minSdk = 26
         targetSdk = 36
         versionCode = 1
-        versionName = "0.1.0"
+        versionName = "1.0.0"
 
         buildConfigField("int", "NIGHTLY_RUN", "0")
         buildConfigField("String", "APP_LANGUAGE_TAGS", "\"${(listOf("en") + translatedLocaleTags()).joinToString(",")}\"")
