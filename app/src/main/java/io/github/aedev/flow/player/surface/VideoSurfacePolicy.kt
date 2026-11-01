@@ -4,13 +4,22 @@ import android.os.Build
 import androidx.media3.common.Player
 
 object VideoSurfacePolicy {
-    fun usesSurfaceView(sdkInt: Int): Boolean = sdkInt >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE
+    /**
+     * TVs get SurfaceView from Android 12: a TV player is fullscreen and rectangular, so it
+     * needs none of the corner morphing the phone gate is conservative about, and SurfaceView
+     * skips the per-frame GPU copy TextureView pays — the cost that shows up as 4K lag on a
+     * TV SoC. The phone gate stays at Android 14.
+     */
+    fun usesSurfaceView(sdkInt: Int, isTelevision: Boolean = false): Boolean =
+        sdkInt >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE ||
+            (isTelevision && sdkInt >= Build.VERSION_CODES.S)
 
     fun canRestoreVideoOutput(
         sdkInt: Int,
         isDisplayInteractive: Boolean,
         isSurfaceValid: Boolean,
-    ): Boolean = isDisplayInteractive && (!usesSurfaceView(sdkInt) || isSurfaceValid)
+        isTelevision: Boolean = false,
+    ): Boolean = isDisplayInteractive && (!usesSurfaceView(sdkInt, isTelevision) || isSurfaceValid)
 
     /**
      * Whether a same-position seek is needed after a destroyed video surface comes back.
