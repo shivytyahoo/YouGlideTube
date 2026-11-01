@@ -61,6 +61,12 @@ class FlowNavigationScrollState internal constructor(
         isBarVisible = true
         accumulated = 0f
     }
+
+    /** A tap anywhere brings a stuck-hidden bar back; scrolling still hides it as before. */
+    internal fun reveal() {
+        isBarVisible = true
+        accumulated = 0f
+    }
 }
 
 /**
