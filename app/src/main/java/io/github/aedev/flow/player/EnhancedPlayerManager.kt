@@ -306,6 +306,15 @@ class EnhancedPlayerManager private constructor() {
             }.getOrDefault(true)
         } ?: true
 
+    private fun isTelevision(): Boolean =
+        appContext?.let { context ->
+            runCatching {
+                val uiModeManager =
+                    context.getSystemService(Context.UI_MODE_SERVICE) as? android.app.UiModeManager
+                uiModeManager?.currentModeType == android.content.res.Configuration.UI_MODE_TYPE_TELEVISION
+            }.getOrDefault(false)
+        } == true
+
     private fun acquireAdvanceWakeLock() {
         val ctx = appContext ?: return
         try {
@@ -3162,6 +3171,7 @@ class EnhancedPlayerManager private constructor() {
                 sdkInt = Build.VERSION.SDK_INT,
                 isDisplayInteractive = displayInteractive,
                 isSurfaceValid = surfaceValid,
+                isTelevision = isTelevision(),
             )
         if (!audioOnlyMode.restore(canRestore)) {
             autoNextLog(
