@@ -1,17 +1,16 @@
 package io.github.aedev.flow.data.shorts.queue
 
 import android.util.Log
+import io.github.aedev.flow.data.account.AccountSubscriptions
 import io.github.aedev.flow.data.local.PlayerPreferences
-import io.github.aedev.flow.data.local.SubscriptionRepository
 import io.github.aedev.flow.data.model.ShortVideo
-import io.github.aedev.flow.data.model.Video
 import io.github.aedev.flow.data.model.toShortVideo
-import io.github.aedev.flow.data.recommendation.FeedExclusions
+import io.github.aedev.flow.data.engagement.FeedExclusions
 import io.github.aedev.flow.data.shorts.ChannelShortsFeed
 import io.github.aedev.flow.data.shorts.ChannelShortsFeedPage
 import io.github.aedev.flow.data.shorts.ChannelShortsOwner
-import io.github.aedev.flow.data.subscriptions.SubscriptionFeedRepository
 import io.github.aedev.flow.data.subscriptions.SubscriptionWatchedVideos
+import io.github.aedev.flow.innertube.YouTube
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -22,39 +21,12 @@ import kotlinx.coroutines.withContext
 internal const val MAX_DEEP_SUBSCRIPTION_CHANNELS = 100
 
 /**
- * The order the deep tier walks the user's subscriptions in.
- *
- * Channels that posted a reel recently come first, newest reel first: they are the ones whose Shorts
- * tab is worth a request, and starting anywhere else makes the hand-over from the recent reels read
- * as a jump to strangers. Every other subscribed channel follows in subscription order, because a
- * channel that stopped posting reels a year ago is invisible to a sixty-day feed and its back
- * catalogue is exactly what this tier exists to reach.
- */
-internal fun subscriptionReelChannelOrder(
-    feed: List<Video>,
-    subscribedChannelIds: List<String>,
-    limit: Int = MAX_DEEP_SUBSCRIPTION_CHANNELS,
-): List<String> {
-    val newestReelAt = HashMap<String, Long>()
-    feed.forEach { video ->
-        if (!video.isShort || video.channelId.isBlank()) return@forEach
-        val seen = newestReelAt[video.channelId]
-        if (seen == null || video.timestamp > seen) newestReelAt[video.channelId] = video.timestamp
-    }
-    val reelPosters = newestReelAt.entries.sortedByDescending { it.value }.map { it.key }
-    return (reelPosters + subscribedChannelIds.filter { it.isNotBlank() })
-        .distinct()
-        .take(limit)
-}
-
-/**
  * Older reels, taken from the subscribed channels' own Shorts tabs.
  *
- * The subscription feed is built from channel RSS, which carries only each channel's last fifteen
- * uploads inside a sixty-day window — so [SubscriptionShortsLoader] runs dry after the recent reels,
- * and with watched reels hidden it runs dry sooner every session. This tier walks the channels
- * themselves instead, and only as far as the user actually swipes: nothing here is fetched to build
- * a queue, only to extend one.
+ * The server subscriptions page carries only each channel's recent reels — so
+ * [SubscriptionShortsLoader] runs dry after the recent reels, and with watched reels hidden it
+ * runs dry sooner every session. This tier walks the channels themselves instead, and only as
+ * far as the user actually swipes: nothing here is fetched to build a queue, only to extend one.
  *
  * Channels are worked a few at a time, each giving two reels per visit, and then parked behind the
  * channels not yet visited — so a page alternates between channels and the next page moves on to
@@ -63,8 +35,7 @@ internal fun subscriptionReelChannelOrder(
  * closest honest approximation.
  */
 class SubscriptionDeepShortsLoader(
-    private val subscriptionFeedRepository: SubscriptionFeedRepository,
-    private val subscriptionRepository: SubscriptionRepository,
+    private val accountSubscriptions: AccountSubscriptions,
     private val playerPreferences: PlayerPreferences,
     private val watchedVideos: SubscriptionWatchedVideos,
     private val exclusions: suspend () -> FeedExclusions = { FeedExclusions.NONE },
@@ -127,16 +98,15 @@ class SubscriptionDeepShortsLoader(
         prepared = true
         val excluded = playerPreferences.subscriptionShortsExcludedChannels.first()
         hidden = exclusions()
-        val feed = subscriptionFeedRepository.observeFeed().first()
-        skipIds =
-            buildSet {
-                addAll(watchedVideos.shortIds.first())
-                feed.forEach { video -> if (video.isShort && video.id.isNotBlank()) add(video.id) }
+        skipIds = watchedVideos.shortIds.first()
+        val channelIds =
+            if (YouTube.cookie == null) {
+                emptyList()
+            } else {
+                accountSubscriptions.ensureLoaded()
+                accountSubscriptions.channels.value.map { it.id }.take(MAX_DEEP_SUBSCRIPTION_CHANNELS)
             }
-        subscriptionReelChannelOrder(
-            feed = feed,
-            subscribedChannelIds = subscriptionRepository.getAllSubscriptions().first().map { it.channelId },
-        ).forEach { channelId -> if (channelId !in excluded && !hidden.hidesChannel(channelId)) pending.addLast(channelId) }
+        channelIds.forEach { channelId -> if (channelId !in excluded && !hidden.hidesChannel(channelId)) pending.addLast(channelId) }
         Log.d(TAG, "Deep subscription tier ready with ${pending.size} channels")
     }
 
