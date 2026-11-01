@@ -1,6 +1,6 @@
-# ShivFlow
+# YouGlideTube
 
-ShivFlow is a fast, buttery-smooth YouTube client for Android by Shivyt —
+YouGlideTube is a fast, buttery-smooth YouTube client for Android by Shivyt —
 built for instant playback, background play, downloads and a clean,
 distraction-free Material 3 interface.
 
@@ -21,6 +21,6 @@ distraction-free Material 3 interface.
 
 ## License
 
-ShivFlow's player foundation builds on open-source work licensed under
+YouGlideTube's player foundation builds on open-source work licensed under
 the GNU General Public License v3.0; this project is distributed under
 the same license. See `LICENSE` for the full text.
