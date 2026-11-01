@@ -1,5 +1,6 @@
 package io.github.aedev.flow.ui.screens.search
 
+import android.content.Intent
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.padding
@@ -11,6 +12,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -28,6 +30,7 @@ import io.github.aedev.flow.data.model.Video
 import io.github.aedev.flow.data.paging.SearchResultItem
 import io.github.aedev.flow.data.paging.supportsVideoFilters
 import io.github.aedev.flow.data.shorts.queue.ShortsQueueSource
+import io.github.aedev.flow.innertube.YouTube
 import io.github.aedev.flow.ui.components.FEED_MAX_AUTO_COLUMNS
 import io.github.aedev.flow.ui.components.FeedCardMinWidth
 import io.github.aedev.flow.ui.components.layout.navigation.LocalMediaNavigator
@@ -40,6 +43,7 @@ import io.github.aedev.flow.ui.components.shared.FeedGridSkeleton
 import io.github.aedev.flow.ui.components.shared.FlowEmptyState
 import io.github.aedev.flow.ui.components.shared.FlowErrorState
 import io.github.aedev.flow.ui.components.shared.quickactions.QuickActionsViewModel
+import io.github.aedev.flow.ui.screens.settings.account.GoogleLoginActivity
 import io.github.aedev.flow.utils.YouTubeLink
 import io.github.aedev.flow.utils.parseYouTubeLink
 
@@ -97,6 +101,7 @@ internal fun ColumnScope.SearchResultsBody(
     minCellWidth: Dp = FeedCardMinWidth,
 ) {
     val subscribedIds by quickActions.subscribedChannelIds.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     val currentOnVideoClick by rememberUpdatedState(onVideoClick)
 
     SearchFilterBar(
@@ -121,7 +126,11 @@ internal fun ColumnScope.SearchResultsBody(
                     dismissKeyboard = dismissKeyboard,
                     isSubscribed = { it in subscribedIds },
                     onSubscribeToggle = { channel ->
-                        quickActions.toggleSubscription(channel.id, channel.name, channel.thumbnailUrl)
+                        if (!YouTube.isSignedIn()) {
+                            context.startActivity(Intent(context, GoogleLoginActivity::class.java))
+                        } else {
+                            quickActions.toggleSubscription(channel.id, channel.name, channel.thumbnailUrl)
+                        }
                     },
                 )
             }
