@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -63,6 +64,7 @@ fun PlayerCommentsPanel(
     onPostReply: (Comment, String, (Boolean) -> Unit) -> Unit = { _, _, _ -> },
     onEditComment: (Comment, String, (Boolean) -> Unit) -> Unit = { _, _, _ -> },
     onDeleteComment: (Comment, (Boolean) -> Unit) -> Unit = { _, _ -> },
+    onRequireSignIn: (() -> Unit)? = null,
 ) {
     val listState = rememberLazyListState()
     val tint = rememberMediaArtworkTint(artworkUrl)
@@ -137,6 +139,15 @@ fun PlayerCommentsPanel(
                 sendDescriptionRes = R.string.post_comment,
                 onPost = onPostComment,
             )
+        }
+        if (!canPostComment && onRequireSignIn != null) {
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+            Button(
+                onClick = onRequireSignIn,
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+            ) {
+                Text(text = stringResource(R.string.sign_in_to_comment))
+            }
         }
     }
 }
