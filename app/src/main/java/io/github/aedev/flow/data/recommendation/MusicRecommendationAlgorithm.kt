@@ -3,8 +3,8 @@ package io.github.aedev.flow.data.recommendation
 import android.content.Context
 import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
-import io.github.aedev.flow.data.local.LikedVideosRepository
-import io.github.aedev.flow.data.music.PlaylistRepository
+import io.github.aedev.flow.data.engagement.SessionLikeState
+import io.github.aedev.flow.data.music.MusicSessionLibrary
 import io.github.aedev.flow.data.music.model.MusicArtist
 import io.github.aedev.flow.data.music.model.MusicItemType
 import io.github.aedev.flow.data.music.model.MusicTrack
@@ -49,11 +49,19 @@ class MusicRecommendationAlgorithm
     @Inject
     constructor(
         @ApplicationContext private val context: Context,
-        private val playlistRepository: PlaylistRepository,
-        private val likedVideosRepository: LikedVideosRepository,
+        private val musicSessionLibrary: MusicSessionLibrary,
+        private val sessionLikes: SessionLikeState,
         private val youTube: YouTube,
-        private val cacheDao: io.github.aedev.flow.data.local.dao.CacheDao,
     ) {
+        // Music home shelves live in RAM only (session cache); the disk cache store is gone.
+        @Volatile
+        private var homeSectionsCache: List<MusicSection>? = null
+
+        @Volatile
+        private var homeChipsCache: List<HomePage.Chip>? = null
+
+        @Volatile
+        private var homeContinuationCache: String? = null
         companion object {
             private const val TAG = "MusicRecAlgo"
             private const val CACHE_TTL_MS = 4 * 60 * 60 * 1000L
@@ -80,22 +88,10 @@ class MusicRecommendationAlgorithm
 
         suspend fun loadMusicHome(): Pair<List<MusicSection>, String?> =
             withContext(Dispatchers.IO) {
-                val cachedSections = if (isCacheLocaleCurrent()) cacheDao.getMusicHomeSections().firstOrNull() else null
-                if (cachedSections != null && cachedSections.isNotEmpty()) {
-                    val musicSections =
-                        cachedSections
-                            .map { entity ->
-                                MusicSection(
-                                    title = entity.title,
-                                    subtitle = entity.subtitle,
-                                    tracks = deserializeTracks(entity.tracksJson),
-                                )
-                            }.filter { it.tracks.isNotEmpty() }
-                    // An old-format cache deserializes to nothing — fall through to the network.
-                    if (musicSections.isNotEmpty()) {
-                        Log.d(TAG, "Loaded ${musicSections.size} sections from cache (fresh=${isHomeCacheFresh()})")
-                        return@withContext musicSections to cachePrefs.getString(KEY_LAST_CONTINUATION, null)
-                    }
+                val cachedSections = if (isCacheLocaleCurrent()) homeSectionsCache else null
+                if (!cachedSections.isNullOrEmpty()) {
+                    Log.d(TAG, "Loaded ${cachedSections.size} sections from cache (fresh=${isHomeCacheFresh()})")
+                    return@withContext cachedSections to (homeContinuationCache ?: cachePrefs.getString(KEY_LAST_CONTINUATION, null))
                 }
 
                 val networkResult = fetchAndCacheHome()
@@ -105,7 +101,7 @@ class MusicRecommendationAlgorithm
         /** Network refresh, skipped entirely while the cache is fresh. Returns null when skipped. */
         suspend fun refreshMusicHomeIfStale(): Pair<List<MusicSection>, String?>? =
             withContext(Dispatchers.IO) {
-                val hasCache = cacheDao.getMusicHomeSections().firstOrNull()?.isNotEmpty() == true
+                val hasCache = !homeSectionsCache.isNullOrEmpty()
                 if (hasCache && isHomeCacheFresh()) {
                     Log.d(TAG, "Music home cache fresh — skipping network refresh")
                     null
@@ -119,30 +115,7 @@ class MusicRecommendationAlgorithm
          */
         suspend fun getHomeChips(): List<HomePage.Chip> =
             withContext(Dispatchers.IO) {
-                val cachedChips = cacheDao.getMusicHomeChips().firstOrNull() ?: emptyList()
-                cachedChips.map { entity ->
-                    HomePage.Chip(
-                        title = entity.title,
-                        endpoint =
-                            if (entity.browseId !=
-                                null
-                            ) {
-                                io.github.aedev.flow.innertube.models
-                                    .BrowseEndpoint(entity.browseId, entity.params)
-                            } else {
-                                null
-                            },
-                        deselectEndPoint =
-                            if (entity.deselectBrowseId !=
-                                null
-                            ) {
-                                io.github.aedev.flow.innertube.models
-                                    .BrowseEndpoint(entity.deselectBrowseId, entity.deselectParams)
-                            } else {
-                                null
-                            },
-                    )
-                }
+                homeChipsCache ?: emptyList()
             }
 
         /**
@@ -176,40 +149,11 @@ class MusicRecommendationAlgorithm
                 if (homePage != null) {
                     val sections = parseHomeSections(homePage)
 
-                    // Cache them
-                    val entities =
-                        sections.mapIndexed { index, section ->
-                            io.github.aedev.flow.data.local.entity.MusicHomeCacheEntity(
-                                sectionId = "section_$index",
-                                title = section.title,
-                                subtitle = section.subtitle,
-                                tracksJson = serializeTracks(section.tracks),
-                                orderBy = index,
-                            )
-                        }
-                    cacheDao.clearMusicHomeCache()
-                    cacheDao.insertMusicHomeSections(entities)
-                    cachePrefs
-                        .edit()
-                        .putLong(KEY_LAST_CACHE_TIME, System.currentTimeMillis())
-                        .putString(KEY_LAST_CONTINUATION, homePage.continuation)
-                        .putString(KEY_LAST_CACHE_LOCALE, currentLocaleKey())
-                        .apply()
-
+                    // Cache them (RAM only)
+                    homeSectionsCache = sections
+                    homeContinuationCache = homePage.continuation
                     homePage.chips?.let { chips ->
-                        val chipEntities =
-                            chips.mapIndexed { index, chip ->
-                                io.github.aedev.flow.data.local.entity.MusicHomeChipEntity(
-                                    title = chip.title,
-                                    browseId = chip.endpoint?.browseId,
-                                    params = chip.endpoint?.params,
-                                    deselectBrowseId = chip.deselectEndPoint?.browseId,
-                                    deselectParams = chip.deselectEndPoint?.params,
-                                    orderBy = index,
-                                )
-                            }
-                        cacheDao.clearMusicHomeChips()
-                        cacheDao.insertMusicHomeChips(chipEntities)
+                        homeChipsCache = chips
                     }
 
                     return sections to homePage.continuation
@@ -280,7 +224,7 @@ class MusicRecommendationAlgorithm
 
                 // Gather User Signals
                 val favorites =
-                    likedVideosRepository.getAllLikedVideos().firstOrNull()?.map {
+                    sessionLikes.likedInfos().firstOrNull()?.map {
                         MusicTrack(
                             videoId = it.videoId,
                             title = it.title,
@@ -292,7 +236,7 @@ class MusicRecommendationAlgorithm
                         )
                     } ?: emptyList()
 
-                val history = playlistRepository.history.firstOrNull() ?: emptyList()
+                val history = musicSessionLibrary.history.firstOrNull() ?: emptyList()
 
                 // Seeds: Mix of history and favorites
                 val seeds = (history.take(5) + favorites.take(5)).shuffled().take(4)
