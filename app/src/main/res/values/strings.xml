@@ -701,8 +701,8 @@
     <string name="settings_reset_everything">Reset Everything</string>
     <string name="settings_analyzing_interactions">Analyzing your interactions...</string>
     <string name="settings_view_analytics">View Analytics</string>
-    <!-- Immersion Mode -->
-    <string name="deep_flow_mode_title">Immersion Mode</string>
+    <!-- Deep Glide Mode -->
+    <string name="deep_flow_mode_title">Deep Glide Mode</string>
     <string name="deep_flow_mode_subtitle">Pause learning while you browse</string>
     <string name="deep_flow_learning_paused">LEARNING PAUSED</string>
     <string name="deep_flow_expires_in">Expires in %s</string>
@@ -710,17 +710,17 @@
     <string name="deep_flow_expire_duration_subtitle">Learning resumes automatically after %s</string>
     <string name="deep_flow_save_history_title">Save to watch history</string>
     <string name="deep_flow_save_history_subtitle">Keep watch history without teaching recommendations</string>
-    <string name="deep_flow_scrobble_title">Scrobble during Immersion</string>
-    <string name="taste_learning_paused">Immersion is on, learning is paused</string>
+    <string name="deep_flow_scrobble_title">Scrobble during Deep Glide</string>
+    <string name="taste_learning_paused">Deep Glide is on, learning is paused</string>
     <string name="deep_flow_scrobble_subtitle">Keep sending listens to Last.fm, Libre.fm and ListenBrainz</string>
     <string name="deep_flow_on_search_title">Show on search</string>
-    <string name="deep_flow_on_search_subtitle">A Immersion switch above recent searches</string>
+    <string name="deep_flow_on_search_subtitle">A Deep Glide switch above recent searches</string>
     <string name="deep_flow_dialog_title">Pause Duration</string>
     <string name="deep_flow_dialog_body">How long should learning stay paused?</string>
-    <string name="deep_flow_enabled_message">Immersion enabled</string>
-    <string name="deep_flow_disabled_message">Immersion disabled</string>
-    <string name="deep_flow_expired_message">Immersion timer ended</string>
-    <string name="deep_flow_active_until_disabled">Immersion stays active until you turn it off</string>
+    <string name="deep_flow_enabled_message">Deep Glide enabled</string>
+    <string name="deep_flow_disabled_message">Deep Glide disabled</string>
+    <string name="deep_flow_expired_message">Deep Glide timer ended</string>
+    <string name="deep_flow_active_until_disabled">Deep Glide stays active until you turn it off</string>
     <string name="deep_flow_duration_never">Never</string>
     <string name="deep_flow_duration_1h">1 hour</string>
     <string name="deep_flow_duration_2h">2 hours</string>
@@ -1169,7 +1169,7 @@
     <string name="content_settings_home_subscriptions_subtitle">Mix videos from channels you follow into Home</string>
     <string name="settings_section_watch_history">Watch history</string>
     <string name="pause_watch_history_title">Pause watch history</string>
-    <string name="pause_watch_history_subtitle">Stop saving what you watch. Immersion also pauses learning</string>
+    <string name="pause_watch_history_subtitle">Stop saving what you watch. Deep Glide also pauses learning</string>
     <string name="content_settings_show_app_logo_title">Show app logo icon</string>
     <string name="content_settings_show_app_logo_subtitle">Show the YouGlideTube logo in the Home top bar</string>
     <string name="content_settings_header_shorts">Shorts</string>
@@ -1850,30 +1850,17 @@
         <item quantity="other">%1$d threads</item>
     </plurals>
     <!-- Donations Screen -->
-    <string name="support_donations_title">Support &amp; Donations</string>
-    <string name="support_flow_dev_title">Support YouGlideTube Development</string>
     <string name="support_flow_dev_desc">If YouGlideTube is useful to you, you can support it on Open Collective, Patreon or with crypto below. Thank you!</string>
     <string name="support_flow_open_collective">Support YouGlideTube on Open Collective</string>
     <string name="support_flow_patreon">Support YouGlideTube on Patreon</string>
     <string name="thank_you_support_message">Thank you for your support! ❤️</string>
     <string name="address_copied_toast">Address copied to clipboard</string>
-    <string name="donation_address_clip_label">Donation Address</string>
     <!-- One-time support prompt -->
-    <string name="donation_prompt_title">Enjoying YouGlideTube?</string>
-    <string name="donation_prompt_message">YouGlideTube is free, open source and ad-free. If it earned a spot on your phone, a little support keeps it going.</string>
-    <string name="donation_method_open_collective" translatable="false">Open Collective</string>
-    <string name="donation_method_patreon" translatable="false">Patreon</string>
-    <string name="donation_prompt_methods">Open Collective · Patreon · Bitcoin · Ethereum · Solana · USDT · Monero</string>
-    <string name="donation_prompt_support">Support development</string>
-    <string name="donation_prompt_later">Maybe later</string>
-    <string name="donation_prompt_never">Don\'t show again</string>
     <!-- About Screen -->
     <string name="about_creator">Creator</string>
     <string name="about_creator_name">shivytyahoo</string>
     <string name="about_website">Website</string>
     <string name="about_website_address">github.com/shivytyahoo/YouGlideTube</string>
-    <string name="about_reddit">Reddit</string>
-    <string name="about_reddit_subtitle">r/Flow_Official</string>
     <string name="github_subtitle">Source code &amp; Issues</string>
     <string name="newpipe_extractor_title">NewPipe Extractor</string>
     <string name="newpipe_extractor_subtitle">Core extraction library</string>
@@ -3576,7 +3563,6 @@
     <string name="settings_search_no_results">No settings found for "%1$s"</string>
     <string name="settings_lyrics_provider_order_description">Tried from top to bottom. Drag to reorder.</string>
     <string name="import_running_background">You can leave this screen. The import keeps running.</string>
-    <string name="donations_cryptocurrency">CRYPTOCURRENCY</string>
     <string name="import_no_history_entries">No watch-history entries found in file</string>
     <string name="import_no_videos">No videos found in playlist file</string>
     <string name="import_no_likes">No likes found. Export My Activity for YouTube as JSON, with your Google account in English.</string>
@@ -3850,11 +3836,6 @@
     <string name="diagnostics_snapshot_exported">Snapshot exported</string>
     <string name="diagnostics_snapshot_export_failed">Couldn\'t export the snapshot</string>
     <string name="settings_keywords_diagnostics">logs, crash, bug report, debug, support, logcat</string>
-    <string name="donation_currency_bitcoin" translatable="false">Bitcoin</string>
-    <string name="donation_currency_ethereum" translatable="false">Ethereum</string>
-    <string name="donation_currency_solana" translatable="false">Solana</string>
-    <string name="donation_currency_usdt" translatable="false">USDT (TRC-20)</string>
-    <string name="donation_currency_monero" translatable="false">Monero</string>
     <string name="settings_keywords_about">version, license, open source, github, reddit, contact, changelog</string>
     <string name="settings_changelog_version">Version %1$s</string>
     <string name="settings_changelog_installed">Installed</string>
