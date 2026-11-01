@@ -14,6 +14,12 @@ data class LiveChatMessage(
     val timestamp: String?,
     val type: LiveChatMessageType = LiveChatMessageType.TEXT,
     val isOwner: Boolean = false,
+    /** True when the author handle matches the signed-in account's handle (normalised). */
+    val isMine: Boolean = false,
+    /** Params for the message's context-menu endpoint; null when the poll carried none. */
+    val menuParams: String? = null,
+    /** apiUrl from the context-menu endpoint's command metadata, if the poll carried it. */
+    val menuApiUrl: String? = null,
     val isModerator: Boolean = false,
     val isVerified: Boolean = false,
     val isMember: Boolean = false,
