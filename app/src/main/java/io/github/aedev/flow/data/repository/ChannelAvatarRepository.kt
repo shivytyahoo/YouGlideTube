@@ -1,7 +1,6 @@
 package io.github.aedev.flow.data.repository
 
-import io.github.aedev.flow.data.local.dao.HomeFeedCacheDao
-import io.github.aedev.flow.data.local.dao.VideoDao
+import io.github.aedev.flow.data.local.HomeFeedCacheRepository
 import io.github.aedev.flow.di.NetworkIoDispatcher
 import io.github.aedev.flow.innertube.YouTube
 import kotlinx.coroutines.CoroutineDispatcher
@@ -17,15 +16,14 @@ private const val PARALLEL_FETCHES = 4
 private const val FETCH_TIMEOUT_MS = 10_000L
 
 /**
- * Avatars for channels known only by id and name. Cached feed rows and saved videos answer first;
+ * Avatars for channels known only by id and name. The in-memory feed cache answers first;
  * only the rest are fetched, a few at a time, and each answer is kept for the life of the process.
  */
 @Singleton
 class ChannelAvatarRepository
     @Inject
     constructor(
-        private val homeFeedCacheDao: HomeFeedCacheDao,
-        private val videoDao: VideoDao,
+        private val homeFeedCache: HomeFeedCacheRepository,
         @NetworkIoDispatcher private val networkDispatcher: CoroutineDispatcher,
     ) {
         /** Channel id to avatar URL; an empty URL is a channel already tried with no avatar found. */
@@ -35,8 +33,7 @@ class ChannelAvatarRepository
         suspend fun local(channelIds: List<String>): Map<String, String> {
             val missing = channelIds.filterNot(known::containsKey)
             if (missing.isNotEmpty()) {
-                (homeFeedCacheDao.channelAvatars(missing) + videoDao.channelAvatars(missing))
-                    .forEach { known.putIfAbsent(it.channelId, it.channelThumbnailUrl) }
+                homeFeedCache.channelAvatars(missing).forEach { (id, url) -> known.putIfAbsent(id, url) }
             }
             return channelIds.mapNotNull { id -> known[id]?.takeIf(String::isNotBlank)?.let { id to it } }.toMap()
         }
