@@ -20,6 +20,11 @@ internal object BackgroundCheckScheduler {
         updatesEnabled: Boolean,
     ): Boolean = notificationsEnabled && updatesEnabled
 
+    fun subscriptionCheckWanted(
+        notificationsEnabled: Boolean,
+        newVideosEnabled: Boolean,
+    ): Boolean = notificationsEnabled && newVideosEnabled
+
     /**
      * Runs for the life of the process. The first value only confirms the schedule a previous
      * process left (KEEP, so its timer is not reset); later changes replace it.
@@ -40,6 +45,17 @@ internal object BackgroundCheckScheduler {
                         }
                     }
             }
+        }
+        launch {
+            combine(preferences.notificationsEnabled, preferences.notifNewVideosEnabled, ::subscriptionCheckWanted)
+                .distinctUntilChanged()
+                .collectIndexed { index, wanted ->
+                    if (wanted) {
+                        SubscriptionCheckWorker.schedulePeriodicCheck(context, reschedule = index > 0)
+                    } else {
+                        SubscriptionCheckWorker.cancelScheduledChecks(context)
+                    }
+                }
         }
     }
 }
