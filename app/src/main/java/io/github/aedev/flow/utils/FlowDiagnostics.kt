@@ -75,7 +75,7 @@ object FlowDiagnostics {
         buildString {
             val ts = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss", Locale.US))
             appendLine("=".repeat(60))
-            appendLine("FLOW DIAGNOSTICS REPORT")
+            appendLine("GLIDE DIAGNOSTICS REPORT")
             appendLine("Generated: $ts")
             appendLine("=".repeat(60))
             appendLine()
