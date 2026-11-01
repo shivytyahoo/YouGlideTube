@@ -53,12 +53,6 @@ val DEFAULT_NAV_TAB_ORDER = listOf(0, 1, 2, 3, 4, 5, 6)
 
 private const val MAX_UNPLAYABLE_VIDEO_IDS = 300
 
-/**
- * Preferences that never leave the device in a backup: the proxy password, and SponsorBlock's
- * submission id, which is a private identity for the user's votes and segments.
- */
-private val BackupExcludedKeys = setOf("proxy_password", "sb_user_id")
-
 private fun String?.decodeUnplayableIds(): Set<String> =
     if (isNullOrBlank()) emptySet() else splitToSequence('\n').filter { it.isNotBlank() }.toCollection(LinkedHashSet())
 
@@ -173,9 +167,6 @@ class PlayerPreferences(
         val GROUPED_QUALITY_SELECTOR_ENABLED = booleanPreferencesKey("grouped_quality_selector_enabled")
         val SHORTS_CONTENT_ENABLED = booleanPreferencesKey("shorts_content_enabled")
         val CHANNEL_SHORTS_TAB_WHEN_HIDDEN = booleanPreferencesKey("channel_shorts_tab_when_hidden")
-        val NOTES_ENABLED = booleanPreferencesKey("notes_enabled")
-        val CHANNEL_NOTES_ENABLED = booleanPreferencesKey("channel_notes_enabled")
-        val VIDEO_NOTES_ENABLED = booleanPreferencesKey("video_notes_enabled")
         val SHORTS_SHELF_ENABLED = booleanPreferencesKey("shorts_shelf_enabled")
         val LIBRARY_SHELF_PREVIEWS_ENABLED = booleanPreferencesKey("library_shelf_previews_enabled")
         val SEPARATE_PLAYLIST_KINDS = booleanPreferencesKey("separate_playlist_kinds")
@@ -187,7 +178,6 @@ class PlayerPreferences(
         val HOME_SNAPSHOT_RECORDING = booleanPreferencesKey("home_snapshot_recording")
         val ONBOARDING_DONE = booleanPreferencesKey("onboarding_done")
         val SUBSCRIPTION_COLLABORATIONS_ENABLED = booleanPreferencesKey("subscription_collaborations_enabled")
-        val NOTES_SORT = stringPreferencesKey("notes_sort")
         val SHOW_WATCH_PROGRESS = booleanPreferencesKey("show_watch_progress")
         val WATCH_HISTORY_PAUSED = booleanPreferencesKey("watch_history_paused")
         val HOME_NAVIGATION_ENABLED = booleanPreferencesKey("home_navigation_enabled")
@@ -308,12 +298,10 @@ class PlayerPreferences(
         // Subscriptions feed view mode
         val SUBS_FULL_WIDTH_VIEW = booleanPreferencesKey("subs_full_width_view")
         val SUBS_SORT_MODE = stringPreferencesKey("subs_sort_mode")
-        val SUBS_SELECTED_GROUP = stringPreferencesKey("subs_selected_group")
         val SUBS_REFRESH_ON_STARTUP = booleanPreferencesKey("subs_refresh_on_startup")
         val SUBS_LAST_REFRESH_TIME = longPreferencesKey("subs_last_refresh_time")
         val SUBS_LAST_REFRESHED_COUNT = intPreferencesKey("subs_last_refreshed_count")
         val SUBS_SHOW_CHECKED_VIDEO_COUNT = booleanPreferencesKey("subs_show_checked_video_count")
-        val SHOW_CHANNEL_GROUP_BADGES = booleanPreferencesKey("show_channel_group_badges")
 
         // Donation / support prompt
         val DONATION_FIRST_LAUNCH_TIME = longPreferencesKey("donation_first_launch_time")
@@ -333,7 +321,6 @@ class PlayerPreferences(
         val PAUSE_MUSIC_WHEN_MUTED = booleanPreferencesKey("pause_music_when_muted")
         val ANIMATED_ARTWORK_WIFI_ONLY = booleanPreferencesKey("animated_artwork_wifi_only")
         val AUTO_DOWNLOAD_LIKED_MUSIC = booleanPreferencesKey("auto_download_liked_music")
-        val RECAP_SOURCE = stringPreferencesKey("recap_source")
         val HIDDEN_MUSIC_HOME_SHELVES = stringSetPreferencesKey("hidden_music_home_shelves")
         val HIDDEN_LIBRARY_SECTIONS = stringSetPreferencesKey("hidden_library_sections")
         val SPEED_PER_CHANNEL = booleanPreferencesKey("speed_per_channel")
@@ -428,9 +415,6 @@ class PlayerPreferences(
         val HOME_SUBS_ROTATION_CURSOR = intPreferencesKey("home_subs_rotation_cursor")
 
         // Auto-backup settings
-        val AUTO_BACKUP_FREQUENCY = stringPreferencesKey("auto_backup_frequency")
-        val AUTO_BACKUP_FOLDER_URI = stringPreferencesKey("auto_backup_folder_uri")
-        val AUTO_BACKUP_TYPE = stringPreferencesKey("auto_backup_type")
 
         // Return YouTube Dislikes
         val RYTD_ENABLED = booleanPreferencesKey("rytd_enabled")
@@ -925,38 +909,6 @@ class PlayerPreferences(
         }
     }
 
-    // The notes master switch. The two surface switches below are ANDed with it, so turning this off
-    // hides both without clearing either of their own settings.
-    val notesEnabled: Flow<Boolean> =
-        context.playerPreferencesDataStore.data
-            .map { preferences -> preferences[Keys.NOTES_ENABLED] ?: true }
-
-    suspend fun setNotesEnabled(enabled: Boolean) {
-        context.playerPreferencesDataStore.edit { preferences -> preferences[Keys.NOTES_ENABLED] = enabled }
-    }
-
-    val channelNotesEnabled: Flow<Boolean> =
-        context.playerPreferencesDataStore.data
-            .map { preferences -> preferences[Keys.CHANNEL_NOTES_ENABLED] ?: true }
-
-    suspend fun setChannelNotesEnabled(enabled: Boolean) {
-        context.playerPreferencesDataStore.edit { preferences -> preferences[Keys.CHANNEL_NOTES_ENABLED] = enabled }
-    }
-
-    val videoNotesEnabled: Flow<Boolean> =
-        context.playerPreferencesDataStore.data
-            .map { preferences -> preferences[Keys.VIDEO_NOTES_ENABLED] ?: true }
-
-    suspend fun setVideoNotesEnabled(enabled: Boolean) {
-        context.playerPreferencesDataStore.edit { preferences -> preferences[Keys.VIDEO_NOTES_ENABLED] = enabled }
-    }
-
-    val effectiveChannelNotesEnabled: Flow<Boolean> =
-        combine(notesEnabled, channelNotesEnabled) { master, own -> master && own }
-
-    val effectiveVideoNotesEnabled: Flow<Boolean> =
-        combine(notesEnabled, videoNotesEnabled) { master, own -> master && own }
-
     /**
      * Master switch for Shorts (reels) as content. When OFF the app hides every reel surface and the
      * five granular Shorts toggles below are overridden — read the `effective*` flows, never the raw
@@ -1130,15 +1082,6 @@ class PlayerPreferences(
     suspend fun setSubscriptionCollaborationsEnabled(enabled: Boolean) {
         context.playerPreferencesDataStore.edit { preferences ->
             preferences[Keys.SUBSCRIPTION_COLLABORATIONS_ENABLED] = enabled
-        }
-    }
-
-    /** The Notes page's sort, by enum name; kept so a hand-made order is still there next visit. */
-    val notesSort: Flow<String?> = context.playerPreferencesDataStore.data.map { preferences -> preferences[Keys.NOTES_SORT] }
-
-    suspend fun setNotesSort(name: String) {
-        context.playerPreferencesDataStore.edit { preferences ->
-            preferences[Keys.NOTES_SORT] = name
         }
     }
 
@@ -2154,15 +2097,6 @@ class PlayerPreferences(
         }
     }
 
-    /** The Everything, Videos or Music tab the recap was last left on. */
-    val recapSource: Flow<String?> = context.playerPreferencesDataStore.data.map { preferences -> preferences[Keys.RECAP_SOURCE] }
-
-    suspend fun setRecapSource(source: String) {
-        context.playerPreferencesDataStore.edit { preferences ->
-            preferences[Keys.RECAP_SOURCE] = source
-        }
-    }
-
     val autoDownloadLikedMusic: Flow<Boolean> =
         context.playerPreferencesDataStore.data
             .map { preferences -> preferences[Keys.AUTO_DOWNLOAD_LIKED_MUSIC] ?: false }
@@ -2390,19 +2324,7 @@ class PlayerPreferences(
         }
     }
 
-    val selectedSubscriptionGroup: Flow<String?> =
-        context.playerPreferencesDataStore.data
-            .map { preferences -> preferences[Keys.SUBS_SELECTED_GROUP]?.takeIf { it.isNotBlank() } }
 
-    suspend fun setSelectedSubscriptionGroup(groupName: String?) {
-        context.playerPreferencesDataStore.edit { preferences ->
-            if (groupName.isNullOrBlank()) {
-                preferences.remove(Keys.SUBS_SELECTED_GROUP)
-            } else {
-                preferences[Keys.SUBS_SELECTED_GROUP] = groupName
-            }
-        }
-    }
 
     val subscriptionRefreshOnStartup: Flow<Boolean> =
         context.playerPreferencesDataStore.data
@@ -2422,15 +2344,7 @@ class PlayerPreferences(
         context.playerPreferencesDataStore.data
             .map { preferences -> preferences[Keys.SUBS_LAST_REFRESHED_COUNT] ?: 0 }
 
-    val showChannelGroupBadges: Flow<Boolean> =
-        context.playerPreferencesDataStore.data
-            .map { preferences -> preferences[Keys.SHOW_CHANNEL_GROUP_BADGES] ?: false }
 
-    suspend fun setShowChannelGroupBadges(enabled: Boolean) {
-        context.playerPreferencesDataStore.edit { preferences ->
-            preferences[Keys.SHOW_CHANNEL_GROUP_BADGES] = enabled
-        }
-    }
 
     val subscriptionShowCheckedVideoCount: Flow<Boolean> =
         context.playerPreferencesDataStore.data
@@ -3030,12 +2944,21 @@ class PlayerPreferences(
         }
     }
 
+    // TV boxes ride out network stalls far better with a deeper buffer, and their
+    // slower storage/CPU makes rebuffering costlier: untouched settings default
+    // deeper there. Anything the user picked (a profile or a custom value) wins.
+    private val isTvDevice: Boolean by lazy {
+        io.github.aedev.flow.platform.DeviceFormFactorDetector
+            .detect(context) == io.github.aedev.flow.platform.DeviceFormFactor.TV
+    }
+
     // Buffer Preferences - Optimized for fast startup while maintaining stability
     // These are the defaults that balance quick playback start with smooth streaming
     val minBufferMs: Flow<Int> =
         context.playerPreferencesDataStore.data
             .map { preferences ->
-                preferences[Keys.MIN_BUFFER_MS] ?: BufferProfile.STABLE.minBuffer
+                preferences[Keys.MIN_BUFFER_MS]
+                    ?: if (isTvDevice) TV_MIN_BUFFER_MS else BufferProfile.STABLE.minBuffer
             }
 
     suspend fun setMinBufferMs(ms: Int) {
@@ -3047,7 +2970,8 @@ class PlayerPreferences(
     val maxBufferMs: Flow<Int> =
         context.playerPreferencesDataStore.data
             .map { preferences ->
-                preferences[Keys.MAX_BUFFER_MS] ?: BufferProfile.STABLE.maxBuffer
+                preferences[Keys.MAX_BUFFER_MS]
+                    ?: if (isTvDevice) TV_MAX_BUFFER_MS else BufferProfile.STABLE.maxBuffer
             }
 
     suspend fun setMaxBufferMs(ms: Int) {
@@ -3714,53 +3638,6 @@ class PlayerPreferences(
         }
     }
 
-    // AUTO-BACKUP SETTINGS
-    val autoBackupFrequency: Flow<LocalDataManager.AutoBackupFrequency> =
-        context.playerPreferencesDataStore.data
-            .map { preferences ->
-                runCatching {
-                    LocalDataManager.AutoBackupFrequency.valueOf(
-                        preferences[Keys.AUTO_BACKUP_FREQUENCY] ?: LocalDataManager.AutoBackupFrequency.NONE.name,
-                    )
-                }.getOrDefault(LocalDataManager.AutoBackupFrequency.NONE)
-            }
-
-    suspend fun setAutoBackupFrequency(frequency: LocalDataManager.AutoBackupFrequency) {
-        context.playerPreferencesDataStore.edit { preferences ->
-            preferences[Keys.AUTO_BACKUP_FREQUENCY] = frequency.name
-        }
-    }
-
-    val autoBackupFolderUri: Flow<String?> =
-        context.playerPreferencesDataStore.data
-            .map { preferences -> preferences[Keys.AUTO_BACKUP_FOLDER_URI]?.takeIf { it.isNotBlank() } }
-
-    suspend fun setAutoBackupFolderUri(uri: String?) {
-        context.playerPreferencesDataStore.edit { preferences ->
-            if (uri != null) {
-                preferences[Keys.AUTO_BACKUP_FOLDER_URI] = uri
-            } else {
-                preferences.remove(Keys.AUTO_BACKUP_FOLDER_URI)
-            }
-        }
-    }
-
-    val autoBackupType: Flow<LocalDataManager.AutoBackupType> =
-        context.playerPreferencesDataStore.data
-            .map { preferences ->
-                runCatching {
-                    LocalDataManager.AutoBackupType.valueOf(
-                        preferences[Keys.AUTO_BACKUP_TYPE] ?: LocalDataManager.AutoBackupType.APP_DATA.name,
-                    )
-                }.getOrDefault(LocalDataManager.AutoBackupType.APP_DATA)
-            }
-
-    suspend fun setAutoBackupType(type: LocalDataManager.AutoBackupType) {
-        context.playerPreferencesDataStore.edit { preferences ->
-            preferences[Keys.AUTO_BACKUP_TYPE] = type.name
-        }
-    }
-
     /** Whether a watch may be written to history: paused history and Deep Flow both stop it. */
     suspend fun isWatchHistorySavingBlocked(): Boolean =
         watchHistoryPaused.first() || (isDeepFlowCurrentlyActive() && !isDeepFlowSaveToHistoryEnabled())
@@ -3780,45 +3657,6 @@ class PlayerPreferences(
         return stillActive
     }
 
-    suspend fun getExportData(): SettingsBackup {
-        val prefs = context.playerPreferencesDataStore.data.first()
-        val strings = mutableMapOf<String, String>()
-        val booleans = mutableMapOf<String, Boolean>()
-        val ints = mutableMapOf<String, Int>()
-        val floats = mutableMapOf<String, Float>()
-        val longs = mutableMapOf<String, Long>()
-
-        prefs.asMap().forEach { (key, value) ->
-            if (key.name in BackupExcludedKeys) return@forEach
-            when (value) {
-                is String -> strings[key.name] = value
-                is Boolean -> booleans[key.name] = value
-                is Int -> ints[key.name] = value
-                is Float -> floats[key.name] = value
-                is Long -> longs[key.name] = value
-            }
-        }
-        return SettingsBackup(strings, booleans, ints, floats, longs)
-    }
-
-    suspend fun restoreData(backup: SettingsBackup) {
-        context.playerPreferencesDataStore.edit { prefs ->
-            backup.strings.forEach { (k, v) ->
-                if (k !in BackupExcludedKeys) {
-                    prefs[stringPreferencesKey(k)] = v
-                }
-            }
-            backup.booleans.forEach { (k, v) -> prefs[booleanPreferencesKey(k)] = v }
-            backup.ints.forEach { (k, v) -> prefs[intPreferencesKey(k)] = v }
-            backup.floats.forEach { (k, v) -> prefs[floatPreferencesKey(k)] = v }
-            backup.longs.forEach { (k, v) -> prefs[longPreferencesKey(k)] = v }
-        }
-        // The UI language belongs to the language manager; written here alone it would never show,
-        // while YouTube's language follows what is shown (#1277).
-        backup.strings[Keys.APP_LANGUAGE.name]
-            ?.takeIf { AppLanguageManager.normalizeLanguageTag(it) != AppLanguageManager.appliedLanguage.value }
-            ?.let { tag -> withContext(Dispatchers.Main.immediate) { AppLanguageManager.applyLanguageTag(context, tag) } }
-    }
 }
 
 /** Action to take when a SponsorBlock segment is encountered. */
@@ -3835,6 +3673,10 @@ enum class SponsorBlockAction(
         fun fromString(name: String): SponsorBlockAction = values().find { it.name == name } ?: SKIP
     }
 }
+
+/** Default buffer depths on TV when the user has not chosen a profile or custom values. */
+private const val TV_MIN_BUFFER_MS = 45_000
+private const val TV_MAX_BUFFER_MS = 90_000
 
 enum class BufferProfile(
     val label: String,
