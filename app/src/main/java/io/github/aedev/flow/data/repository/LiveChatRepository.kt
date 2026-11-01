@@ -6,11 +6,19 @@ import io.github.aedev.flow.data.model.LiveChatMessageType
 import io.github.aedev.flow.data.model.LiveChatSegment
 import io.github.aedev.flow.innertube.YouTube
 import io.github.aedev.flow.innertube.models.response.GetLiveChatResponse
+import io.github.aedev.flow.utils.ShivLog
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
+
+/** The outcome of a live-chat send, read off the send response's actions. */
+enum class LiveChatSendStatus {
+    POSTED,
+    ATTESTATION,
+    FAILED,
+}
 
 /**
  * Fetches YouTube live chat via the native InnerTube stack (no NewPipeExtractor). Ported from PipePipe's
@@ -35,6 +43,41 @@ class LiveChatRepository
                 } catch (e: Exception) {
                     Log.w(TAG, "Failed to seed live chat continuation for $videoId: ${e.message}")
                     null
+                }
+            }
+
+        /** Deletes one own message; never throws — failures come back as false. */
+        suspend fun deleteLiveChatMessage(
+            message: LiveChatMessage,
+        ): Boolean =
+            withContext(Dispatchers.IO) {
+                try {
+                    YouTube.deleteLiveChatMessage(message).getOrThrow()
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    // Logcat alone never reaches a Diagnostics report, so the
+                    // reason is also written to ShivLog for the next report.
+                    Log.w(TAG, "Failed to delete live chat message ${message.id}: ${e.message}")
+                    ShivLog.i("liveChatDelete id=${message.id} error=${e.message}")
+                    false
+                }
+            }
+
+        /** Posts one message; never throws — failures come back as [LiveChatSendStatus.FAILED]. */
+        suspend fun sendLiveChatMessage(
+            videoId: String,
+            channelId: String,
+            text: String,
+        ): LiveChatSendStatus =
+            withContext(Dispatchers.IO) {
+                try {
+                    YouTube.sendLiveChatMessage(videoId, channelId, text).getOrThrow()
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Log.w(TAG, "Live chat send failed: ${e.message}")
+                    LiveChatSendStatus.FAILED
                 }
             }
 
@@ -102,6 +145,8 @@ class LiveChatRepository
                 id = msgId,
                 author = authorName?.value() ?: "",
                 authorPhotoUrl = authorPhoto?.bestUrl(),
+                menuParams = contextMenuEndpoint?.liveChatItemContextMenuEndpoint?.params,
+                menuApiUrl = contextMenuEndpoint?.commandMetadata?.webCommandMetadata?.apiUrl,
                 message = text,
                 segments = segments,
                 timestamp = timestampText?.value(),
