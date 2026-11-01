@@ -70,10 +70,17 @@ fun VideoPlayerSurface(
         }
     val cornerRadiusPx = with(density) { cornerRadiusDp.dp.toPx() }
 
+    val isTelevision =
+        remember(context) {
+            val uiModeManager =
+                context.getSystemService(android.content.Context.UI_MODE_SERVICE) as? android.app.UiModeManager
+            uiModeManager?.currentModeType == android.content.res.Configuration.UI_MODE_TYPE_TELEVISION
+        }
+
     val playerView =
         remember {
             Log.d("EnhancedVideoPlayer", "Creating shared PlayerView (sdk=${Build.VERSION.SDK_INT})")
-            (LayoutInflater.from(context).inflate(flowPlayerViewLayout(), null) as PlayerView).apply {
+            (LayoutInflater.from(context).inflate(flowPlayerViewLayout(isTelevision), null) as PlayerView).apply {
                 layoutParams =
                     FrameLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
