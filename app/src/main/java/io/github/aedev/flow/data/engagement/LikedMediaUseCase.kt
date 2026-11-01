@@ -1,11 +1,10 @@
 package io.github.aedev.flow.data.engagement
 
 import io.github.aedev.flow.data.local.LikedVideoInfo
-import io.github.aedev.flow.data.local.LikedVideosRepository
 import io.github.aedev.flow.data.model.toMusicTrack
 import io.github.aedev.flow.data.scrobble.Scrobbler
 import javax.inject.Inject
-import io.github.aedev.flow.data.music.PlaylistRepository as MusicLibrary
+import io.github.aedev.flow.data.music.MusicSessionLibrary as MusicLibrary
 
 /**
  * Likes and unlikes from the Liked videos and Liked music pages. A liked song is also kept in the
@@ -14,16 +13,22 @@ import io.github.aedev.flow.data.music.PlaylistRepository as MusicLibrary
 class LikedMediaUseCase
     @Inject
     constructor(
-        private val likes: LikedVideosRepository,
+        private val likes: SessionLikeState,
         private val musicLibrary: MusicLibrary,
         private val scrobbler: Scrobbler,
     ) {
-        /** Unlikes [videoIds]; the result is what [restore] needs to undo it. */
-        suspend fun unlike(videoIds: Collection<String>): List<LikedVideoInfo> {
-            val taken = likes.takeLikes(videoIds)
-            taken.filter { it.isMusic }.forEach {
-                musicLibrary.removeFromFavorites(it.videoId)
-                scrobbler.onLikeChanged(it.toMusicTrack(), liked = false)
+        /**
+         * Unlikes the given likes; the result is what [restore] needs to undo it. Each removal
+         * goes through the session like state, which writes the account unlike.
+         */
+        suspend fun unlike(liked: List<LikedVideoInfo>): List<LikedVideoInfo> {
+            val taken = liked.filter { it.videoId.isNotBlank() }
+            taken.forEach { info ->
+                likes.removeLikeState(info.videoId)
+                if (info.isMusic) {
+                    musicLibrary.removeFromFavorites(info.videoId)
+                    scrobbler.onLikeChanged(info.toMusicTrack(), liked = false)
+                }
             }
             return taken
         }
