@@ -32,7 +32,6 @@ internal data class SettingsHomeState(
 
 internal class SettingsHomeActions(
     val onOpen: (SettingsTarget) -> Unit,
-    val onOpenDonations: () -> Unit,
     val onDeepFlowChange: (Boolean) -> Unit,
     val onDurationClick: () -> Unit,
     val onSaveHistoryChange: (Boolean) -> Unit,
