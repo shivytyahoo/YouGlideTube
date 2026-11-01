@@ -3,6 +3,111 @@ package io.github.aedev.flow.data.local
 import android.content.Context
 import io.github.aedev.flow.data.engagement.FeedExclusions
 import io.github.aedev.flow.data.model.Video
+import io.github.aedev.flow.data.model.VideoCollaborator
+import java.io.File
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+
+/** One last-feed video row on disk; the transient/search-only fields of [Video] are left out. */
+@Serializable
+private data class DiskVideo(
+    val id: String,
+    val title: String,
+    val channelName: String,
+    val channelId: String,
+    val thumbnailUrl: String,
+    val duration: Int,
+    val viewCount: Long,
+    val likeCount: Long = 0,
+    val uploadDate: String,
+    val timestamp: Long = System.currentTimeMillis(),
+    val timestampIsExact: Boolean = false,
+    val description: String = "",
+    val channelThumbnailUrl: String = "",
+    val tags: List<String> = emptyList(),
+    val category: String? = null,
+    val isMusic: Boolean = false,
+    val isLive: Boolean = false,
+    val isShort: Boolean = false,
+    val isUpcoming: Boolean = false,
+    val isScheduledLive: Boolean = false,
+    val membersOnlyText: String? = null,
+    val commentCountText: String = "",
+    val channelThumbnailUrls: List<String> = emptyList(),
+    val collaborators: List<VideoCollaborator> = emptyList(),
+    val isVerifiedChannel: Boolean = false,
+    val badges: List<String> = emptyList(),
+)
+
+@Serializable
+private data class DiskFeedRow(
+    val video: DiskVideo,
+    val orderIndex: Int,
+    val cachedAt: Long,
+    val expiresAt: Long,
+)
+
+private fun Video.toDiskVideo(): DiskVideo =
+    DiskVideo(
+        id = id,
+        title = title,
+        channelName = channelName,
+        channelId = channelId,
+        thumbnailUrl = thumbnailUrl,
+        duration = duration,
+        viewCount = viewCount,
+        likeCount = likeCount,
+        uploadDate = uploadDate,
+        timestamp = timestamp,
+        timestampIsExact = timestampIsExact,
+        description = description,
+        channelThumbnailUrl = channelThumbnailUrl,
+        tags = tags,
+        category = category,
+        isMusic = isMusic,
+        isLive = isLive,
+        isShort = isShort,
+        isUpcoming = isUpcoming,
+        isScheduledLive = isScheduledLive,
+        membersOnlyText = membersOnlyText,
+        commentCountText = commentCountText,
+        channelThumbnailUrls = channelThumbnailUrls,
+        collaborators = collaborators,
+        isVerifiedChannel = isVerifiedChannel,
+        badges = badges,
+    )
+
+private fun DiskVideo.toVideo(): Video =
+    Video(
+        id = id,
+        title = title,
+        channelName = channelName,
+        channelId = channelId,
+        thumbnailUrl = thumbnailUrl,
+        duration = duration,
+        viewCount = viewCount,
+        likeCount = likeCount,
+        uploadDate = uploadDate,
+        timestamp = timestamp,
+        timestampIsExact = timestampIsExact,
+        description = description,
+        channelThumbnailUrl = channelThumbnailUrl,
+        tags = tags,
+        category = category,
+        isMusic = isMusic,
+        isLive = isLive,
+        isShort = isShort,
+        isUpcoming = isUpcoming,
+        isScheduledLive = isScheduledLive,
+        membersOnlyText = membersOnlyText,
+        commentCountText = commentCountText,
+        channelThumbnailUrls = channelThumbnailUrls,
+        collaborators = collaborators,
+        isVerifiedChannel = isVerifiedChannel,
+        badges = badges,
+    )
 
 data class CachedHomeVideo(
     val video: Video,
@@ -34,13 +139,36 @@ internal fun selectReservePageFromCache(
 }
 
 /**
- * The home/player feed cache, in memory only. It used to be a Room table; the local database
- * is gone, so the buckets below live for the session with the same caps and TTLs the table had.
- * Cross-restart, the feed simply starts from the network, which is what a cold cache did anyway.
+ * The home/player feed cache. Buckets live in memory with the same caps and TTLs the old
+ * Room table had — except the last feed, which is also written to disk, so a signed-out
+ * home still has something to show after a restart instead of an empty landing. The disk
+ * copy outlives the 8h memory TTL (7 days); the network refresh after hydrate replaces it.
  */
 class HomeFeedCacheRepository(
-    @Suppress("unused") context: Context,
+    private val context: Context,
 ) {
+    private val diskJson = Json { ignoreUnknownKeys = true }
+    private val diskFile: File
+        get() = File(context.filesDir, "guest_home_feed.json")
+
+    private fun readDiskRows(): List<DiskFeedRow> =
+        runCatching {
+            val file = diskFile
+            if (!file.exists()) return emptyList()
+            diskJson.decodeFromString<List<DiskFeedRow>>(file.readText())
+        }.getOrElse { emptyList() }
+
+    private suspend fun writeDiskRows(rows: List<DiskFeedRow>) {
+        runCatching {
+            withContext(Dispatchers.IO) {
+                if (rows.isEmpty()) {
+                    diskFile.delete()
+                } else {
+                    diskFile.writeText(diskJson.encodeToString(rows))
+                }
+            }
+        }
+    }
     private data class Row(
         val cacheKey: String,
         val bucket: String,
@@ -77,26 +205,58 @@ class HomeFeedCacheRepository(
     suspend fun loadLastFeed(
         filters: HomeFeedCacheFilters,
         now: Long = System.currentTimeMillis(),
-    ): List<Video> =
+    ): List<Video> {
+        val inMemory =
+            synchronized(lock) {
+                deleteExpiredLocked(now)
+                filterCachedHomeVideos(
+                    rows
+                        .filter { it.bucket == BUCKET_LAST_FEED && it.expiresAt > now }
+                        .sortedBy { it.orderIndex }
+                        .map { it.toCachedHomeVideo() },
+                    filters,
+                ).map { it.video }
+            }
+        if (inMemory.isNotEmpty()) return inMemory
+        // Cold start: the memory bucket is empty, so fall back to the disk copy and refill
+        // memory from it, keeping the same filtering and delete semantics as a live feed.
+        val diskRows =
+            withContext(Dispatchers.IO) { readDiskRows() }
+                .filter { it.expiresAt > now }
+                .sortedBy { it.orderIndex }
+        if (diskRows.isEmpty()) return emptyList()
+        val videos = diskRows.map { it.video.toVideo() }
         synchronized(lock) {
-            deleteExpiredLocked(now)
-            filterCachedHomeVideos(
-                rows
-                    .filter { it.bucket == BUCKET_LAST_FEED && it.expiresAt > now }
-                    .sortedBy { it.orderIndex }
-                    .map { it.toCachedHomeVideo() },
-                filters,
-            ).map { it.video }
+            insertLocked(
+                diskRows.map { row ->
+                    Row(
+                        cacheKey = keyOf(BUCKET_LAST_FEED, SOURCE_LAST_FEED, null, row.video.id),
+                        bucket = BUCKET_LAST_FEED,
+                        video = row.video.toVideo(),
+                        source = SOURCE_LAST_FEED,
+                        relatedSeedId = null,
+                        orderIndex = row.orderIndex,
+                        cachedAt = row.cachedAt,
+                        expiresAt = row.expiresAt,
+                    )
+                },
+            )
         }
+        return filterCachedHomeVideos(
+            videos.map { CachedHomeVideo(video = it, source = SOURCE_LAST_FEED) },
+            filters,
+        ).map { it.video }
+    }
 
     suspend fun saveLastFeed(
         videos: List<Video>,
         now: Long = System.currentTimeMillis(),
     ) {
+        val capped = videos.take(LAST_FEED_CAP)
         synchronized(lock) {
             rows.removeAll { it.bucket == BUCKET_LAST_FEED }
             insertLocked(
-                videos.take(LAST_FEED_CAP).mapIndexed { index, video ->
+                capped.mapIndexed { index, video ->
                     Row(
                         cacheKey = keyOf(BUCKET_LAST_FEED, SOURCE_LAST_FEED, null, video.id),
                         bucket = BUCKET_LAST_FEED,
@@ -110,6 +270,16 @@ class HomeFeedCacheRepository(
                 },
             )
         }
+        writeDiskRows(
+            capped.mapIndexed { index, video ->
+                DiskFeedRow(
+                    video = video.toDiskVideo(),
+                    orderIndex = index,
+                    cachedAt = now,
+                    expiresAt = now + DISK_LAST_FEED_TTL_MS,
+                )
+            },
+        )
     }
 
     suspend fun loadReservePage(
@@ -269,6 +439,9 @@ class HomeFeedCacheRepository(
     suspend fun deleteVideo(videoId: String) {
         if (videoId.isNotBlank()) {
             synchronized(lock) { rows.removeAll { it.video.id == videoId } }
+            val remaining =
+                withContext(Dispatchers.IO) { readDiskRows() }.filter { it.video.id != videoId }
+            writeDiskRows(remaining)
         }
     }
 
@@ -330,11 +503,15 @@ class HomeFeedCacheRepository(
     suspend fun deleteChannel(channelId: String) {
         if (channelId.isNotBlank()) {
             synchronized(lock) { rows.removeAll { it.video.channelId == channelId } }
+            val remaining =
+                withContext(Dispatchers.IO) { readDiskRows() }.filter { it.video.channelId != channelId }
+            writeDiskRows(remaining)
         }
     }
 
     suspend fun clearAll() {
         synchronized(lock) { rows.clear() }
+        writeDiskRows(emptyList())
     }
 
     /** Channel avatar URLs seen on cached videos, for surfaces that only hold a channel id. */
@@ -368,6 +545,7 @@ class HomeFeedCacheRepository(
         private const val SHORTS_RESERVE_CAP = 120
 
         private const val LAST_FEED_TTL_MS = 8L * 60L * 60L * 1000L
+        private const val DISK_LAST_FEED_TTL_MS = 7L * 24L * 60L * 60L * 1000L
         private const val RESERVE_TTL_MS = 12L * 60L * 60L * 1000L
         private const val RELATED_TTL_MS = 90L * 60L * 1000L
         private const val SHORTS_RESERVE_TTL_MS = 12L * 60L * 60L * 1000L
