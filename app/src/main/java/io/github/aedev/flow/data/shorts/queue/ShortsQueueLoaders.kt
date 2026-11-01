@@ -1,14 +1,13 @@
 package io.github.aedev.flow.data.shorts.queue
 
 import io.github.aedev.flow.data.local.PlayerPreferences
-import io.github.aedev.flow.data.local.PlaylistRepository
 import io.github.aedev.flow.data.model.ShortVideo
 import io.github.aedev.flow.data.model.toShortVideo
-import io.github.aedev.flow.data.recommendation.FeedExclusions
+import io.github.aedev.flow.data.engagement.FeedExclusions
 import io.github.aedev.flow.data.shorts.ShortsFeedRepository
 import io.github.aedev.flow.data.shorts.spreadChannels
-import io.github.aedev.flow.data.subscriptions.SubscriptionFeedRepository
 import io.github.aedev.flow.data.subscriptions.SubscriptionWatchedVideos
+import io.github.aedev.flow.innertube.YouTube
 import kotlinx.coroutines.flow.first
 
 /**
@@ -38,32 +37,10 @@ class AlgorithmicFeedLoader(
 }
 
 /**
- * The user's saved Shorts, in saved order.
- *
- * Reads the flow's current value **once** with [first]. The pre-queue version held an open `collect`,
- * so bookmarking or un-bookmarking anything rebuilt the list and reset the pager position mid-watch.
- */
-class SavedShortsLoader(
-    private val playlistRepository: PlaylistRepository,
-) : ShortsQueueLoader {
-    override suspend fun initial(): ShortsQueuePage {
-        val saved = playlistRepository.getSavedShortsFlow().first()
-        return ShortsQueuePage(
-            items = saved.map { it.toShortVideo() },
-            cursor = null,
-            exhausted = true,
-        )
-    }
-
-    override suspend fun more(cursor: String?): ShortsQueuePage = exhaustedPage()
-}
-
-/**
  * [exclusions] keeps reels marked not interested and blocked channels out, as the Subscriptions feed
  * does. The tapped reel is exempt from every filter: the user just chose it.
  */
 class SubscriptionShortsLoader(
-    private val subscriptionFeedRepository: SubscriptionFeedRepository,
     private val playerPreferences: PlayerPreferences,
     private val watchedVideos: SubscriptionWatchedVideos,
     private val anchorVideoId: String?,
@@ -73,15 +50,16 @@ class SubscriptionShortsLoader(
         val excludedChannelIds = playerPreferences.subscriptionShortsExcludedChannels.first()
         val watchedIds = watchedVideos.shortIds.first()
         val hidden = exclusions()
+        val page = if (YouTube.cookie == null) null else YouTube.serverSubscriptions().getOrNull()
         val items =
-            subscriptionFeedRepository
-                .observeFeed()
-                .first()
+            page
+                ?.shorts
+                .orEmpty()
                 .asSequence()
                 .filter { it.id.isNotBlank() }
                 .filter {
                     it.id == anchorVideoId ||
-                        (it.isShort && it.channelId !in excludedChannelIds && !hidden.hides(it) && it.id !in watchedIds)
+                        (it.channelId !in excludedChannelIds && !hidden.hides(it) && it.id !in watchedIds)
                 }.sortedByDescending { it.timestamp }
                 .map { it.toShortVideo() }
                 .toList()
