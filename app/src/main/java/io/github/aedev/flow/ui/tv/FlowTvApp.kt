@@ -18,9 +18,11 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.util.UnstableApi
 import androidx.navigation.compose.rememberNavController
+import io.github.aedev.flow.data.local.PlayerPreferences
 import io.github.aedev.flow.data.model.Video
 import io.github.aedev.flow.player.EnhancedMusicPlayerManager
 import io.github.aedev.flow.player.GlobalPlayerState
+import io.github.aedev.flow.ui.YouGlideTubeLaunchIntro
 import io.github.aedev.flow.ui.components.layout.navigation.LocalMediaNavigator
 import io.github.aedev.flow.ui.components.music.common.ProvideMusicPlaybackState
 import io.github.aedev.flow.ui.components.music.sheet.LocalMusicMenus
@@ -38,6 +40,7 @@ import io.github.aedev.flow.ui.tv.music.TvMusicNowPlaying
 import io.github.aedev.flow.ui.tv.navigation.TvMediaNavigator
 import io.github.aedev.flow.ui.tv.player.TvPlayerScreen
 import io.github.aedev.flow.ui.tv.theme.FlowTvTheme
+import kotlinx.coroutines.flow.first
 
 @androidx.annotation.OptIn(UnstableApi::class)
 @Composable
@@ -57,6 +60,11 @@ fun FlowTvApp(
     val shellViewModel: TvShellViewModel = hiltViewModel(activity)
     val navigation by shellViewModel.navigation.collectAsStateWithLifecycle()
     val navController = rememberNavController()
+    val preferences = remember { PlayerPreferences(context) }
+    var needsOnboarding by remember { mutableStateOf<Boolean?>(null) }
+    LaunchedEffect(Unit) {
+        needsOnboarding = !preferences.onboardingDone.first()
+    }
     val activeVideo by GlobalPlayerState.currentVideo.collectAsStateWithLifecycle()
     val activeMusicTrack by EnhancedMusicPlayerManager.currentTrack.collectAsStateWithLifecycle()
     val musicPlayerState by EnhancedMusicPlayerManager.playerState.collectAsStateWithLifecycle()
@@ -151,8 +159,10 @@ fun FlowTvApp(
                         )
                     } else if (video == null) {
                         val tvNavigation = navigation ?: return@Surface
+                        val onboarding = needsOnboarding ?: return@Surface
                         TvShell(
                             navigation = tvNavigation,
+                            needsOnboarding = onboarding,
                             navController = navController,
                             homeViewModel = homeViewModel,
                             musicViewModel = musicViewModel,
@@ -178,6 +188,7 @@ fun FlowTvApp(
                             onOpenChannel = mediaNavigator::openChannel,
                         )
                     }
+                    YouGlideTubeLaunchIntro()
                 }
             }
             MusicMenuSheets(musicMenus)
