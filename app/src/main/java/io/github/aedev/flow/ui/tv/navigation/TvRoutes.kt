@@ -28,6 +28,8 @@ object TvRoutes {
 
     const val DOWNLOADS = "downloads"
 
+    const val LOCAL_MEDIA = "localMedia"
+
     const val PLAYLISTS_KIND_ARG = "kind"
     const val PLAYLISTS = "playlists?kind={$PLAYLISTS_KIND_ARG}"
 
@@ -36,8 +38,6 @@ object TvRoutes {
     const val MUSIC_BROWSE = "youtube_browse/{$MUSIC_BROWSE_ID_ARG}?params={$MUSIC_BROWSE_PARAMS_ARG}"
 
     const val MOODS = "moodsAndGenres"
-
-    const val DONATIONS = "donations"
 
     /** [channelRef] is a full channel URL (preferred) or a bare channel id. */
     fun channel(channelRef: String): String = "channel?ref=${Uri.encode(channelRef)}"
