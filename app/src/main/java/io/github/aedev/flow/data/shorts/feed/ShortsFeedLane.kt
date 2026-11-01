@@ -44,3 +44,24 @@ data class ShortsFeedFilters(
     val excludedChannelIds: Set<String> = emptySet(),
     val isBlockedText: (title: String, channelName: String) -> Boolean = { _, _ -> false },
 )
+
+/** Where a reel seed comes from. */
+enum class ShortsSeedSource {
+    LIKED,
+    WANT_MORE,
+    SAVED,
+    WATCHED,
+
+    /** A reel the user dwelt on this session — usable, weakest. */
+    FEED,
+}
+
+/** A reel the user engaged with, offered as the seed of a related reel chain. */
+data class ShortsSeedInput(
+    val id: String,
+    val channelId: String,
+    val source: ShortsSeedSource,
+    val timestamp: Long,
+    /** Watched share for [ShortsSeedSource.WATCHED]; ignored elsewhere. */
+    val percentWatched: Double = 100.0,
+)
