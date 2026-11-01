@@ -1,5 +1,6 @@
 package io.github.aedev.flow.ui
 
+import android.content.Intent
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -55,6 +56,7 @@ import io.github.aedev.flow.ui.screens.player.VideoPlayerHost
 import io.github.aedev.flow.ui.screens.player.VideoPlayerViewModel
 import io.github.aedev.flow.ui.screens.player.dialogs.PlayerQueueSheetHost
 import io.github.aedev.flow.ui.screens.player.state.VideoPlayerUiState
+import io.github.aedev.flow.ui.screens.settings.account.GoogleLoginActivity
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
@@ -222,6 +224,7 @@ internal fun FlowPlayerOverlays(
                 scope = scope,
                 removedFromQueue = removedFromQueue,
                 onClose = closeVideo,
+                onRequireSignIn = { context.startActivity(Intent(context, GoogleLoginActivity::class.java)) },
             )
         }
 
