@@ -32,9 +32,6 @@ import dagger.hilt.android.AndroidEntryPoint
 import io.github.aedev.flow.data.local.AppFontPreferences
 import io.github.aedev.flow.data.local.AppUiModePreferences
 import io.github.aedev.flow.data.local.LocalDataManager
-import io.github.aedev.flow.data.playlist.PlaylistImport
-import io.github.aedev.flow.data.playlist.PlaylistTransfer
-import io.github.aedev.flow.data.recommendation.FlowNeuroEngine
 import io.github.aedev.flow.data.repository.DeArrowRepository
 import io.github.aedev.flow.data.repository.OriginalTitleRepository
 import io.github.aedev.flow.discord.DiscordPresenceRuntime
@@ -52,8 +49,6 @@ import io.github.aedev.flow.player.PictureInPictureHelper
 import io.github.aedev.flow.player.PipQueueNavigation
 import io.github.aedev.flow.ui.FlowApp
 import io.github.aedev.flow.ui.IncomingLinks
-import io.github.aedev.flow.ui.components.library.message
-import io.github.aedev.flow.ui.components.shared.ProvideChannelGroupLabels
 import io.github.aedev.flow.ui.components.shared.ProvideDateDisplaySettings
 import io.github.aedev.flow.ui.components.shared.card.ProvideVideoCardState
 import io.github.aedev.flow.ui.linkTextOf
@@ -71,7 +66,6 @@ import io.github.aedev.flow.ui.tv.FlowTvApp
 import io.github.aedev.flow.ui.utils.ProvideWindowSizeClass
 import io.github.aedev.flow.utils.AppLanguageManager
 import io.github.aedev.flow.utils.FlowCrashHandler
-import io.github.aedev.flow.utils.PLAYLIST_FILE_MIME_TYPE
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -100,9 +94,6 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var appFontPreferences: AppFontPreferences
-
-    @Inject
-    lateinit var playlistTransfer: dagger.Lazy<PlaylistTransfer>
 
     @Inject
     lateinit var videoPlayerManager: dagger.Lazy<EnhancedPlayerManager>
@@ -190,11 +181,6 @@ class MainActivity : ComponentActivity() {
         // synchronously and must still see it after a recreation they run inside of (#817).
         lifecyclePlaybackPreferences.observeIn(lifecycleScope)
 
-        // Initialize Neuro Engine (Recommendation System)
-        lifecycleScope.launch(Dispatchers.IO) {
-            FlowNeuroEngine.initialize(applicationContext)
-        }
-
         val dataManager = LocalDataManager(applicationContext)
 
         lifecycleScope.launch {
@@ -252,12 +238,6 @@ class MainActivity : ComponentActivity() {
                 return@setContent
             }
 
-            // Initialize Flow Neuro Engine
-            LaunchedEffect(Unit) {
-                io.github.aedev.flow.data.recommendation.FlowNeuroEngine
-                    .initialize(applicationContext)
-            }
-
             FlowTheme(theme) {
                 val splashTone = splashTone(MaterialTheme.colorScheme.background)
                 LaunchedEffect(splashTone) { splashController.rememberTheme(splashTone, appIconController.activeSuffix()) }
@@ -285,30 +265,28 @@ class MainActivity : ComponentActivity() {
                                 val openMusicPlayerRequest by links.musicPlayerRequest
                                 val pendingRoute by links.route
 
-                                ProvideChannelGroupLabels {
-                                    if (appUiRoot == AppUiRoot.TV) {
-                                        SideEffect { splashController.contentReady = true }
-                                        FlowTvApp(
-                                            deeplinkVideoId = deeplinkVideoId,
-                                            isShort = isDeeplinkShort,
-                                            onDeeplinkConsumed = links::consumeVideo,
-                                        )
-                                    } else {
-                                        FlowApp(
-                                            currentTheme = theme.themeMode,
-                                            themeVariant = theme.themeVariant,
-                                            systemLightThemeMode = theme.systemLightThemeMode,
-                                            systemDarkThemeMode = theme.systemDarkThemeMode,
-                                            deeplinkVideoId = deeplinkVideoId,
-                                            isShort = isDeeplinkShort,
-                                            isSharedLink = isDeeplinkShared,
-                                            openMusicPlayerRequest = openMusicPlayerRequest,
-                                            onDeeplinkConsumed = links::consumeVideo,
-                                            pendingRoute = pendingRoute,
-                                            onPendingRouteConsumed = links::consumeRoute,
-                                            onStartDestinationKnown = { splashController.contentReady = true },
-                                        )
-                                    }
+                                if (appUiRoot == AppUiRoot.TV) {
+                                    SideEffect { splashController.contentReady = true }
+                                    FlowTvApp(
+                                        deeplinkVideoId = deeplinkVideoId,
+                                        isShort = isDeeplinkShort,
+                                        onDeeplinkConsumed = links::consumeVideo,
+                                    )
+                                } else {
+                                    FlowApp(
+                                        currentTheme = theme.themeMode,
+                                        themeVariant = theme.themeVariant,
+                                        systemLightThemeMode = theme.systemLightThemeMode,
+                                        systemDarkThemeMode = theme.systemDarkThemeMode,
+                                        deeplinkVideoId = deeplinkVideoId,
+                                        isShort = isDeeplinkShort,
+                                        isSharedLink = isDeeplinkShared,
+                                        openMusicPlayerRequest = openMusicPlayerRequest,
+                                        onDeeplinkConsumed = links::consumeVideo,
+                                        pendingRoute = pendingRoute,
+                                        onPendingRouteConsumed = links::consumeRoute,
+                                        onStartDestinationKnown = { splashController.contentReady = true },
+                                    )
                                 }
                             }
                         }
@@ -354,35 +332,10 @@ class MainActivity : ComponentActivity() {
         handleIntent(intent)
     }
 
-    private fun playlistFileIn(intent: Intent): Uri? {
-        val type = intent.type ?: intent.data?.takeIf { it.scheme == ContentResolver.SCHEME_CONTENT }?.let(contentResolver::getType)
-        if (type != PLAYLIST_FILE_MIME_TYPE) return null
-        return when (intent.action) {
-            Intent.ACTION_VIEW -> intent.data
-            Intent.ACTION_SEND -> IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java)
-            else -> null
-        }
-    }
-
-    private fun importPlaylistFile(file: Uri) {
-        lifecycleScope.launch {
-            val result = playlistTransfer.get().import(file, getString(R.string.imported_playlist_default_name))
-            Toast.makeText(this@MainActivity, result.message(this@MainActivity), Toast.LENGTH_LONG).show()
-            if (result is PlaylistImport.Imported) {
-                links.openRoute(if (result.isMusic) musicCollectionRoute(result.playlistId) else "playlist/${result.playlistId}")
-            }
-        }
-    }
-
     private fun handleIntent(intent: Intent) {
         if (intent.getBooleanExtra(NotificationHelper.EXTRA_OPEN_UPDATE, false)) {
             intent.removeExtra(NotificationHelper.EXTRA_OPEN_UPDATE)
             links.openRoute(UPDATE_ROUTE)
-            return
-        }
-        val playlistFile = playlistFileIn(intent)
-        if (playlistFile != null) {
-            if (!isRestoringState) importPlaylistFile(playlistFile)
             return
         }
         val notificationVideoId = intent.getStringExtra("notification_video_id") ?: intent.getStringExtra("video_id")
