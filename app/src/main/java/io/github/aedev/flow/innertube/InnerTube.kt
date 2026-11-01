@@ -1020,7 +1020,15 @@ class InnerTube {
         commentText: String,
         authUser: Boolean,
     ): HttpResponse {
-        val client = YouTubeClient.WEB.copy(loginSupported = true)
+        // Same client rule as nextWatchAuthed: a TV-code (OAuth) token is a TV
+        // client's token, and in a WEB context YouTube refuses it — so comment
+        // posts from a TV-code session ride TVHTML5. Cookie sessions keep WEB.
+        val client =
+            if (cookie.isNullOrBlank() && oauthAccessToken != null) {
+                YouTubeClient.TVHTML5
+            } else {
+                YouTubeClient.WEB.copy(loginSupported = true)
+            }
         // The endpoint is comment/create_comment — every working InnerTube client
         // (YouTube.js, SmartTube's MediaServiceCore, OpenCLI) posts there. The old
         // comment/create path is an unregistered route: it answered a bare 404 with an
