@@ -1,13 +1,11 @@
 package io.github.aedev.flow.data.shorts.feed
 
+import io.github.aedev.flow.data.account.AccountSubscriptions
 import io.github.aedev.flow.data.local.PlayerPreferences
-import io.github.aedev.flow.data.local.SubscriptionRepository
 import io.github.aedev.flow.data.model.ShortVideo
 import io.github.aedev.flow.data.model.toShortVideo
 import io.github.aedev.flow.data.shorts.ChannelShortsFeed
-import io.github.aedev.flow.data.shorts.queue.subscriptionReelChannelOrder
 import io.github.aedev.flow.data.shorts.sliceFrom
-import io.github.aedev.flow.data.subscriptions.SubscriptionFeedRepository
 import io.github.aedev.flow.innertube.YouTube
 import io.github.aedev.flow.innertube.pages.reel.ReelSequencePage
 import kotlinx.coroutines.flow.first
@@ -35,7 +33,7 @@ interface ShortsFeedSources {
 
     suspend fun discovery(query: String): List<ShortVideo>
 
-    /** Reels the subscription feed already holds; no request. */
+    /** Reels from the account subscriptions page; empty when signed out. */
     suspend fun subscriptionReels(): List<ShortVideo>
 
     /** The next few reels of [channelId]'s Shorts tab; empty once the tab is spent. */
@@ -49,8 +47,7 @@ interface ShortsFeedSources {
 class InnerTubeShortsFeedSources
     @Inject
     constructor(
-        private val subscriptionFeedRepository: SubscriptionFeedRepository,
-        private val subscriptionRepository: SubscriptionRepository,
+        private val accountSubscriptions: AccountSubscriptions,
         private val playerPreferences: PlayerPreferences,
     ) : ShortsFeedSources {
         private val gate = Semaphore(MAX_CONCURRENT_REQUESTS)
@@ -106,12 +103,11 @@ class InnerTubeShortsFeedSources
                 .map { it.toShortVideo() }
 
         override suspend fun subscriptionReels(): List<ShortVideo> {
+            if (YouTube.cookie == null) return emptyList()
             val excluded = playerPreferences.subscriptionShortsExcludedChannels.first()
-            return subscriptionFeedRepository
-                .observeFeed()
-                .first()
-                .filter { it.isShort && it.id.isNotBlank() && it.channelId !in excluded }
-                .sortedByDescending { it.timestamp }
+            val page = YouTube.serverSubscriptions().getOrNull() ?: return emptyList()
+            return page.shorts
+                .filter { it.id.isNotBlank() && it.channelId !in excluded }
                 .map { it.toShortVideo() }
         }
 
@@ -132,11 +128,10 @@ class InnerTubeShortsFeedSources
         }
 
         override suspend fun subscribedChannels(): List<String> {
+            if (YouTube.cookie == null) return emptyList()
             val excluded = playerPreferences.subscriptionShortsExcludedChannels.first()
-            return subscriptionReelChannelOrder(
-                feed = subscriptionFeedRepository.observeFeed().first(),
-                subscribedChannelIds = subscriptionRepository.getAllSubscriptions().first().map { it.channelId },
-            ).filterNot { it in excluded }
+            accountSubscriptions.ensureLoaded()
+            return accountSubscriptions.channels.value.map { it.id }.filterNot { it in excluded }
         }
 
         private companion object {
