@@ -6,19 +6,18 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.aedev.flow.data.local.CachedHomeVideo
 import io.github.aedev.flow.data.local.HomeFeedCacheFilters
 import io.github.aedev.flow.data.local.HomeFeedCacheRepository
-import io.github.aedev.flow.data.local.LikedVideosRepository
+import io.github.aedev.flow.data.engagement.SessionLikeState
 import io.github.aedev.flow.data.local.PlayerPreferences
-import io.github.aedev.flow.data.local.PlaylistRepository
-import io.github.aedev.flow.data.local.SubscriptionRepository
-import io.github.aedev.flow.data.local.ViewHistory
+import io.github.aedev.flow.data.account.AccountSubscriptions
+import io.github.aedev.flow.data.local.SessionHistory
 import io.github.aedev.flow.data.model.ShortVideo
 import io.github.aedev.flow.data.model.Video
 import io.github.aedev.flow.data.model.toShortVideo
 import io.github.aedev.flow.data.model.toVideo
-import io.github.aedev.flow.data.recommendation.FeedExclusions
-import io.github.aedev.flow.data.recommendation.FlowNeuroEngine
-import io.github.aedev.flow.data.recommendation.ShortsSeedInput
-import io.github.aedev.flow.data.recommendation.ShortsSeedSource
+import io.github.aedev.flow.data.engagement.FeedExclusions
+import io.github.aedev.flow.data.engagement.SessionExclusions
+import io.github.aedev.flow.data.shorts.feed.ShortsSeedInput
+import io.github.aedev.flow.data.shorts.feed.ShortsSeedSource
 import io.github.aedev.flow.data.shorts.feed.InnerTubeShortsFeedSources
 import io.github.aedev.flow.data.shorts.feed.ShortsFeedContext
 import io.github.aedev.flow.data.shorts.feed.ShortsFeedEngine
@@ -49,12 +48,12 @@ class ShortsFeedRepository
     constructor(
         @ApplicationContext private val context: Context,
         private val sources: InnerTubeShortsFeedSources,
-        private val subscriptionRepository: SubscriptionRepository,
-        private val viewHistory: ViewHistory,
-        private val likedVideosRepository: LikedVideosRepository,
-        private val playlistRepository: PlaylistRepository,
+        private val accountSubscriptions: AccountSubscriptions,
+        private val viewHistory: SessionHistory,
+        private val sessionLikes: SessionLikeState,
         private val playerPreferences: PlayerPreferences,
         private val homeFeedCache: HomeFeedCacheRepository,
+        private val sessionExclusions: SessionExclusions,
     ) {
         private val lock = Mutex()
         private var pager: ShortsFeedPager? = null
@@ -67,7 +66,6 @@ class ShortsFeedRepository
         /** The first page. A fresh pager is reused on a seedless open, so a return visit costs nothing. */
         suspend fun openFeed(seedVideoId: String?): List<ShortVideo> =
             withContext(PerformanceDispatcher.networkIO) {
-                FlowNeuroEngine.initialize(context)
                 lock.withLock {
                     val existing = pager
                     if (seedVideoId == null && existing != null && System.currentTimeMillis() - openedAtMillis < FEED_TTL_MS) {
@@ -99,11 +97,7 @@ class ShortsFeedRepository
         }
 
         suspend fun recordShown(videoId: String) {
-            if (videoId.isBlank()) return
-            runCatching {
-                FlowNeuroEngine.initialize(context)
-                FlowNeuroEngine.recordSeenShorts(listOf(videoId))
-            }.onFailure { Log.w(TAG, "Failed to record shown Short $videoId", it) }
+            // Seen reels are derived from the session history now; nothing to record here.
         }
 
         fun clearCaches() {
@@ -151,14 +145,14 @@ class ShortsFeedRepository
                     }
             }.getOrElse { emptyList() }
 
-        private suspend fun excludedChannelIds(): Set<String> =
-            runCatching { FlowNeuroEngine.getExcludedChannelIds() }.getOrDefault(emptySet())
+        private suspend fun excludedChannelIds(): Set<String> {
+            val snapshot = sessionExclusions.snapshot()
+            return snapshot.blockedChannelIds + snapshot.suppressedChannelIds
+        }
 
-        private suspend fun feedExclusions(): FeedExclusions =
-            runCatching { FlowNeuroEngine.feedExclusions() }.getOrDefault(FeedExclusions.NONE)
+        private suspend fun feedExclusions(): FeedExclusions = sessionExclusions.snapshot()
 
-        private suspend fun blockedTextMatcher(): (String, String) -> Boolean =
-            runCatching { FlowNeuroEngine.blockedContentMatcher() }.getOrElse { { _, _ -> false } }
+        private suspend fun blockedTextMatcher(): (String, String) -> Boolean = { _, _ -> false }
 
         private suspend fun watchedReelIds(): Set<String> {
             if (!playerPreferences.hideWatchedShorts.first()) return emptySet()
@@ -170,43 +164,40 @@ class ShortsFeedRepository
                 override suspend fun rank(
                     videos: List<Video>,
                     subscribedChannelIds: Set<String>,
-                ): List<Video> = runCatching { FlowNeuroEngine.rank(videos, subscribedChannelIds) }.getOrDefault(videos)
+                ): List<Video> = videos
 
-                override suspend fun discoveryQueries(resetDepth: Boolean): List<String> =
-                    runCatching { FlowNeuroEngine.generateDiscoveryQueries(resetDepth) }.getOrDefault(emptyList())
+                override suspend fun discoveryQueries(resetDepth: Boolean): List<String> = emptyList()
 
                 override suspend fun selectSeeds(
                     candidates: List<ShortsSeedInput>,
                     maxSeeds: Int,
-                ): List<String> = runCatching { FlowNeuroEngine.selectShortsSeeds(candidates, maxSeeds) }.getOrDefault(emptyList())
+                ): List<String> = candidates.map { it.id }.distinct().take(maxSeeds)
 
                 override suspend fun reportQueryNovelty(
                     query: String,
                     novelRatio: Double,
-                ) {
-                    runCatching { FlowNeuroEngine.reportQueryResultNovelty(query, novelRatio) }
-                }
+                ) = Unit
 
-                override suspend fun recentlyShownIds(): Set<String> =
-                    runCatching { FlowNeuroEngine.getRecentlyShownVideoIds() }.getOrDefault(emptySet())
+                override suspend fun recentlyShownIds(): Set<String> = emptySet()
             }
 
         private val feedContext =
             object : ShortsFeedContext {
-                override suspend fun profile(): ShortsFeedProfile {
-                    val interactions = runCatching { FlowNeuroEngine.getBrainSnapshot().totalInteractions }.getOrDefault(0)
-                    return ShortsFeedProfile(
-                        subscribedChannelIds = subscriptionRepository.getAllSubscriptionIds(),
-                        isColdStart = interactions < COLD_START_INTERACTIONS,
+                override suspend fun profile(): ShortsFeedProfile =
+                    ShortsFeedProfile(
+                        subscribedChannelIds = accountSubscriptions.ids.value,
+                        isColdStart = accountSubscriptions.ids.value.isEmpty(),
                     )
-                }
 
                 override suspend fun filters(): ShortsFeedFilters {
-                    val brain = runCatching { FlowNeuroEngine.getBrainSnapshot() }.getOrNull()
+                    val snapshot = sessionExclusions.snapshot()
                     return ShortsFeedFilters(
                         watchedIds = watchedReelIds(),
-                        seenIds = runCatching { FlowNeuroEngine.getRecentlySeenShorts() }.getOrDefault(emptySet()),
-                        suppressedIds = brain?.suppressedVideoIds?.keys.orEmpty(),
+                        seenIds =
+                            runCatching {
+                                viewHistory.getVideoHistoryFlow().first().filter { it.isShort }.mapTo(HashSet()) { it.videoId }
+                            }.getOrDefault(emptySet()),
+                        suppressedIds = snapshot.suppressedVideoIds,
                         excludedChannelIds = excludedChannelIds(),
                         isBlockedText = blockedTextMatcher(),
                     )
@@ -216,7 +207,7 @@ class ShortsFeedRepository
                     val history = runCatching { viewHistory.getVideoHistoryFlow().first() }.getOrDefault(emptyList()).filter { it.isShort }
                     val reelIds = history.mapTo(HashSet()) { it.videoId }
                     val liked =
-                        runCatching { likedVideosRepository.getLikedVideosFlow().first() }
+                        runCatching { sessionLikes.likedVideoInfos().first() }
                             .getOrDefault(emptyList())
                             .filter { it.videoId in reelIds }
                             .map {
@@ -230,10 +221,7 @@ class ShortsFeedRepository
                                     it.likedAt,
                                 )
                             }
-                    val saved =
-                        runCatching { playlistRepository.getSavedShortsFlow().first() }
-                            .getOrDefault(emptyList())
-                            .map { ShortsSeedInput(it.id, it.channelId, ShortsSeedSource.SAVED, it.timestamp) }
+                    val saved = emptyList<ShortsSeedInput>()
                     val watched =
                         history
                             .sortedByDescending { it.timestamp }
