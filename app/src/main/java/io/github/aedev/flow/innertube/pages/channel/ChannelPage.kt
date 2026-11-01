@@ -24,6 +24,8 @@ data class ChannelHeader(
     val viewCountText: String? = null,
     val countryText: String? = null,
     val canonicalUrl: String? = null,
+    /** The account's subscription state from the header's subscribe button; null when the response carried none (guest). */
+    val subscribed: Boolean? = null,
 )
 
 data class ChannelLink(
