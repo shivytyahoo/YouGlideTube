@@ -18,6 +18,10 @@ data class CommentsPageResult(
     val sortOptions: List<VideoCommentSort> = emptyList(),
     val totalText: String? = null,
     val totalCount: Long? = null,
+    /** The create box token for posting, present only when the section was fetched signed in. */
+    val createCommentParams: String? = null,
+    /** Every create token the section carried, in order; the poster tries them in turn. */
+    val createCommentParamsCandidates: List<String> = emptyList(),
 ) {
     val hasMore: Boolean get() = continuation != null || legacyPage != null
 
