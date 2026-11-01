@@ -254,38 +254,37 @@ class GoogleLoginActivity : ComponentActivity() {
             .start()
     }
 
-    /** The status bar takes the brand violet with light icons, so the bar reads as one piece. */
+    /**
+     * The status bar takes a darker violet than the brand bar, so the phone's status icons
+     * read as phone chrome instead of merging into the title. Light icons on both.
+     */
     private fun styleSystemBars() {
         WindowCompat.setDecorFitsSystemWindows(window, true)
         @Suppress("DEPRECATION")
-        window.statusBarColor = BRAND_VIOLET
+        window.statusBarColor = DEEP_VIOLET
         WindowInsetsControllerCompat(window, window.decorView).isAppearanceLightStatusBars = false
     }
 
+    /**
+     * No enter/exit animation: the fade used to cross-dissolve Home under this screen, and
+     * that frame read as the two screens overlapping. A clean cut cannot ghost.
+     */
     private fun enterTransition() {
         if (Build.VERSION.SDK_INT >= 34) {
-            overrideActivityTransition(
-                OVERRIDE_TRANSITION_OPEN,
-                android.R.anim.fade_in,
-                android.R.anim.fade_out,
-            )
+            overrideActivityTransition(OVERRIDE_TRANSITION_OPEN, 0, 0)
         } else {
             @Suppress("DEPRECATION")
-            overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+            overridePendingTransition(0, 0)
         }
     }
 
     private fun finishAnimated() {
         finish()
         if (Build.VERSION.SDK_INT >= 34) {
-            overrideActivityTransition(
-                OVERRIDE_TRANSITION_CLOSE,
-                android.R.anim.fade_in,
-                android.R.anim.fade_out,
-            )
+            overrideActivityTransition(OVERRIDE_TRANSITION_CLOSE, 0, 0)
         } else {
             @Suppress("DEPRECATION")
-            overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+            overridePendingTransition(0, 0)
         }
     }
 
