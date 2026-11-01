@@ -253,6 +253,8 @@ class PlayerPreferences(
         // Notification preferences
         val NOTIFICATIONS_ENABLED = booleanPreferencesKey("notifications_enabled")
         val NOTIF_NEW_VIDEOS_ENABLED = booleanPreferencesKey("notif_new_videos_enabled")
+        val SUBSCRIPTION_SEEN_VIDEO_IDS = stringSetPreferencesKey("subscription_seen_video_ids")
+        val SUBSCRIPTION_CHECK_SEEDED = booleanPreferencesKey("subscription_check_seeded")
         val NOTIF_SHORTS_ENABLED = booleanPreferencesKey("notif_shorts_enabled")
         val NOTIF_DOWNLOADS_ENABLED = booleanPreferencesKey("notif_downloads_enabled")
         val NOTIF_REMINDERS_ENABLED = booleanPreferencesKey("notif_reminders_enabled")
@@ -1710,6 +1712,26 @@ class PlayerPreferences(
     suspend fun setNotifNewVideosEnabled(enabled: Boolean) {
         context.playerPreferencesDataStore.edit { preferences ->
             preferences[Keys.NOTIF_NEW_VIDEOS_ENABLED] = enabled
+        }
+    }
+
+    /** Video ids the subscription check has already seen; the next check notifies only the rest. */
+    val subscriptionSeenVideoIds: Flow<Set<String>> =
+        context.playerPreferencesDataStore.data
+            .map { preferences -> preferences[Keys.SUBSCRIPTION_SEEN_VIDEO_IDS] ?: emptySet() }
+
+    /** True once a non-empty subscriptions page has seeded the seen set (first run never notifies). */
+    val subscriptionCheckSeeded: Flow<Boolean> =
+        context.playerPreferencesDataStore.data
+            .map { preferences -> preferences[Keys.SUBSCRIPTION_CHECK_SEEDED] ?: false }
+
+    suspend fun setSubscriptionCheckState(
+        seenVideoIds: Set<String>,
+        seeded: Boolean,
+    ) {
+        context.playerPreferencesDataStore.edit { preferences ->
+            preferences[Keys.SUBSCRIPTION_SEEN_VIDEO_IDS] = seenVideoIds
+            preferences[Keys.SUBSCRIPTION_CHECK_SEEDED] = seeded
         }
     }
 
