@@ -66,6 +66,7 @@ import io.github.aedev.flow.ui.tv.theme.LocalTvDimens
 @Composable
 fun TvShell(
     navigation: TvNavigation,
+    needsOnboarding: Boolean = false,
     navController: NavHostController,
     homeViewModel: HomeViewModel,
     musicViewModel: MusicViewModel,
@@ -90,6 +91,7 @@ fun TvShell(
         if (currentRoute != null && currentRoute in rootRoutes) lastRoot = currentRoute
     }
     val currentRoot = currentRoute?.takeIf { it in rootRoutes } ?: lastRoot
+    val isOnboarding = needsOnboarding && (currentRoute == null || currentRoute == "onboarding")
     val miniPlayerShown = rememberUpdatedState(activeMusicTrack != null)
     // Phone pages pad their ends by these insets, so they scroll clear of the floating mini player here too.
     val bottomInsets =
@@ -155,6 +157,27 @@ fun TvShell(
         if (!popped) navigateToRoot(route)
     }
 
+    // Onboarding is full-screen: no rail, no mini player, no browse focus machinery.
+    if (isOnboarding) {
+        CompositionLocalProvider(LocalFlowBottomInsets provides bottomInsets) {
+            TvNavHost(
+                navController = navController,
+                startRoute = "onboarding",
+                onboardingTargetRoute = navigation.startTab.route,
+                homeViewModel = homeViewModel,
+                musicViewModel = musicViewModel,
+                musicPlayerViewModel = musicPlayerViewModel,
+                subscriptionsViewModel = subscriptionsViewModel,
+                searchViewModel = searchViewModel,
+                onPlayVideo = onPlayVideo,
+                onPlayPlaylist = onPlayPlaylist,
+                onPlayVideoId = onPlayVideoId,
+                onSelectRoot = ::selectRoot,
+                modifier = modifier.fillMaxSize(),
+            )
+        }
+        return
+    }
     Box(modifier = modifier.fillMaxSize()) {
         Box(
             modifier =
