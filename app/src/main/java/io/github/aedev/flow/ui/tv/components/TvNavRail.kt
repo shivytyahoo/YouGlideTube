@@ -5,6 +5,7 @@ import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -43,6 +44,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -190,16 +192,10 @@ private fun TvRailItem(
 @Composable
 private fun TvRailLogo() {
     Box(modifier = Modifier.padding(start = 20.dp, top = 8.dp, bottom = 8.dp)) {
-        Icon(
-            painter = painterResource(R.drawable.ic_flow_badge_shape),
+        Image(
+            painter = painterResource(R.drawable.ic_launcher_foreground),
             contentDescription = stringResource(R.string.app_name),
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(width = 40.dp, height = 30.dp),
-        )
-        Icon(
-            painter = painterResource(R.drawable.ic_flow_badge_glyph),
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onPrimary,
+            contentScale = ContentScale.Fit,
             modifier = Modifier.size(width = 40.dp, height = 30.dp),
         )
     }
