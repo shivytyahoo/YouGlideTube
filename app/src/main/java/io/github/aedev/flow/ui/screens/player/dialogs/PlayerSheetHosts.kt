@@ -247,6 +247,7 @@ internal fun PlayerCommentsPanelHost(
     artworkUrl: String?,
     onNavigateToChannel: (String) -> Unit,
     onClose: () -> Unit,
+    onRequireSignIn: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     PlayerCommentsPanel(
@@ -278,6 +279,7 @@ internal fun PlayerCommentsPanelHost(
         onPostReply = { comment, text, onResult -> viewModel.postCommentReply(comment, text, onResult) },
         onEditComment = { comment, text, onResult -> viewModel.editComment(comment, text, onResult) },
         onDeleteComment = { comment, onResult -> viewModel.deleteComment(comment, onResult) },
+        onRequireSignIn = onRequireSignIn,
         modifier = modifier,
     )
 }
