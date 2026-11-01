@@ -19,43 +19,11 @@ object RepositoryModule {
 
     @Provides
     @Singleton
-    fun provideSubscriptionRepository(
-        @ApplicationContext context: Context,
-    ): io.github.aedev.flow.data.local.SubscriptionRepository =
-        io.github.aedev.flow.data.local.SubscriptionRepository
-            .getInstance(context)
-
-    @Provides
-    @Singleton
-    fun provideLikedVideosRepository(
-        @ApplicationContext context: Context,
-    ): io.github.aedev.flow.data.local.LikedVideosRepository =
-        io.github.aedev.flow.data.local.LikedVideosRepository
-            .getInstance(context)
-
-    @Provides
-    @Singleton
-    fun provideViewHistory(
-        @ApplicationContext context: Context,
-    ): io.github.aedev.flow.data.local.ViewHistory =
-        io.github.aedev.flow.data.local.ViewHistory
-            .getInstance(context)
-
-    @Provides
-    @Singleton
     fun provideHomeFeedCacheRepository(
         @ApplicationContext context: Context,
     ): io.github.aedev.flow.data.local.HomeFeedCacheRepository =
         io.github.aedev.flow.data.local
             .HomeFeedCacheRepository(context)
-
-    @Provides
-    @Singleton
-    fun provideMusicPlaylistRepository(
-        @ApplicationContext context: Context,
-    ): io.github.aedev.flow.data.music.PlaylistRepository =
-        io.github.aedev.flow.data.music
-            .PlaylistRepository(context)
 
     // VideoDownloadManager is now @Singleton @Inject — Hilt provides it automatically
     @Provides
@@ -75,16 +43,4 @@ object RepositoryModule {
         io.github.aedev.flow.data.local.QueuePersistence
             .getInstance(context)
 
-    /**
-     * Transitional: [io.github.aedev.flow.data.local.BackupRepository] still builds its own
-     * collaborators, so it is provided here rather than injected through its constructor. One
-     * instance serves the whole app.
-     */
-    @Provides
-    @Singleton
-    fun provideBackupRepository(
-        @ApplicationContext context: Context,
-    ): io.github.aedev.flow.data.local.BackupRepository =
-        io.github.aedev.flow.data.local
-            .BackupRepository(context)
 }
