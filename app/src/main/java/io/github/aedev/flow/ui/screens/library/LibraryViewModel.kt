@@ -12,6 +12,7 @@ import io.github.aedev.flow.data.model.PlaylistInfo
 import io.github.aedev.flow.data.repository.YouTubePlaylistRepository
 import io.github.aedev.flow.data.video.VideoDownloadManager
 import io.github.aedev.flow.data.music.DownloadManager as MusicDownloadManager
+import io.github.aedev.flow.data.local.AccountHistoryCapture
 import io.github.aedev.flow.data.local.SessionHistory
 import io.github.aedev.flow.data.model.toVideo
 import io.github.aedev.flow.data.playlist.sortedFor
@@ -64,6 +65,7 @@ class LibraryViewModel
         youTubePlaylistRepository: YouTubePlaylistRepository,
         sessionLikes: SessionLikeState,
         sessionHistory: SessionHistory,
+        accountHistoryCapture: AccountHistoryCapture,
         shortsContentFilter: ShortsContentFilter,
         playerPreferences: PlayerPreferences,
         videoDownloadManager: VideoDownloadManager,
@@ -196,7 +198,8 @@ class LibraryViewModel
             combine(
                 sessionHistory.getRecentLibraryHistory(LIBRARY_SHELF_ITEM_LIMIT),
                 serverHistory,
-            ) { sessionEntries, server ->
+                accountHistoryCapture.entriesFlow,
+            ) { sessionEntries, server, captured ->
                 if (io.github.aedev.flow.innertube.YouTube.isSignedIn() && server != null) {
                     // Session plays head the shelf: the server list never learns of a
                     // watch made in this app, so without the merge the newest plays
@@ -206,7 +209,12 @@ class LibraryViewModel
                     (sessionItems + server.map { LibraryMediaItem.VideoItem(it) }.filterNot { it.mediaId() in seen })
                         .take(LIBRARY_SHELF_ITEM_LIMIT)
                 } else {
-                    sessionEntries.map { it.toLibraryMediaItem() }
+                    // Signed out, the shelf is the session's plays plus the last
+                    // account snapshot, session rows first, no repeats.
+                    val sessionItems = sessionEntries.map { it.toLibraryMediaItem() }
+                    val seen = sessionItems.map { it.mediaId() }.toSet()
+                    (sessionItems + captured.map { it.toLibraryMediaItem() }.filterNot { it.mediaId() in seen })
+                        .take(LIBRARY_SHELF_ITEM_LIMIT)
                 }
             }.shared()
 
@@ -215,12 +223,14 @@ class LibraryViewModel
                 sessionHistory.getLibraryHistoryCount(),
                 sessionHistory.getAllHistory(),
                 serverHistory,
-            ) { sessionCount, allLocal, server ->
+                accountHistoryCapture.entriesFlow,
+            ) { sessionCount, allLocal, server, captured ->
                 if (io.github.aedev.flow.innertube.YouTube.isSignedIn() && server != null) {
                     val localIds = allLocal.filter { !it.isShort && !it.isLocal }.map { it.videoId }.toSet()
                     localIds.size + server.map { it.id }.toSet().minus(localIds).size
                 } else {
-                    sessionCount
+                    val localIds = allLocal.filter { !it.isShort && !it.isLocal }.map { it.videoId }.toSet()
+                    sessionCount + captured.filter { !it.isShort }.map { it.videoId }.filterNot { it in localIds }.size
                 }
             }
 
