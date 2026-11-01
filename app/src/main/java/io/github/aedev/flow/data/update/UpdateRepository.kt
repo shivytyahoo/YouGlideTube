@@ -1,6 +1,8 @@
 package io.github.aedev.flow.data.update
 
+import android.content.Context
 import android.os.Build
+import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.aedev.flow.BuildConfig
 import io.github.aedev.flow.data.local.LocalDataManager
 import kotlinx.coroutines.Dispatchers
@@ -14,7 +16,9 @@ import kotlinx.coroutines.withContext
 import okhttp3.CacheControl
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import java.io.FileInputStream
 import java.io.IOException
+import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -54,6 +58,7 @@ class UpdateRepository
     constructor(
         private val client: OkHttpClient,
         private val dataManager: LocalDataManager,
+        @ApplicationContext private val appContext: Context,
     ) {
         private val mutex = Mutex()
         private val isNightly = BuildConfig.UPDATE_CHANNEL == NIGHTLY_CHANNEL
@@ -93,6 +98,31 @@ class UpdateRepository
 
         suspend fun skip(version: String) = dataManager.setSkippedUpdateVersion(version)
 
+        // The running APK's own SHA-256, so a same-version rebuild can be told apart
+        // from the installed build: version numbers never move on this release line.
+        private var installedSha256Cache: String? = null
+        private var installedSha256Computed = false
+
+        private suspend fun installedSha256(): String? {
+            if (installedSha256Computed) return installedSha256Cache
+            installedSha256Computed = true
+            installedSha256Cache =
+                withContext(Dispatchers.IO) {
+                    runCatching {
+                        val digest = MessageDigest.getInstance("SHA-256")
+                        FileInputStream(appContext.applicationInfo.sourceDir).use { stream ->
+                            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                            var read: Int
+                            while (stream.read(buffer).also { read = it } != -1) {
+                                digest.update(buffer, 0, read)
+                            }
+                        }
+                        digest.digest().joinToString("") { "%02x".format(it) }
+                    }.getOrNull()
+                }
+            return installedSha256Cache
+        }
+
         private suspend fun fetchLocked(): AppRelease? {
             val body =
                 withContext(Dispatchers.IO) {
@@ -113,7 +143,11 @@ class UpdateRepository
                 if (isNightly) {
                     parsed.toNightlyReleaseIfNewer(BuildConfig.NIGHTLY_RUN)
                 } else {
-                    parsed.toAppReleaseIfNewer(BuildConfig.VERSION_NAME, Build.SUPPORTED_ABIS.toList())
+                    parsed.toAppReleaseIfNewer(
+                        BuildConfig.VERSION_NAME,
+                        Build.SUPPORTED_ABIS.toList(),
+                        installedSha256(),
+                    )
                 }
             dataManager.setLastUpdateCheck(System.currentTimeMillis())
             _latest.value = release
