@@ -11,8 +11,8 @@ import io.github.aedev.flow.player.surface.VideoSurfacePolicy
 
 /** The controller-less PlayerView layout on the surface type this device plays smoothest with. */
 @LayoutRes
-fun flowPlayerViewLayout(): Int =
-    if (VideoSurfacePolicy.usesSurfaceView(Build.VERSION.SDK_INT)) {
+fun flowPlayerViewLayout(isTelevision: Boolean = false): Int =
+    if (VideoSurfacePolicy.usesSurfaceView(Build.VERSION.SDK_INT, isTelevision)) {
         R.layout.video_player_view_surface
     } else {
         R.layout.video_player_view
