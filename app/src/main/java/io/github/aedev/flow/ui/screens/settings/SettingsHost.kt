@@ -47,7 +47,6 @@ import kotlinx.coroutines.launch
 fun SettingsHost(
     start: SettingsTarget?,
     onExit: () -> Unit,
-    onOpenDonations: () -> Unit,
     onOpenUpdate: () -> Unit,
     options: SettingsHostOptions = SettingsHostOptions(),
 ) {
@@ -116,7 +115,6 @@ fun SettingsHost(
                 SettingsHomeScreen(
                     selected = if (twoPane) current.destination.root else null,
                     onOpen = ::open,
-                    onOpenDonations = onOpenDonations,
                     onOpenUpdate = onOpenUpdate,
                     onBack = onExit,
                     selectedRowFocus = selectedRowFocus,
