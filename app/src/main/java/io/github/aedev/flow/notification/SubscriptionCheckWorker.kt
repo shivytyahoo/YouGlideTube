@@ -5,87 +5,50 @@ import android.util.Log
 import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
-import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
-import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkRequest
 import androidx.work.WorkerParameters
-import dagger.hilt.EntryPoint
-import dagger.hilt.InstallIn
-import dagger.hilt.android.EntryPointAccessors
-import dagger.hilt.components.SingletonComponent
-import io.github.aedev.flow.data.local.ChannelSubscription
 import io.github.aedev.flow.data.local.PlayerPreferences
-import io.github.aedev.flow.data.local.SubscriptionRepository
-import io.github.aedev.flow.data.shorts.ChannelReelIndex
-import io.github.aedev.flow.data.subscriptions.ChannelRssClient
-import io.github.aedev.flow.data.subscriptions.ChannelRssParser
-import io.github.aedev.flow.data.subscriptions.SubscriptionFeedRepository
+import io.github.aedev.flow.innertube.YouTube
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
 
 /**
- * WorkManager worker that checks for new videos from subscribed channels using lightweight RSS
- * feeds, and seeds whatever it finds into the subscription feed cache.
- *
- * It shares [ChannelRssClient] with the in-app feed refresh, so both halves use one connection
- * pool, one timeout policy and one parser for the same endpoint.
+ * The subscriptions check the app never had: [NotificationHelper]'s new-video
+ * posts existed with no caller, so no subscription notification could ever
+ * arrive. This worker runs the subscriptions feed in the background and
+ * announces only the videos it has not seen before. The first non-empty page
+ * only seeds the seen set — announcing the whole backlog on first run would
+ * spam every video the account's feed already carries.
  */
 class SubscriptionCheckWorker(
     context: Context,
     params: WorkerParameters,
 ) : CoroutineWorker(context, params) {
-    /**
-     * WorkManager constructs this worker itself, so the dependencies are pulled from the singleton
-     * graph here rather than injected. Using the graph keeps a single [SubscriptionFeedRepository]
-     * and therefore a single refresh lock shared with the UI.
-     */
-    @EntryPoint
-    @InstallIn(SingletonComponent::class)
-    interface Dependencies {
-        fun subscriptionRepository(): SubscriptionRepository
-
-        fun subscriptionFeedRepository(): SubscriptionFeedRepository
-
-        fun channelRssClient(): ChannelRssClient
-
-        fun channelReelIndex(): ChannelReelIndex
-
-        fun playerPreferences(): PlayerPreferences
-    }
-
     companion object {
-        const val WORK_NAME = "subscription_check_work_v2"
-        private const val LEGACY_WORK_NAME = "subscription_check_work"
-        private const val IMMEDIATE_WORK_NAME = "subscription_check_work_now"
+        const val WORK_NAME = "subscription_check_work"
         private const val TAG = "SubscriptionCheckWorker"
 
-        /** How many channels are polled concurrently. */
-        private const val CHANNEL_CHUNK_SIZE = 10
-
-        /** Schedules the periodic check; [BackgroundCheckScheduler] decides whether it should run at all. */
+        /** Schedules the 6-hour check; [BackgroundCheckScheduler] decides whether it should run at all. */
         fun schedulePeriodicCheck(
             context: Context,
-            intervalMinutes: Long,
             reschedule: Boolean,
         ) {
             val constraints =
                 Constraints
                     .Builder()
                     .setRequiredNetworkType(NetworkType.CONNECTED)
+                    .setRequiresBatteryNotLow(true)
                     .build()
 
             val workRequest =
                 PeriodicWorkRequestBuilder<SubscriptionCheckWorker>(
-                    intervalMinutes,
-                    TimeUnit.MINUTES,
+                    6,
+                    TimeUnit.HOURS,
                 ).setConstraints(constraints)
                     .setBackoffCriteria(
                         BackoffPolicy.EXPONENTIAL,
@@ -93,170 +56,66 @@ class SubscriptionCheckWorker(
                         TimeUnit.MILLISECONDS,
                     ).build()
 
-            WorkManager.getInstance(context).apply {
-                cancelUniqueWork(LEGACY_WORK_NAME)
-                enqueueUniquePeriodicWork(
-                    WORK_NAME,
-                    periodicWorkPolicy(reschedule),
-                    workRequest,
-                )
-            }
-
-            Log.d(TAG, "Scheduled periodic subscription check every $intervalMinutes minutes")
-        }
-
-        /**
-         * Cancel scheduled subscription checks
-         */
-        fun cancelScheduledChecks(context: Context) {
-            WorkManager.getInstance(context).apply {
-                cancelUniqueWork(WORK_NAME)
-                cancelUniqueWork(LEGACY_WORK_NAME)
-            }
-            Log.d(TAG, "Cancelled scheduled subscription checks")
-        }
-
-        /**
-         * Run an immediate one-time check.
-         */
-        fun runImmediateCheck(context: Context) {
-            val workRequest =
-                OneTimeWorkRequestBuilder<SubscriptionCheckWorker>()
-                    .setConstraints(
-                        Constraints
-                            .Builder()
-                            .setRequiredNetworkType(NetworkType.CONNECTED)
-                            .build(),
-                    ).build()
-
-            WorkManager.getInstance(context).enqueueUniqueWork(
-                IMMEDIATE_WORK_NAME,
-                ExistingWorkPolicy.KEEP,
+            WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+                WORK_NAME,
+                periodicWorkPolicy(reschedule),
                 workRequest,
             )
-            Log.d(TAG, "Started immediate subscription check")
+            Log.d(TAG, "Scheduled subscription check every 6 hours")
         }
-    }
 
-    private val dependencies: Dependencies by lazy {
-        EntryPointAccessors.fromApplication(applicationContext, Dependencies::class.java)
+        fun cancelScheduledChecks(context: Context) {
+            WorkManager.getInstance(context).cancelUniqueWork(WORK_NAME)
+            Log.d(TAG, "Cancelled scheduled subscription checks")
+        }
     }
 
     override suspend fun doWork(): Result =
         withContext(Dispatchers.IO) {
-            Log.d(TAG, "Starting subscription check via RSS...")
-
-            val preferences = dependencies.playerPreferences()
-            if (!BackgroundCheckScheduler.subscriptionCheckWanted(
-                    preferences.notificationsEnabled.first(),
-                    preferences.notifNewVideosEnabled.first(),
-                )
-            ) {
-                Log.d(TAG, "New video notifications are off, skipping subscription check")
+            val preferences = PlayerPreferences(applicationContext)
+            if (!preferences.notificationsEnabled.first() || !preferences.notifNewVideosEnabled.first()) {
+                Log.d(TAG, "Subscription notifications are off, skipping check")
                 return@withContext Result.success()
             }
-
-            try {
-                val subscriptionRepository = dependencies.subscriptionRepository()
-                val subscriptions =
-                    subscriptionRepository
-                        .getAllSubscriptions()
-                        .first()
-                        .filter { it.isNotificationEnabled }
-
-                if (subscriptions.isEmpty()) {
-                    Log.d(TAG, "No subscriptions with notifications enabled to check")
-                    return@withContext Result.success()
-                }
-
-                Log.d(TAG, "Checking ${subscriptions.size} subscriptions")
-
-                val announceReels = preferences.effectiveSubscriptionShowShorts.first()
-                val notifyShorts = preferences.notifShortsEnabled.first()
-
-                val newVideos = mutableListOf<NotificationHelper.NewVideoEntry>()
-                subscriptions.chunked(CHANNEL_CHUNK_SIZE).forEach { chunk ->
-                    coroutineScope {
-                        chunk
-                            .map { subscription ->
-                                async {
-                                    try {
-                                        checkChannel(subscription, subscriptionRepository, announceReels, notifyShorts)
-                                    } catch (e: Exception) {
-                                        Log.e(TAG, "Error checking channel ${subscription.channelName}", e)
-                                        emptyList()
-                                    }
-                                }
-                            }.awaitAll()
-                            .flatten()
-                            .let { newVideos.addAll(it) }
+            if (!YouTube.isSignedIn()) {
+                Log.d(TAG, "Signed out, skipping check")
+                return@withContext Result.success()
+            }
+            val page = YouTube.serverSubscriptions().getOrNull()
+            if (page == null) {
+                Log.d(TAG, "Subscriptions feed failed, next cycle retries")
+                return@withContext Result.success()
+            }
+            val notifyShorts = preferences.notifShortsEnabled.first()
+            val currentVideos = page.videos + if (notifyShorts) page.shorts else emptyList()
+            val currentIds = currentVideos.map { it.id }.toSet()
+            if (currentIds.isEmpty()) {
+                Log.d(TAG, "Subscriptions feed empty, leaving state untouched")
+                return@withContext Result.success()
+            }
+            val seen = preferences.subscriptionSeenVideoIds.first()
+            val seeded = preferences.subscriptionCheckSeeded.first()
+            if (!seeded) {
+                preferences.setSubscriptionCheckState(currentIds, seeded = true)
+                Log.d(TAG, "Seeded seen set with ${currentIds.size} videos, not notifying")
+                return@withContext Result.success()
+            }
+            val fresh =
+                currentVideos
+                    .filter { it.id !in seen }
+                    .map {
+                        NotificationHelper.NewVideoEntry(
+                            channelName = it.channelName,
+                            videoTitle = it.title,
+                            videoId = it.id,
+                            thumbnailUrl = it.thumbnailUrl.takeIf { url -> url.isNotBlank() },
+                        )
                     }
-                }
-
-                // A collaboration two followed channels both list must still notify once.
-                val uniqueVideos = newVideos.distinctBy { it.videoId }
-                if (uniqueVideos.isNotEmpty()) {
-                    NotificationHelper.showSubscriptionUpdates(applicationContext, uniqueVideos)
-                }
-
-                Log.d(TAG, "Subscription check complete. Found ${newVideos.size} new videos.")
-                Result.success()
-            } catch (e: Exception) {
-                Log.e(TAG, "Error during subscription check", e)
-                Result.retry()
+            if (fresh.isNotEmpty()) {
+                NotificationHelper.showSubscriptionUpdates(applicationContext, fresh)
+                Log.d(TAG, "Announced ${fresh.size} new subscription videos")
             }
+            preferences.setSubscriptionCheckState(currentIds, seeded = true)
+            Result.success()
         }
-
-    private suspend fun checkChannel(
-        subscription: ChannelSubscription,
-        repository: SubscriptionRepository,
-        announceReels: Boolean,
-        notifyShorts: Boolean,
-    ): List<NotificationHelper.NewVideoEntry> {
-        val feed =
-            dependencies.channelRssClient().fetch(subscription.channelId).getOrElse { error ->
-                Log.w(TAG, "Failed to check RSS for ${subscription.channelName}: ${error.message}")
-                return emptyList()
-            }
-
-        val latestVideo = feed.entries.firstOrNull() ?: return emptyList()
-        if (subscription.lastVideoId == latestVideo.videoId) return emptyList()
-
-        val reelVideoIds = dependencies.channelReelIndex().reelIds(subscription.channelId).orEmpty()
-
-        // The channel moved on, so hand the whole page to the feed cache. Rows land without a
-        // duration — the feed's on-demand enrichment fills that in, and the next full refresh of
-        // this channel replaces them outright. The reel verdict cannot wait that long: an unmarked
-        // reel is visible in the feed in the meantime, Shorts switched off or not.
-        dependencies.subscriptionFeedRepository().seedFromNotificationCheck(
-            channelId = subscription.channelId,
-            channelName = feed.channelName ?: subscription.channelName,
-            entries = feed.entries,
-            reelVideoIds = reelVideoIds,
-        )
-
-        val newEntries = ChannelRssParser.newEntriesSince(feed.entries, subscription.lastVideoId)
-        repository.updateChannelLatestVideo(subscription.channelId, latestVideo.videoId)
-
-        if (newEntries.isNotEmpty()) {
-            Log.d(TAG, "${newEntries.size} new video(s) for ${subscription.channelName}")
-        }
-
-        return newEntries
-            .filter {
-                SubscriptionNotificationPolicy.shouldAnnounce(
-                    videoId = it.videoId,
-                    reelVideoIds = reelVideoIds,
-                    announceReelsInFeed = announceReels,
-                    notifyShorts = notifyShorts,
-                )
-            }.map { video ->
-                NotificationHelper.NewVideoEntry(
-                    channelName = subscription.channelName,
-                    videoTitle = video.title,
-                    videoId = video.videoId,
-                    thumbnailUrl = video.thumbnailUrl,
-                )
-            }
-    }
 }
