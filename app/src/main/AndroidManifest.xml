@@ -15,6 +15,8 @@
     <!-- Fallback popup player for devices whose ROM does not expose native Android PiP. -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.DOWNLOAD_WITHOUT_NOTIFICATION" />
+    <!-- The in-app updater installs through the system installer, which stays shut without this. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <!-- Writing to a chosen folder through plain files on API 29 and below (legacy storage on 29) -->
     <uses-permission
         android:name="android.permission.WRITE_EXTERNAL_STORAGE"
@@ -105,6 +107,7 @@
         <activity
             android:name=".ui.screens.settings.account.GoogleLoginActivity"
             android:exported="false"
+            android:launchMode="singleTop"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|uiMode"
             android:theme="@style/Theme.Flow"
             android:windowSoftInputMode="adjustResize" />
