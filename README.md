@@ -116,6 +116,46 @@ pick up new files.
 - Only downloads are stored on the phone; everything else comes from
   your account
 
+## Differences from Flow
+
+YouGlideTube is a fork of Flow 3.0.0, modified in 2026. The player
+foundation, Media3 playback engine and InnerTube client come from Flow
+(under GPL-3.0, with credit above); everything below was changed,
+added or removed in this fork:
+
+**Rebrand**
+
+- New name, launcher icon, splash and About screens — nothing visible
+  still says Flow
+- New application ID: `shivyt.android.glidetube`
+- New deep-violet theme with saffron primary and coral accents
+- Own versioning, starting at 1.0.0, with its own updater and release
+  channel
+
+**Removed**
+
+- Donations
+- Explorer tab
+- "Your taste" feature (the engine still runs inside)
+
+**Added**
+
+- Google sign-in, built from scratch — web login and TV code, with
+  multiple accounts (upstream Flow had no sign-in)
+- Watch-history sync with your YouTube account, both ways
+- Full comment actions — post, reply, edit, delete and like, including
+  replies inside threads
+- Live chat — send messages and remove your own
+- Library and History that keep your latest watches and likes on top,
+  across restarts
+- Settings order with Google Account at the top
+
+**Kept from Flow**
+
+- The buttery-smooth playback engine and workflow
+- SponsorBlock, DeArrow and Return YouTube Dislike
+- Local media playback, lyrics, downloads and Material 3 interface
+
 ## Screenshots
 
 Real device screenshots are being added here.
