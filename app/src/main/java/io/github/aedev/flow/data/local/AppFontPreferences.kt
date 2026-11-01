@@ -69,13 +69,6 @@ class AppFontPreferences
             }
         }
 
-        suspend fun getSettingsBackup(): SettingsBackup = SettingsBackup(strings = mapOf(FONT.name to font.first().storageId))
-
-        suspend fun restoreSettings(backup: SettingsBackup) {
-            val restored = backup.strings[FONT.name] ?: return
-            setFont(AppFont.fromStorage(restored))
-        }
-
         private companion object {
             val FONT = stringPreferencesKey("app_font")
             val CUSTOM_NAME = stringPreferencesKey("app_font_custom_name")
