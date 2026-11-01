@@ -28,9 +28,6 @@ import io.github.aedev.flow.ui.screens.library.libraryShelves
 import io.github.aedev.flow.ui.screens.library.visibleContentSections
 import io.github.aedev.flow.ui.tv.components.TvScreenFrame
 
-/** Local media stays off TV, as the July redesign decided. */
-private val NOT_ON_TV = setOf(LibrarySection.LOCAL_MEDIA)
-
 private val ShelfSpacing = 24.dp
 
 /**
@@ -46,6 +43,7 @@ fun TvLibraryScreen(
     onOpenPlaylist: (String) -> Unit,
     onOpenMusicPlaylist: (String) -> Unit,
     onOpenDownloads: () -> Unit,
+    onOpenLocalMedia: () -> Unit,
     onDownloadedVideoClick: (List<DownloadedVideo>, Int) -> Unit,
     onDownloadedMusicClick: (List<DownloadedTrack>, Int) -> Unit,
     modifier: Modifier = Modifier,
@@ -74,7 +72,7 @@ fun TvLibraryScreen(
             }
             libraryShelves(
                 viewModel = viewModel,
-                sections = visibleContentSections(hidden, separatePlaylistKinds, shortsEnabled = false).filterNot { it in NOT_ON_TV },
+                sections = visibleContentSections(hidden, separatePlaylistKinds, shortsEnabled = false),
                 onOpenSection = { section ->
                     when (section) {
                         LibrarySection.HISTORY -> onOpenHistory()
@@ -85,6 +83,7 @@ fun TvLibraryScreen(
                         LibrarySection.LIKED_VIDEOS -> onOpenPlaylist(AccountPlaylistIds.LIKED_VIDEOS)
                         LibrarySection.LIKED_MUSIC -> onOpenMusicPlaylist(AccountPlaylistIds.LIKED_MUSIC)
                         LibrarySection.DOWNLOADS -> onOpenDownloads()
+                        LibrarySection.LOCAL_MEDIA -> onOpenLocalMedia()
                         else -> Unit
                     }
                 },
