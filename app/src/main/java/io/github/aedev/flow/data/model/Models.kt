@@ -49,6 +49,9 @@ data class Video(
     // Transient: when this video was added to the playlist currently being viewed. Not persisted
     // on the video row — populated only by playlist-scoped queries.
     val addedAtInPlaylist: Long? = null,
+    // Transient: the entry id the account's playlist editor needs to remove this video from the
+    // playlist it was listed in — populated only by account playlist page parses.
+    val playlistSetVideoId: String? = null,
 )
 
 data class Channel(
@@ -98,6 +101,31 @@ data class Comment(
     val isVerified: Boolean = false,
     val isCreator: Boolean = false,
     val isArtist: Boolean = false,
+    val isLiked: Boolean = false,
+    val isDisliked: Boolean = false,
+    val likeCountLikedText: String = "",
+    // The toolbar surface's own perform-action endpoints, raw JSON; null when the section
+    // carried none (signed out, or a legacy renderer), where voting cannot be offered.
+    val likeAction: String? = null,
+    val unlikeAction: String? = null,
+    val dislikeAction: String? = null,
+    val undislikeAction: String? = null,
+    // The reply dialog's own token (`createCommentReplyEndpoint.createReplyParams`), from the
+    // same toolbar surface, and the path it posts to; null when replies cannot be posted
+    // (signed out, or a legacy renderer). NOT the create box's createCommentParams — the
+    // reply endpoint carries its own field, which is why a create-params search found nothing.
+    val replyParams: String? = null,
+    val replyPath: String? = null,
+    val isOwn: Boolean = false,
+    // An own comment's menu writes, matched by structure in its toolbar surface's menu
+    // (the Limusic/youtubei.js recipe): edit replays an update endpoint with its own params
+    // field and text field; delete replays a perform-action endpoint like a vote.
+    val editParams: String? = null,
+    val editPath: String? = null,
+    val editParamsField: String? = null,
+    val editTextField: String? = null,
+    val editPrefill: String? = null,
+    val deleteAction: String? = null,
 )
 
 enum class SearchFilter {
