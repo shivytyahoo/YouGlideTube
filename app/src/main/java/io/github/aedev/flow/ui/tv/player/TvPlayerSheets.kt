@@ -17,8 +17,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import io.github.aedev.flow.data.local.DownloadDialogStyle
 import io.github.aedev.flow.data.model.Video
+import io.github.aedev.flow.innertube.YouTube
 import io.github.aedev.flow.player.EnhancedPlayerState
+import io.github.aedev.flow.ui.components.shared.MediaDownloadDialog
+import io.github.aedev.flow.ui.components.shared.MediaDownloadDialogCompact
 import io.github.aedev.flow.ui.screens.player.VideoPlayerViewModel
 import io.github.aedev.flow.ui.screens.player.dialogs.PlayerChaptersSheetHost
 import io.github.aedev.flow.ui.screens.player.dialogs.PlayerCommentsPanelHost
@@ -145,11 +149,43 @@ internal fun BoxScope.TvPlayerSheets(
                         PlayerSleepTimerSheetHost(asSidePanel = true, expandedHeight = panelHeight, onDismiss = onClose)
                     }
 
+                    is PlayerSheet.Download -> {
+                        when (prefs.downloadDialogStyle) {
+                            DownloadDialogStyle.COMPACT -> {
+                                MediaDownloadDialogCompact(
+                                    streamSizes = uiState.streamSizes,
+                                    innerTubeVideoFormats = uiState.innerTubeVideoFormats,
+                                    innerTubeAudioFormats = uiState.innerTubeAudioFormats,
+                                    video = video,
+                                    currentPlayingHeight = playerState.effectiveQuality,
+                                    subtitles = playerState.availableSubtitles,
+                                    onDismiss = onClose,
+                                )
+                            }
+
+                            DownloadDialogStyle.FULL -> {
+                                MediaDownloadDialog(
+                                    streamSizes = uiState.streamSizes,
+                                    innerTubeVideoFormats = uiState.innerTubeVideoFormats,
+                                    innerTubeAudioFormats = uiState.innerTubeAudioFormats,
+                                    video = video,
+                                    subtitles = playerState.availableSubtitles,
+                                    onDismiss = onClose,
+                                )
+                            }
+
+                            null -> { }
+                        }
+                    }
+
                     is PlayerSheet.LiveChat -> {
                         PlayerLiveChatColumn(
                             messages = uiState.liveChatMessages,
                             isLoading = uiState.isLiveChatLoading,
                             onClose = onClose,
+                            canSend = YouTube.isSignedIn(),
+                            onSendMessage = { text, onResult -> viewModel.sendLiveChatMessage(text, onResult) },
+                            onDeleteMessage = { message, onResult -> viewModel.deleteLiveChatMessage(message, onResult) },
                             modifier = Modifier.fillMaxSize(),
                         )
                     }
