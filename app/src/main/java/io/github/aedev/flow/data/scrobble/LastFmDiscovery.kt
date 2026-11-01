@@ -2,7 +2,6 @@ package io.github.aedev.flow.data.scrobble
 
 import io.github.aedev.flow.data.music.model.MusicTrack
 import io.github.aedev.flow.data.newmusic.InnertubeMusicService
-import io.github.aedev.flow.data.recommendation.music.MusicBrainEngine
 import io.github.aedev.flow.innertube.YouTube
 import io.github.aedev.flow.innertube.models.SongItem
 import io.github.aedev.flow.utils.PerformanceDispatcher
@@ -25,7 +24,7 @@ class LastFmDiscovery
     @Inject
     constructor(
         private val scrobbler: Scrobbler,
-        private val musicBrain: MusicBrainEngine,
+        private val musicSessionLibrary: io.github.aedev.flow.data.music.MusicSessionLibrary,
     ) {
         private class Cached(
             val seeds: List<String>,
@@ -39,7 +38,7 @@ class LastFmDiscovery
         suspend fun tracks(): List<MusicTrack> =
             lock.withLock {
                 withContext(PerformanceDispatcher.networkIO) {
-                    val seeds = musicBrain.heavyRotationTracks(SEEDS)
+                    val seeds = musicSessionLibrary.onRepeatTracks(SEEDS)
                     val seedIds = seeds.map { it.videoId }
                     val now = System.currentTimeMillis()
                     cached?.takeIf { it.seeds == seedIds && now - it.atMs < TTL_MS }?.let { return@withContext it.tracks }
@@ -53,7 +52,7 @@ class LastFmDiscovery
                         discoveryPicks(
                             similar = similar,
                             seeds = seeds.map { (it.artists.firstOrNull()?.name ?: it.artist) to it.title },
-                            hiddenArtists = musicBrain.hiddenArtists.value,
+                            hiddenArtists = emptySet(),
                             limit = SHOWN,
                         )
                     resolve(picks).also { cached = Cached(seedIds, now, it) }
