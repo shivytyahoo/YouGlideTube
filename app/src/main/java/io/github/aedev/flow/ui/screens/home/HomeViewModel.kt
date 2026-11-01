@@ -620,6 +620,21 @@ class HomeViewModel
                                 return@launch
                             }
                         }
+                        // A hydrated disk feed outranks the landing: after a restart the
+                        // guest shell is empty again, but the last feed on disk is still
+                        // the user's own, so keep showing it instead of blanking home.
+                        if (!YouTube.isSignedIn() && _uiState.value.videos.isNotEmpty()) {
+                            _uiState.update { state ->
+                                state.copy(
+                                    isLoading = false,
+                                    isRefreshing = false,
+                                    error = null,
+                                    isGuestEmpty = false,
+                                    hasMorePages = false,
+                                )
+                            }
+                            return@launch
+                        }
                         // Signed out, an empty guest load is not a failure — home becomes the
                         // calm sign-in landing instead of an error with a Retry button (the
                         // guest shell often carries no feed at all, and shouting about it
