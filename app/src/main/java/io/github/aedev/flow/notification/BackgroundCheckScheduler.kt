@@ -15,11 +15,6 @@ import kotlinx.coroutines.launch
  * cancelled, so Flow is never woken for a result it would throw away.
  */
 internal object BackgroundCheckScheduler {
-    fun subscriptionCheckWanted(
-        notificationsEnabled: Boolean,
-        newVideosEnabled: Boolean,
-    ): Boolean = notificationsEnabled && newVideosEnabled
-
     fun updateCheckWanted(
         notificationsEnabled: Boolean,
         updatesEnabled: Boolean,
@@ -33,21 +28,6 @@ internal object BackgroundCheckScheduler {
         context: Context,
         preferences: PlayerPreferences,
     ) = coroutineScope {
-        launch {
-            combine(
-                preferences.notificationsEnabled,
-                preferences.notifNewVideosEnabled,
-                preferences.subscriptionCheckIntervalMinutes,
-            ) { enabled, newVideos, minutes -> if (subscriptionCheckWanted(enabled, newVideos)) minutes else null }
-                .distinctUntilChanged()
-                .collectIndexed { index, minutes ->
-                    if (minutes == null) {
-                        SubscriptionCheckWorker.cancelScheduledChecks(context)
-                    } else {
-                        SubscriptionCheckWorker.schedulePeriodicCheck(context, minutes.toLong(), reschedule = index > 0)
-                    }
-                }
-        }
         if (BuildConfig.UPDATER_ENABLED) {
             launch {
                 combine(preferences.notificationsEnabled, preferences.notifUpdatesEnabled, ::updateCheckWanted)
