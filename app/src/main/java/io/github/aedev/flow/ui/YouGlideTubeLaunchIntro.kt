@@ -142,7 +142,7 @@ internal fun YouGlideTubeLaunchIntro(modifier: Modifier = Modifier) {
                     )
                 }
                 Image(
-                    painter = painterResource(R.drawable.ic_splash_logo),
+                    painter = painterResource(R.drawable.ic_launcher_foreground),
                     contentDescription = null,
                     modifier =
                         Modifier
