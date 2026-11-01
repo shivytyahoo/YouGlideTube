@@ -24,6 +24,8 @@ data class ServerFeedPage(
     val shorts: List<Video> = emptyList(),
     /** Channels the surface carries (the subscriptions page's channel rail). */
     val channels: List<io.github.aedev.flow.data.model.Channel> = emptyList(),
+    /** Playlists the surface carries (the account playlists page). */
+    val playlists: List<io.github.aedev.flow.data.model.Playlist> = emptyList(),
     val chips: List<ServerChip> = emptyList(),
     val continuation: String? = null,
 )
@@ -95,6 +97,7 @@ fun JsonElement.toServerFeedPage(): ServerFeedPage {
                 .filterIsInstance<FeedItem.ShortItem>()
                 .map { it.video.copy(isShort = true) },
         channels = items.filterIsInstance<FeedItem.RelatedChannelItem>().map { it.channel },
+        playlists = items.filterIsInstance<FeedItem.PlaylistItem>().map { it.playlist },
         chips = chips,
         continuation = continuation,
     )
