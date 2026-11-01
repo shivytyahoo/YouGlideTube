@@ -156,6 +156,10 @@ internal fun BookendLayout(
     text: @Composable () -> Unit,
 ) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
+        // Short windows (TV landscape) cannot hold the full stage plus the text: shrink
+        // the stage so the title stays above the bottom bar instead of sliding under
+        // it. Tall windows keep the full stage untouched.
+        val stageSize = minOf(HeroStageSize, maxHeight * 0.5f)
         Column(
             modifier =
                 Modifier
@@ -168,7 +172,7 @@ internal fun BookendLayout(
                 modifier = Modifier.fillMaxWidth().padding(top = StageTopPadding),
                 contentAlignment = Alignment.Center,
             ) {
-                Box(Modifier.size(HeroStageSize), contentAlignment = Alignment.Center) { stage() }
+                Box(Modifier.size(stageSize), contentAlignment = Alignment.Center) { stage() }
             }
             Column(verticalArrangement = Arrangement.spacedBy(TextSpacing)) { text() }
         }
