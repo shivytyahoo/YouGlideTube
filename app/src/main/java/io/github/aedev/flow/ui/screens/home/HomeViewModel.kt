@@ -85,6 +85,7 @@ class HomeViewModel
         private val sessionExclusions: io.github.aedev.flow.data.engagement.SessionExclusions,
         private val viewHistory: SessionHistory,
         private val chipFeeds: HomeChipFeeds,
+        private val searchHistory: io.github.aedev.flow.data.local.SearchHistoryRepository,
         savedStateHandle: SavedStateHandle,
         @ApplicationContext private val appContext: Context,
     ) : ViewModel() {
@@ -99,6 +100,10 @@ class HomeViewModel
             private const val MAX_RELATED_SEEDS = 4
             private const val MIN_PAGE_SIZE = 8
             private const val LOAD_MORE_GRAPH_SEEDS = 3
+
+            private const val GUEST_FALLBACK_QUERIES = 3
+            private const val GUEST_FALLBACK_MAX_VIDEOS = 24
+            private const val GUEST_FALLBACK_TIMEOUT_MS = 15_000L
 
             // Saved rows of each source ranked again on load-more; the best of them fill the page.
             private const val RESERVE_RERANK_PER_SOURCE = 16
@@ -197,6 +202,22 @@ class HomeViewModel
                 savedState = savedStateHandle,
                 context = ChipFeedContext(::cacheFilters, ::feedExclusions) { watchedVideoIds.value },
             )
+            // A signed-out home left empty fills itself once this session's searches arrive,
+            // so the feed appears on its own after a search instead of waiting for a
+            // pull-to-refresh. Fires only while the landing is up; a landed feed stops it.
+            viewModelScope.launch {
+                var lastSearchCount = 0
+                searchHistory.getSearchHistoryFlow().collect { searches ->
+                    val count = searches.size
+                    val isNew = count != lastSearchCount
+                    lastSearchCount = count
+                    if (isNew && count > 0 && !YouTube.isSignedIn() &&
+                        _uiState.value.isGuestEmpty && !_uiState.value.isLoading
+                    ) {
+                        loadFlowFeed()
+                    }
+                }
+            }
             if (HomeFeedCache.isFresh()) {
                 _uiState.update {
                     it.copy(
@@ -576,6 +597,29 @@ class HomeViewModel
                             "videos=${page?.videos?.size ?: -1} after ${System.currentTimeMillis() - loadStartMs}ms",
                     )
                     if (page == null || (page.videos.isEmpty() && page.shorts.isEmpty())) {
+                        if (!YouTube.isSignedIn()) {
+                            val fallback = guestSearchFallback()
+                            if (fallback.isNotEmpty()) {
+                                ShivLog.i("home guest fallback videos=${fallback.size}")
+                                _uiState.update { state ->
+                                    state.copy(
+                                        videos = fallback,
+                                        shorts = emptyList(),
+                                        isLoading = false,
+                                        isRefreshing = false,
+                                        error = null,
+                                        isGuestEmpty = false,
+                                        isFlowFeed = true,
+                                        hasMorePages = false,
+                                        lastRefreshTime = System.currentTimeMillis(),
+                                        origins = emptyMap(),
+                                    )
+                                }
+                                HomeFeedCache.update(fallback, emptyList())
+                                runCatching { persistentHomeFeedCache.saveLastFeed(fallback) }
+                                return@launch
+                            }
+                        }
                         // Signed out, an empty guest load is not a failure — home becomes the
                         // calm sign-in landing instead of an error with a Retry button (the
                         // guest shell often carries no feed at all, and shouting about it
@@ -617,6 +661,35 @@ class HomeViewModel
         }
 
 
+
+        /**
+         * A signed-out home the guest shell left empty: fill it from this session's own
+         * searches, the closest thing to what the official app learns from watching. Only
+         * within the session — search history does not persist — and only while the viewer
+         * left history on; otherwise home stays the sign-in landing.
+         */
+        private suspend fun guestSearchFallback(): List<Video> {
+            val queries =
+                runCatching { searchHistory.getRecentSearches(GUEST_FALLBACK_QUERIES) }
+                    .getOrElse { emptyList() }
+                    .map { it.query }
+                    .filter { it.isNotBlank() }
+                    .distinct()
+                    .take(GUEST_FALLBACK_QUERIES)
+            if (queries.isEmpty()) return emptyList()
+            val videos = mutableListOf<Video>()
+            val seen = HashSet<String>()
+            withTimeoutOrNull(GUEST_FALLBACK_TIMEOUT_MS) {
+                for (query in queries) {
+                    val (page, _) = repository.searchVideos(query)
+                    for (video in page) {
+                        if (seen.add(video.id)) videos += video
+                    }
+                    if (videos.size >= GUEST_FALLBACK_MAX_VIDEOS) break
+                }
+            }
+            return videos.filterWatched(watchedVideoIds.value).take(GUEST_FALLBACK_MAX_VIDEOS)
+        }
 
         /** Wave 2: the discovery queries wave 1 did not have time for, merged in after paint. */
 
