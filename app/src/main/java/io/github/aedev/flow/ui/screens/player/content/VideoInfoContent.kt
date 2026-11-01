@@ -3,6 +3,7 @@ package io.github.aedev.flow.ui.screens.player.content
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
 import android.widget.Toast
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
@@ -18,6 +19,7 @@ import io.github.aedev.flow.R
 import io.github.aedev.flow.data.localmedia.LocalMediaIds
 import io.github.aedev.flow.data.model.Comment
 import io.github.aedev.flow.data.model.Video
+import io.github.aedev.flow.innertube.YouTube
 import io.github.aedev.flow.player.EnhancedPlayerManager
 import io.github.aedev.flow.ui.components.shared.SaveVideoSheet
 import io.github.aedev.flow.ui.components.shared.rememberVideoShareAction
@@ -30,6 +32,7 @@ import io.github.aedev.flow.ui.screens.player.state.PlayerCommentsUiState
 import io.github.aedev.flow.ui.screens.player.state.PlayerScreenState
 import io.github.aedev.flow.ui.screens.player.state.PlayerSheet
 import io.github.aedev.flow.ui.screens.player.state.VideoPlayerUiState
+import io.github.aedev.flow.ui.screens.settings.account.GoogleLoginActivity
 import io.github.aedev.flow.utils.youtubeWatchUrl
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -106,66 +109,82 @@ internal fun VideoInfoContent(
         likeCount = (video.likeCount + uiState.likeCountDelta).coerceAtLeast(0),
         dislikeCount = uiState.dislikeCount?.plus(uiState.dislikeCountDelta)?.coerceAtLeast(0),
         onLikeClick = {
-            val thumbnailUrl = video.thumbnailUrl
+            if (!YouTube.isSignedIn()) {
+                context.startActivity(Intent(context, GoogleLoginActivity::class.java))
+            } else {
+                val thumbnailUrl = video.thumbnailUrl
 
-            when (uiState.likeState) {
-                "LIKED" -> {
-                    viewModel.removeLikeState(video.id)
-                }
+                when (uiState.likeState) {
+                    "LIKED" -> {
+                        viewModel.removeLikeState(video.id)
+                    }
 
-                else -> {
-                    viewModel.likeVideo(
-                        video.id,
-                        resolvedVideoTitle,
-                        thumbnailUrl,
-                        video.channelName,
-                    )
+                    else -> {
+                        viewModel.likeVideo(
+                            video.id,
+                            resolvedVideoTitle,
+                            thumbnailUrl,
+                            video.channelName,
+                        )
+                    }
                 }
             }
         },
         onDislikeClick = {
-            when (uiState.likeState) {
-                "DISLIKED" -> viewModel.removeLikeState(video.id)
-                else -> viewModel.dislikeVideo(video.id)
+            if (!YouTube.isSignedIn()) {
+                context.startActivity(Intent(context, GoogleLoginActivity::class.java))
+            } else {
+                when (uiState.likeState) {
+                    "DISLIKED" -> viewModel.removeLikeState(video.id)
+                    else -> viewModel.dislikeVideo(video.id)
+                }
             }
         },
         onSubscribeClick = {
-            val channelThumbSafe =
-                uiState.channelAvatarUrl?.takeIf { it.isNotEmpty() }
-                    ?: video.channelThumbnailUrl?.takeIf { it.isNotEmpty() }
-                    ?: ""
+            if (!YouTube.isSignedIn()) {
+                context.startActivity(Intent(context, GoogleLoginActivity::class.java))
+            } else {
+                val channelThumbSafe =
+                    uiState.channelAvatarUrl?.takeIf { it.isNotEmpty() }
+                        ?: video.channelThumbnailUrl?.takeIf { it.isNotEmpty() }
+                        ?: ""
 
-            viewModel.toggleSubscription(video.channelId, video.channelName, channelThumbSafe)
+                viewModel.toggleSubscription(video.channelId, video.channelName, channelThumbSafe)
 
-            scope.launch {
-                val message =
-                    if (uiState.isSubscribed) {
-                        context.getString(R.string.unsubscribed_from, video.channelName)
-                    } else {
-                        context.getString(R.string.subscribed_to, video.channelName)
+                scope.launch {
+                    val message =
+                        if (uiState.isSubscribed) {
+                            context.getString(R.string.unsubscribed_from, video.channelName)
+                        } else {
+                            context.getString(R.string.subscribed_to, video.channelName)
+                        }
+
+                    val result =
+                        snackbarHostState.showSnackbar(
+                            message,
+                            actionLabel = if (uiState.isSubscribed) context.getString(R.string.undo) else null,
+                        )
+
+                    if (result == SnackbarResult.ActionPerformed && uiState.isSubscribed) {
+                        viewModel.toggleSubscription(video.channelId, video.channelName, channelThumbSafe)
                     }
-
-                val result =
-                    snackbarHostState.showSnackbar(
-                        message,
-                        actionLabel = if (uiState.isSubscribed) context.getString(R.string.undo) else null,
-                    )
-
-                if (result == SnackbarResult.ActionPerformed && uiState.isSubscribed) {
-                    viewModel.toggleSubscription(video.channelId, video.channelName, channelThumbSafe)
                 }
             }
         },
         onUnsubscribeClick = {
-            val channelThumbSafe =
-                uiState.channelAvatarUrl?.takeIf { it.isNotEmpty() }
-                    ?: video.channelThumbnailUrl?.takeIf { it.isNotEmpty() }
-                    ?: ""
-            viewModel.toggleSubscription(video.channelId, video.channelName, channelThumbSafe)
-            scope.launch {
-                snackbarHostState.showSnackbar(
-                    context.getString(R.string.unsubscribed_from, video.channelName),
-                )
+            if (!YouTube.isSignedIn()) {
+                context.startActivity(Intent(context, GoogleLoginActivity::class.java))
+            } else {
+                val channelThumbSafe =
+                    uiState.channelAvatarUrl?.takeIf { it.isNotEmpty() }
+                        ?: video.channelThumbnailUrl?.takeIf { it.isNotEmpty() }
+                        ?: ""
+                viewModel.toggleSubscription(video.channelId, video.channelName, channelThumbSafe)
+                scope.launch {
+                    snackbarHostState.showSnackbar(
+                        context.getString(R.string.unsubscribed_from, video.channelName),
+                    )
+                }
             }
         },
         onNotificationChange = { enabled -> viewModel.setNotificationEnabled(video.channelId, enabled) },
