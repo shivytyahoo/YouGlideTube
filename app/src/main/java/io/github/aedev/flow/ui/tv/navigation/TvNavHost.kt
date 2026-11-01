@@ -11,6 +11,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import io.github.aedev.flow.R
+import io.github.aedev.flow.data.localmedia.toMusicTrack
+import io.github.aedev.flow.data.localmedia.toVideo
 import io.github.aedev.flow.data.model.Video
 import io.github.aedev.flow.data.music.DownloadedTrack
 import io.github.aedev.flow.data.video.DownloadedVideo
@@ -22,8 +24,10 @@ import io.github.aedev.flow.ui.screens.channel.ChannelScreen
 import io.github.aedev.flow.ui.screens.history.HistoryScreen
 import io.github.aedev.flow.ui.screens.home.HomeViewModel
 import io.github.aedev.flow.ui.screens.library.DownloadsScreen
+import io.github.aedev.flow.ui.screens.library.LocalMediaScreen
 import io.github.aedev.flow.ui.screens.music.MusicPlayerViewModel
 import io.github.aedev.flow.ui.screens.music.MusicViewModel
+import io.github.aedev.flow.ui.screens.onboarding.OnboardingScreen
 import io.github.aedev.flow.ui.screens.playlists.PlaylistDetailScreen
 import io.github.aedev.flow.ui.screens.playlists.PlaylistsScreen
 import io.github.aedev.flow.ui.screens.search.SearchViewModel
@@ -40,6 +44,7 @@ import io.github.aedev.flow.ui.tv.screens.TvSubscriptionsScreen
 fun TvNavHost(
     navController: NavHostController,
     startRoute: String,
+    onboardingTargetRoute: String = startRoute,
     homeViewModel: HomeViewModel,
     musicViewModel: MusicViewModel,
     musicPlayerViewModel: MusicPlayerViewModel,
@@ -55,6 +60,7 @@ fun TvNavHost(
         navController.navigate(TvRoutes.channel(channelRef))
     }
     val downloadsTitle = stringResource(R.string.library_downloads_label)
+    val localTitle = stringResource(R.string.local_media_title)
     val playDownloadedVideos: (List<DownloadedVideo>, Int) -> Unit = { videos, index ->
         onPlayPlaylist(videos.map { it.video }, index, downloadsTitle, false)
     }
@@ -67,12 +73,25 @@ fun TvNavHost(
         startDestination = startRoute,
         modifier = modifier,
     ) {
+        composable("onboarding") {
+            TvScreenFrame {
+                OnboardingScreen(
+                    onComplete = {
+                        navController.navigate(onboardingTargetRoute) {
+                            popUpTo("onboarding") { inclusive = true }
+                        }
+                    },
+                )
+            }
+        }
         composable(FlowTab.Home.route) {
             TvHomeScreen(
                 viewModel = homeViewModel,
                 onVideoClick = onPlayVideo,
                 onPlayPlaylist = { videos, title -> onPlayPlaylist(videos, 0, title, false) },
                 onOpenLibrary = { onSelectRoot(FlowTab.Library.route) },
+                onOpenSettings = { onSelectRoot(TV_SETTINGS_ROUTE) },
+                onOpenSearch = { onSelectRoot(FlowTab.Search.route) },
                 modifier = Modifier.fillMaxSize(),
             )
         }
@@ -108,10 +127,27 @@ fun TvNavHost(
                 onOpenPlaylist = { navController.navigate(TvRoutes.playlist(it)) },
                 onOpenMusicPlaylist = { navController.navigate(TvRoutes.musicCollection(it)) },
                 onOpenDownloads = { navController.navigate(TvRoutes.DOWNLOADS) },
+                onOpenLocalMedia = { navController.navigate(TvRoutes.LOCAL_MEDIA) },
                 onDownloadedVideoClick = playDownloadedVideos,
                 onDownloadedMusicClick = playDownloadedMusic,
                 modifier = Modifier.fillMaxSize(),
             )
+        }
+        composable(TvRoutes.LOCAL_MEDIA) {
+            TvScreenFrame {
+                LocalMediaScreen(
+                    onBackClick = { navController.popBackStack() },
+                    onPlayVideos = { items, index, shuffle ->
+                        onPlayPlaylist(items.map { it.toVideo() }, index, localTitle, shuffle)
+                    },
+                    onPlayMusic = { items, index, shuffle ->
+                        val tracks = items.map { it.toMusicTrack() }.let { if (shuffle) it.shuffled() else it }
+                        val start = if (shuffle) tracks.first() else tracks[index]
+                        musicPlayerViewModel.loadAndPlayTrack(start, tracks, localTitle)
+                    },
+                    onOpenSettings = { onSelectRoot(TV_SETTINGS_ROUTE) },
+                )
+            }
         }
         composable(TvRoutes.DOWNLOADS) {
             TvScreenFrame {
