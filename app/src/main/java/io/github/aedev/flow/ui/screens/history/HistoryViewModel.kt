@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.aedev.flow.data.local.VideoHistoryEntry
 import io.github.aedev.flow.innertube.YouTube
+import io.github.aedev.flow.data.local.AccountHistoryCapture
 import io.github.aedev.flow.data.local.SessionHistory
 import io.github.aedev.flow.data.model.Video
 import io.github.aedev.flow.data.repository.YouTubeRepository
@@ -64,6 +65,7 @@ class HistoryViewModel
     @Inject
     constructor(
         private val viewHistory: SessionHistory,
+        private val accountHistoryCapture: AccountHistoryCapture,
         private val youTubeRepository: YouTubeRepository,
         private val shortsContentFilter: ShortsContentFilter,
         private val shortsQueueHandoff: ShortsQueueHandoff,
@@ -166,11 +168,20 @@ class HistoryViewModel
                     }
                     return@launch
                 }
-                viewHistory
-                    .getAllHistory()
-                    .combine(shortsContentFilter.enabled) { history, shortsEnabled ->
-                        if (shortsEnabled) history else history.filterNot { it.isShort }
-                    }.collect { history ->
+                combine(
+                    viewHistory.getAllHistory(),
+                    accountHistoryCapture.entriesFlow,
+                    shortsContentFilter.enabled,
+                ) { history, captured, shortsEnabled ->
+                    // Signed out, the list is the session's own plays plus the last
+                    // account snapshot, joined in watch-time order with no repeats:
+                    // a session row always wins its id, the snapshot fills the rest.
+                    val localIds = history.map { it.videoId }.toSet()
+                    val merged =
+                        (history + captured.filterNot { it.videoId in localIds })
+                            .sortedByDescending { it.timestamp }
+                    if (shortsEnabled) merged else merged.filterNot { it.isShort }
+                }.collect { history ->
                         val enriched = history
                         val shortVideos = loadShortVideos(enriched)
 
@@ -242,6 +253,9 @@ class HistoryViewModel
                 }
             _serverEntries.value = entries
             _serverShorts.value = shortVideos
+            // Snapshot the account list now: without this a logout drops every
+            // server row, and the signed-out screen would show session plays only.
+            accountHistoryCapture.save(entries)
             _uiState.update { it.copy(isLoading = false) }
         }
 
