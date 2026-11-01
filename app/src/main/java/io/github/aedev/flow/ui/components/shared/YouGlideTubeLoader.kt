@@ -69,7 +69,7 @@ fun YouGlideTubeLoader(modifier: Modifier = Modifier) {
             drawArc(secondary, sweepBack, 60f, false, topLeft, arcSize, style = style)
         }
         Icon(
-            painter = painterResource(R.drawable.ic_flow_badge_glyph),
+            painter = painterResource(R.drawable.ic_launcher_dynamic_foreground),
             contentDescription = null,
             tint = primary,
             modifier =
