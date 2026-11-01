@@ -78,7 +78,7 @@ class VideoPlayerService : MediaSessionService() {
                 .setChannelName(R.string.notification_channel_video_playback)
                 .setNotificationId(NotificationHelper.NOTIFICATION_PLAYBACK)
                 .build()
-                .apply { setSmallIcon(R.drawable.ic_notification_logo) }
+                .apply { setSmallIcon(R.drawable.ic_launcher_dynamic_foreground) }
         setMediaNotificationProvider(notificationProvider)
         recordForegroundStartFailures("video-service")
 
