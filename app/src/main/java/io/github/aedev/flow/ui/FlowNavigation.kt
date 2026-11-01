@@ -313,7 +313,6 @@ fun NavGraphBuilder.flowAppGraph(
         SettingsHost(
             start = SettingsTarget.decode(backStackEntry.arguments?.getString("target")),
             onExit = { navController.popBackStack() },
-            onOpenDonations = { navController.navigate("donations") },
             onOpenUpdate = { navController.navigate(UPDATE_ROUTE) },
         )
     }
