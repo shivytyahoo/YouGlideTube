@@ -890,20 +890,20 @@
     <string name="icon_name_flow_red">YouGlideTube Red</string>
     <string name="icon_name_flow_light">YouGlideTube Light</string>
     <string name="icon_name_flow_play">YouGlideTube Play</string>
-    <string name="icon_name_amoled">AMOLED Dark</string>
-    <string name="icon_name_monochrome">Monochrome</string>
-    <string name="icon_name_ghost">Ghost</string>
-    <string name="icon_name_dynamic">Material You</string>
-    <string name="icon_name_material_sky">Material Sky</string>
-    <string name="icon_name_material_mint">Material Mint</string>
-    <string name="icon_name_expressive_scallop">Scallop</string>
-    <string name="icon_name_expressive_segmented">Segmented F</string>
-    <string name="icon_name_expressive_play">Sunny Play</string>
-    <string name="icon_name_expressive_sky">Sky Clover</string>
-    <string name="icon_name_expressive_mint">Mint Flower</string>
-    <string name="icon_name_expressive_cookie">Night Cookie</string>
-    <string name="icon_name_expressive_oval">Oval</string>
-    <string name="icon_name_expressive_pill">Pill</string>
+    <string name="icon_name_amoled">YouGlideTube AMOLED</string>
+    <string name="icon_name_monochrome">YouGlideTube Mono</string>
+    <string name="icon_name_ghost">YouGlideTube Ghost</string>
+    <string name="icon_name_dynamic">YouGlideTube Dynamic</string>
+    <string name="icon_name_material_sky">YouGlideTube Sky</string>
+    <string name="icon_name_material_mint">YouGlideTube Mint</string>
+    <string name="icon_name_expressive_scallop">YouGlideTube Scallop</string>
+    <string name="icon_name_expressive_segmented">YouGlideTube Segmented</string>
+    <string name="icon_name_expressive_play">YouGlideTube Sunny</string>
+    <string name="icon_name_expressive_sky">YouGlideTube Clover</string>
+    <string name="icon_name_expressive_mint">YouGlideTube Flower</string>
+    <string name="icon_name_expressive_cookie">YouGlideTube Night</string>
+    <string name="icon_name_expressive_oval">YouGlideTube Oval</string>
+    <string name="icon_name_expressive_pill">YouGlideTube Pill</string>
     <!-- Player Appearance -->
     <string name="player_appearance_title">Player Appearance</string>
     <string name="player_appearance_header">Customize Player Controls</string>
@@ -4357,6 +4357,7 @@
 
     <!-- Google account -->
     <string name="sign_in">Sign in</string>
+    <string name="sign_in_to_comment">Sign in to comment</string>
     <string name="sign_in_to_subscribe_title">Sign in to subscribe</string>
     <string name="sign_in_to_subscribe_message">Subscriptions live on your Google account, just like YouTube. Sign in and this channel joins your account subscriptions.</string>
     <string name="account_title">Google account</string>
