@@ -1,11 +1,9 @@
 package io.github.aedev.flow.data.shorts.queue
 
+import io.github.aedev.flow.data.account.AccountSubscriptions
 import io.github.aedev.flow.data.local.PlayerPreferences
-import io.github.aedev.flow.data.local.PlaylistRepository
-import io.github.aedev.flow.data.local.SubscriptionRepository
-import io.github.aedev.flow.data.recommendation.FlowNeuroEngine
+import io.github.aedev.flow.data.engagement.SessionExclusions
 import io.github.aedev.flow.data.shorts.ShortsFeedRepository
-import io.github.aedev.flow.data.subscriptions.SubscriptionFeedRepository
 import io.github.aedev.flow.data.subscriptions.SubscriptionWatchedVideos
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
@@ -16,13 +14,11 @@ class ShortsQueueLoaderFactory
     @Inject
     constructor(
         private val shortsRepository: ShortsFeedRepository,
-        private val playlistRepository: PlaylistRepository,
-        private val subscriptionFeedRepository: SubscriptionFeedRepository,
-        private val subscriptionRepository: SubscriptionRepository,
+        private val accountSubscriptions: AccountSubscriptions,
         private val subscriptionWatchedVideos: SubscriptionWatchedVideos,
         private val playerPreferences: PlayerPreferences,
         private val handoff: ShortsQueueHandoff,
-        private val neuroEngine: FlowNeuroEngine,
+        private val sessionExclusions: SessionExclusions,
     ) {
         fun create(source: ShortsQueueSource): ShortsQueueController {
             val resolved = resolve(source)
@@ -58,11 +54,10 @@ class ShortsQueueLoaderFactory
 
         private fun deepSubscriptionLoader(): ShortsQueueLoader =
             SubscriptionDeepShortsLoader(
-                subscriptionFeedRepository = subscriptionFeedRepository,
-                subscriptionRepository = subscriptionRepository,
+                accountSubscriptions = accountSubscriptions,
                 playerPreferences = playerPreferences,
                 watchedVideos = subscriptionWatchedVideos,
-                exclusions = { neuroEngine.feedExclusions() },
+                exclusions = { sessionExclusions.snapshot() },
             )
 
         private fun optionalFeedLoader(): ShortsQueueLoader =
@@ -81,17 +76,12 @@ class ShortsQueueLoaderFactory
                     AlgorithmicFeedLoader(shortsRepository, source.startVideoId)
                 }
 
-                is ShortsQueueSource.Saved -> {
-                    SavedShortsLoader(playlistRepository)
-                }
-
                 is ShortsQueueSource.Subscriptions -> {
                     SubscriptionShortsLoader(
-                        subscriptionFeedRepository = subscriptionFeedRepository,
                         playerPreferences = playerPreferences,
                         watchedVideos = subscriptionWatchedVideos,
                         anchorVideoId = source.startVideoId.takeIf { it.isNotBlank() },
-                        exclusions = { neuroEngine.feedExclusions() },
+                        exclusions = { sessionExclusions.snapshot() },
                     )
                 }
 
