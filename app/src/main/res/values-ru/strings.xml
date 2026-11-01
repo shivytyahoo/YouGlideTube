@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Flow</string>
+    <string name="app_name">YouGlideTube</string>
     <string name="subscriptions_search_placeholder">Поиск в подписках...</string>
     <string name="top_bar_subscriptions_title">Подписки</string>
     <string name="view_all_button_label">Все</string>
@@ -166,7 +166,7 @@
     <string name="new_update_available">Доступно обновление</string>
     <string name="update_available_template">Версия %1$s уже доступна</string>
     <string name="release_notes">ПРИМЕЧАНИЯ К ВЫПУСКУ</string>
-    <string name="update_flow">Обновить Flow</string>
+    <string name="update_flow">Обновить Glide</string>
     <string name="maybe_later">Может быть, позже</string>
     <string name="nav_home">Главная</string>
     <string name="nav_shorts">Shorts</string>
@@ -200,7 +200,7 @@
     <string name="chapters">Главы</string>
     <string name="artist">Исполнитель</string>
     <string name="playlist">Плейлист</string>
-    <string name="app_name_uppercase">FLOW</string>
+    <string name="app_name_uppercase">YOUGLIDETUBE</string>
     <string name="notification_badge_9_plus">9+</string>
     <string name="personalized_feed">Ваша персональная лента</string>
     <string name="import_newpipe_backup">Импорт резервной копии NewPipe</string>
@@ -269,10 +269,10 @@
     <string name="peace_and_quiet">Тишина и покой</string>
     <string name="notifications_empty_body">Вы все посмотрели! Здесь появятся новые видео из ваших подписок.</string>
     <string name="settings_title">Настройки</string>
-    <string name="settings_flow_engine_header">Движок Flow</string>
+    <string name="settings_flow_engine_header">Движок Glide</string>
     <string name="settings_active_learning">АКТИВНОЕ ОБУЧЕНИЕ</string>
-    <string name="settings_reset_brain_title">Сбросить профиль рекомендаций Flow?</string>
-    <string name="settings_reset_brain_body">Это сотрет ваш профиль Flow Brain.\n\n• Выученные темы забываются.\n• Сброс личностных качеств.\n• Рекомендации возвращаются к значениям по умолчанию.\n\nЭто невозможно отменить.</string>
+    <string name="settings_reset_brain_title">Сбросить профиль рекомендаций Glide?</string>
+    <string name="settings_reset_brain_body">Это сотрет ваш профиль Glide Brain.\n\n• Выученные темы забываются.\n• Сброс личностных качеств.\n• Рекомендации возвращаются к значениям по умолчанию.\n\nЭто невозможно отменить.</string>
     <string name="settings_reset_everything">Сбросить все</string>
     <string name="settings_analyzing_interactions">Анализируем ваше взаимодействие...</string>
     <string name="settings_view_analytics">Посмотреть аналитику</string>
@@ -282,7 +282,7 @@
     <string name="settings_header_about">О приложении</string>
     <string name="settings_header_notifications">Уведомления</string>
     <string name="settings_item_notifications">Настройки уведомлений</string>
-    <string name="settings_item_notifications_subtitle">Управляйте тем, какие уведомления может присылать Flow</string>
+    <string name="settings_item_notifications_subtitle">Управляйте тем, какие уведомления может присылать Glide</string>
     <string name="notif_settings_title">Настройки уведомлений</string>
     <string name="notif_type_new_videos">Новые видео</string>
     <string name="notif_type_new_videos_subtitle">Уведомлять, когда на подписанных каналах выходят новые видео</string>
@@ -291,7 +291,7 @@
     <string name="notif_type_reminders">Напоминания о времени у экрана</string>
     <string name="notif_type_reminders_subtitle">Напоминания о перерывах и сне в Контроле времени</string>
     <string name="notif_type_updates">Обновления приложения</string>
-    <string name="notif_type_updates_subtitle">Узнавайте о выходе новых версий Flow</string>
+    <string name="notif_type_updates_subtitle">Узнавайте о выходе новых версий Glide</string>
     <string name="notif_type_general">Общие уведомления</string>
     <string name="notif_type_general_subtitle">Различные оповещения и объявления приложения</string>
     <string name="notif_system_settings">Системные настройки уведомлений</string>
@@ -300,7 +300,7 @@
     <string name="notif_check_interval">Интервал проверки новых видео</string>
     <string name="notif_check_interval_subtitle_template">Проверять каждые %s</string>
     <string name="notif_check_interval_dialog_title">Интервал проверки</string>
-    <string name="notif_check_interval_dialog_body">Как часто Flow проверяет ваши подписки на наличие новых видео.</string>
+    <string name="notif_check_interval_dialog_body">Как часто Glide проверяет ваши подписки на наличие новых видео.</string>
     <string name="notif_interval_15m">15 минут</string>
     <string name="notif_interval_30m">30 минут</string>
     <string name="notif_interval_1h">1 час</string>
@@ -333,15 +333,15 @@
     <string name="settings_item_export_data_subtitle">Создать резервную копию данных</string>
     <string name="settings_item_import_data">Импорт данных</string>
     <string name="settings_item_import_data_subtitle">Восстановление из копии или импорт из других приложений</string>
-    <string name="settings_item_about_flow">О Flow</string>
+    <string name="settings_item_about_flow">О Glide</string>
     <string name="settings_item_about_flow_subtitle">Версия, лицензия, авторы</string>
     <string name="settings_item_support">Поддержка и донаты</string>
-    <string name="settings_item_support_subtitle">Поддержите разработку Flow</string>
+    <string name="settings_item_support_subtitle">Поддержите разработку Glide</string>
     <string name="settings_region_dialog_title">Выберите регион</string>
     <string name="settings_export_success">Данные успешно экспортированы</string>
     <string name="settings_export_failed">Ошибка экспорта: %1$s</string>
     <string name="appearance_title">Внешний вид</string>
-    <string name="appearance_subtitle">Персонализация интерфейса Flow</string>
+    <string name="appearance_subtitle">Персонализация интерфейса Glide</string>
     <string name="appearance_current_theme">ТЕКУЩАЯ ТЕМА</string>
     <string name="appearance_category_all">Все</string>
     <string name="appearance_category_light">Светлые</string>
@@ -349,9 +349,9 @@
     <string name="appearance_category_special">Особые</string>
     <string name="appearance_applied_toast">Применено: %1$s</string>
     <string name="app_icon_picker_subtitle">Выберите стиль значка. Изменения вступят в силу сразу, а рабочий стол перезапустится.</string>
-    <string name="app_icon_picker_warning">Изменение значка может на мгновение удалит Flow с главного экрана. При необходимости добавьте его обратно из панели приложений.</string>
+    <string name="app_icon_picker_warning">Изменение значка может на мгновение удалит Glide с главного экрана. При необходимости добавьте его обратно из панели приложений.</string>
     <string name="app_icon_apply_toast">Иконка обновлена - рабочий стол обновится</string>
-    <string name="icon_name_flow_red">Flow Red</string>
+    <string name="icon_name_flow_red">Glide Red</string>
     <string name="icon_name_amoled">AMOLED Dark</string>
     <string name="icon_name_monochrome">Монохром</string>
     <string name="icon_name_ghost">Призрак</string>
@@ -396,8 +396,8 @@
     <string name="theme_desc_sky_blue">Лёгкая, воздушная палитра с оттенками открытого неба.</string>
     <string name="theme_name_cream_paper">Кремовая бумага</string>
     <string name="theme_desc_cream_paper">Тёплые бумажные тона для уютного дневного чтения.</string>
-    <string name="theme_name_classic_dark">Flow по умолчанию</string>
-    <string name="theme_desc_classic_dark">Оригинальная палитра Flow с красным акцентом в стиле YouTube.</string>
+    <string name="theme_name_classic_dark">Glide по умолчанию</string>
+    <string name="theme_desc_classic_dark">Оригинальная палитра Glide с красным акцентом в стиле YouTube.</string>
     <string name="theme_name_true_black">Глубокий черный</string>
     <string name="theme_desc_true_black">Чистый OLED</string>
     <string name="theme_name_midnight">Полночь</string>
@@ -675,7 +675,7 @@
     <string name="content_settings_video_card_actions_title">Кнопки «Нравится» и «Не нравится» на карточке видео</string>
     <string name="content_settings_video_card_actions_subtitle">Кнопки «Нравится» и «Не нравится» на карточках для настройки вашей ленты</string>
     <string name="content_settings_show_app_logo_title">Отображать логотип приложения</string>
-    <string name="content_settings_show_app_logo_subtitle">Отображать логотип Flow рядом с названием приложения в верхней панели главного экрана</string>
+    <string name="content_settings_show_app_logo_subtitle">Отображать логотип Glide рядом с названием приложения в верхней панели главного экрана</string>
     <string name="player_settings_shorts_background_play">Фоновое воспроизведение Shorts</string>
     <string name="player_settings_shorts_background_play_subtitle">Продолжать воспроизведение Shorts, когда приложение свернуто</string>
     <string name="currently_following">Текущие подписки</string>
@@ -707,10 +707,10 @@
     <string name="deep_flow_expire_duration_subtitle">Обучение возобновится автоматически через: %s</string>
     <string name="deep_flow_dialog_title">Продолжительность паузы</string>
     <string name="deep_flow_dialog_body">На какое время приостановить обучение?</string>
-    <string name="deep_flow_enabled_message">Включена функция Deep Flow</string>
-    <string name="deep_flow_disabled_message">Функция Deep Flow отключена</string>
-    <string name="deep_flow_expired_message">Истекло время таймера Deep Flow</string>
-    <string name="deep_flow_active_until_disabled">Deep Flow остается активным, пока вы его не выключите</string>
+    <string name="deep_flow_enabled_message">Включена функция Deep Glide</string>
+    <string name="deep_flow_disabled_message">Функция Deep Glide отключена</string>
+    <string name="deep_flow_expired_message">Истекло время таймера Deep Glide</string>
+    <string name="deep_flow_active_until_disabled">Deep Glide остается активным, пока вы его не выключите</string>
     <string name="deep_flow_duration_never">Никогда</string>
     <string name="deep_flow_duration_1h">1 час</string>
     <string name="deep_flow_duration_2h">2 часа</string>
@@ -720,7 +720,7 @@
     <string name="deep_flow_duration_12h">12 часов</string>
     <string name="deep_flow_duration_24h">24 часа</string>
     <string name="notif_master_toggle">Включить уведомления</string>
-    <string name="notif_master_toggle_subtitle">Позвольте Flow проверять наличие новых видео в фоновом режиме</string>
+    <string name="notif_master_toggle_subtitle">Позвольте Glide проверять наличие новых видео в фоновом режиме</string>
     <string name="notif_check_interval_disabled">Проверка уведомлений в фоновом режиме отключена</string>
     <string name="settings_item_proxy">Настройки прокси</string>
     <string name="settings_item_proxy_subtitle">Направлять удаленный трафик через HTTP или SOCKS5</string>
@@ -742,7 +742,7 @@
     <string name="appearance_role_on_background">На фоне</string>
     <string name="appearance_role_surface">Поверхность</string>
     <string name="appearance_role_on_surface">На поверхности</string>
-    <string name="deep_flow_mode_title">Режим Deep Flow</string>
+    <string name="deep_flow_mode_title">Режим Deep Glide</string>
     <string name="done">Готово</string>
     <string name="next_up">Следующий</string>
     <string name="cast_to_tv">Транслировать на ТВ</string>
@@ -754,7 +754,7 @@
     <string name="export_engine_data_subtitle">Создать резервную копию своей ИИ личности и обучающих данных</string>
     <string name="export_engine_success">Успешно экспортирован профиль движка</string>
     <string name="export_engine_failed">Не удалось экспортировать профиль движка</string>
-    <string name="import_engine_data">Импорт данных движка Flow</string>
+    <string name="import_engine_data">Импорт данных движка Glide</string>
     <string name="import_engine_data_desc">Восстановите свой профиль личности ИИ из файла резервной копии</string>
     <string name="error_age_restricted">Контент с возрастными ограничениями</string>
     <string name="appearance_role_error">Ошибка</string>
@@ -764,7 +764,7 @@
     <string name="appearance_system_defaults_subtitle">Выберите, какая тема будет использоваться при переключении устройства между светлым и темным режимами.</string>
     <string name="appearance_system_light_theme">Тема в светлом режиме</string>
     <string name="appearance_system_dark_theme">Тема в темном режиме</string>
-    <string name="icon_name_flow_light">Flow Light</string>
+    <string name="icon_name_flow_light">Glide Light</string>
     <string name="icon_name_material_sky">Material Sky</string>
     <string name="icon_name_material_mint">Material Mint</string>
     <string name="player_appearance_brightness_gesture_title">Жест яркости</string>
@@ -819,7 +819,7 @@
     <string name="content_settings_subs_show_live_subtitle">Показывать прямые и недавние трансляции в ленте</string>
     <string name="content_settings_nav_order_title">Порядок вкладок и вкладка по умолчанию</string>
     <string name="content_settings_subs_show_live_title">Трансляции в подписках</string>
-    <string name="content_settings_nav_order_subtitle">Перетащите, чтобы изменить порядок. Выберите вкладку Flow</string>
+    <string name="content_settings_nav_order_subtitle">Перетащите, чтобы изменить порядок. Выберите вкладку Glide</string>
     <string name="proxy_settings_title">Настройка прокси</string>
     <string name="proxy_settings_enabled">Включить прокси</string>
     <string name="proxy_settings_username">Логин</string>
@@ -1005,7 +1005,7 @@
     <string name="local_media_rescan">Пересканировать</string>
     <string name="local_media_scanning">Сканирование устройства…</string>
     <string name="local_media_empty_title">Медиафайлы не найдены</string>
-    <string name="local_media_permission_body">Разрешите доступ к медиа, чтобы Flow мог находить и воспроизводить локальные видео и музыку.</string>
+    <string name="local_media_permission_body">Разрешите доступ к медиа, чтобы Glide мог находить и воспроизводить локальные видео и музыку.</string>
     <string name="history_tab_local_videos">Видео на устройстве</string>
     <string name="history_tab_local_music">Музыка на устройстве</string>
     <string name="share_link_only_template">https://youtube.com/watch?v=%1$s</string>
@@ -1028,7 +1028,7 @@
     <string name="autoplay_countdown_play_now">Воспроизвести сейчас</string>
     <string name="sb_settings_general_header">Основные</string>
     <string name="player_settings_header_video">Видео</string>
-    <string name="player_settings_video_codec_dialog_body">Кодек Flow выбирает первым. Вы по-прежнему можете выбрать любой кодек в меню качества. H.264 воспроизводится плавно на большинстве устройств. AV1 и VP9 используют меньше данных, но требуют больше энергии.</string>
+    <string name="player_settings_video_codec_dialog_body">Кодек Glide выбирает первым. Вы по-прежнему можете выбрать любой кодек в меню качества. H.264 воспроизводится плавно на большинстве устройств. AV1 и VP9 используют меньше данных, но требуют больше энергии.</string>
     <string name="cancel_selection">Отменить выделение</string>
     <string name="select_all">Выбрать все</string>
     <string name="deselect_all">Снять выделение</string>
@@ -1053,12 +1053,12 @@
     <string name="period_six_months">6 месяцев</string>
     <string name="period_one_year">1 год</string>
     <string name="import_data_title">Импорт данных</string>
-    <string name="import_flow_backup_success">Резервная копия Flow импортирована</string>
-    <string name="import_flow_backup_failed_template">Ошибка импорта резервной копии Flow: %1$s</string>
+    <string name="import_flow_backup_success">Резервная копия Glide импортирована</string>
+    <string name="import_flow_backup_failed_template">Ошибка импорта резервной копии Glide: %1$s</string>
     <string name="import_newpipe_failed_template">Ошибка импорта резервной копии NewPipe: %1$s»</string>
     <string name="import_youtube_failed_template">Ошибка импорта резервной копии YouTube: %1$s»</string>
-    <string name="import_flow_backup_item_title">Импорт резервной копии Flow</string>
-    <string name="import_flow_backup_desc">Восстановление истории, настроек и подписок из файла резервной копии Flow.</string>
+    <string name="import_flow_backup_item_title">Импорт резервной копии Glide</string>
+    <string name="import_flow_backup_desc">Восстановление истории, настроек и подписок из файла резервной копии Glide.</string>
     <string name="import_from_newpipe">Импорт из NewPipe</string>
     <string name="import_from_newpipe_desc">Импорт подписок из файла экспорта NewPipe (JSON).</string>
     <string name="import_from_libretube">Импорт из LibreTube</string>
@@ -1130,7 +1130,7 @@
     <string name="category_creative">Творчество</string>
     <string name="category_science_nature">Наука и природа</string>
     <string name="category_news_current_events">Новости и события</string>
-    <string name="flow_control_center">Центр управления Flow</string>
+    <string name="flow_control_center">Центр управления Glide</string>
     <string name="loading_neural_matrix">Загрузка нейроматрицы...</string>
     <string name="neural_interest_map_subtitle">Ваша нейрокарта предпочтений</string>
     <string name="cognitive_fingerprint">Когнитивный профиль</string>
@@ -1145,7 +1145,7 @@
     <string name="stats_interactions">Взаимодействия</string>
     <string name="stats_topics">Темы</string>
     <string name="empty_bubble_cloud_message">Смотрите видео, чтобы сформировать карту предпочтений!</string>
-    <string name="flow_neural_profile_export_subject">Экспорт нейропрофиля Flow</string>
+    <string name="flow_neural_profile_export_subject">Экспорт нейропрофиля Glide</string>
     <string name="screen_title_music_library">Музыкальная библиотека</string>
     <string name="header_your_collection">Ваша коллекция</string>
     <string name="subtitle_liked_music">Понравившиеся треки</string>
@@ -1197,7 +1197,7 @@
     <string name="remove_incomplete_downloads">Удалить незавершенные загрузки</string>
     <string name="cast_connected">Трансляция</string>
     <string name="cast_disconnected">Трансляция отключена</string>
-    <string name="flow_is_up_to_date">Установлена последняя версия Flow!</string>
+    <string name="flow_is_up_to_date">Установлена последняя версия Glide!</string>
     <string name="sync_collection_subscriptions">Подписки</string>
     <string name="sync_collection_settings">Настройки</string>
     <string name="sync_collection_recommendation_profile">Профиль рекомендаций</string>
@@ -1246,7 +1246,7 @@
     <string name="error_channel_terminated_hint">Этот канал больше не существует на YouTube.</string>
     <string name="error_captcha">Требуется пройти капчу YouTube</string>
     <string name="error_captcha_hint">YouTube требует подтвердить, что вы не робот. Откройте YouTube в браузере, пройдите капчу и повторите попытку.</string>
-    <string name="error_not_supported_hint">Этот формат или тип контента не может быть воспроизведен в Flow.</string>
+    <string name="error_not_supported_hint">Этот формат или тип контента не может быть воспроизведен в Glide.</string>
     <string name="error_no_internet">Нет подключения к интернету</string>
     <string name="error_no_internet_hint">Проверьте подключение к Wi-Fi или мобильной сети и повторите попытку.</string>
     <string name="error_timeout">Превышено время ожидания</string>
@@ -1278,23 +1278,23 @@
     <string name="tap_to_recognize">Нажмите, чтобы распознать</string>
     <string name="no_match_found">Совпадений не найдено</string>
     <string name="try_again">Попробуйте снова</string>
-    <string name="donation_prompt_message">Flow бесплатен, имеет открытый исходный код и не содержит рекламы. Если оно заслужило место на вашем телефоне, небольшая поддержка сохранит его.</string>
+    <string name="donation_prompt_message">Glide бесплатен, имеет открытый исходный код и не содержит рекламы. Если оно заслужило место на вашем телефоне, небольшая поддержка сохранит его.</string>
     <string name="sync_consent_note">Сначала создается резервная копия. При объединении данные никогда не перезаписываются и не дублируются.</string>
     <string name="import_yt_history_empty_error">В этом файле не найдена история просмотра. Убедитесь, что это файл watch-history.html из YouTube Архиватора.</string>
     <string name="import_yt_playlist_empty_error">Файл CSV не содержит данных о видео. Убедитесь, что это CSV-файл плейлиста из YouTube Архиватора.</string>
-    <string name="error_extraction_failed_hint">Возможно, YouTube обновил свой формат. Flow скоро обновится – попробуйте повторить попытку позже.</string>
+    <string name="error_extraction_failed_hint">Возможно, YouTube обновил свой формат. Glide скоро обновится – попробуйте повторить попытку позже.</string>
     <string name="music_playback_warning_forbidden">Доступ к музыкальному потоку запрещен. Возможно, YouTube ограничил вашу IP-адрес. Попробуйте обновить страницу или сменить сеть/VPN.</string>
     <string name="import_from_metrolist_desc">Импорт музыкальных плейлистов из резервной копии Metrolist (.zip). Плейлисты появятся в вашей музыкальной библиотеке.</string>
     <string name="music_playback_warning_network">Не удалось получить музыкальный поток: проблема с сетью. Проверьте соединение или смените точку доступа.</string>
     <string name="sync_error_peer_also_send">На другом устройстве также выбран режим «Отправка». Переключите его в режим «Получение» и попробуйте снова.</string>
     <string name="sync_error_peer_also_receive">На другом устройстве также выбран режим «Прием». Переключите его в режим «Передача» и попробуйте снова.</string>
-    <string name="stats_disclaimer">На основе вашей истории просмотра в Flow. Фактическое использование может отличаться.</string>
+    <string name="stats_disclaimer">На основе вашей истории просмотра в Glide. Фактическое использование может отличаться.</string>
     <string name="sync_send_show_qr_hint">Другое устройство сканирует этот код.</string>
     <string name="sync_error_qr_expired">Срок действия этого кода истек. Попросите другое устройство создать новый код. Если коды продолжают сразу же становиться недействительными, проверьте, правильно ли установлены дата и время на обоих устройствах.</string>
     <string name="import_yt_music_playlist_desc">Импорт плейлиста из CSV-файла YouTube Music Архиватора. Он отобразится в разделе «Музыкальные плейлисты».</string>
     <string name="import_master_backup_desc">Восстановите данные приложения и движка из единого файла полной резервной копии</string>
     <string name="sync_error_no_network">Нет подключения к Wi-Fi/LAN. Подключите оба устройства к одной сети или точке доступа.</string>
-    <string name="export_watch_history_desc">Экспорт истории просмотра YouTube в JSON-файл (импорт в LibreTube и Flow)</string>
+    <string name="export_watch_history_desc">Экспорт истории просмотра YouTube в JSON-файл (импорт в LibreTube и Glide)</string>
     <string name="player_appearance_long_press_speed_subtitle">Выберите временную скорость воспроизведения при удержании плеера</string>
     <string name="sync_scan_prompt_receive_code">Наведите камеру на QR-код для получения данных, отображаемый на другом устройстве</string>
     <string name="sync_error_qr_bad_address">В данных о подключении отсутствует корректный сетевой адрес.</string>
@@ -1318,9 +1318,9 @@
     <string name="play_next_video_desc">Воспроизводить после текущего видео</string>
     <string name="add_video_to_queue_desc">Добавить в конец очереди</string>
     <string name="support_donations_title">Поддержка и донаты</string>
-    <string name="support_flow_dev_title">Поддержка разработки Flow</string>
-    <string name="support_flow_dev_desc">Если Flow вам полезен, вы можете поддержать его на Open Collective, Patreon или с помощью криптовалюты ниже. Спасибо!</string>
-    <string name="support_flow_patreon">Поддержать Flow на Patreon</string>
+    <string name="support_flow_dev_title">Поддержка разработки Glide</string>
+    <string name="support_flow_dev_desc">Если Glide вам полезен, вы можете поддержать его на Open Collective, Patreon или с помощью криптовалюты ниже. Спасибо!</string>
+    <string name="support_flow_patreon">Поддержать Glide на Patreon</string>
     <string name="thank_you_support_message">Спасибо за вашу поддержку! ❤️</string>
     <string name="deep_flow_save_history_subtitle">Сохранять историю просмотров, не используя её для формирования рекомендаций</string>
     <string name="deep_flow_save_history_title">Записывать историю просмотра</string>
@@ -1423,8 +1423,8 @@
     <string name="default_video_quality_label">Качество видео по умолчанию</string>
     <string name="default_download_codec_auto_subtitle">Использует ваш последний выбор или кодек текущего видео</string>
     <string name="download_over_wifi_only">Загрузка только по Wi-Fi</string>
-    <string name="location_downloads_label">Загрузки / Flow</string>
-    <string name="location_movies_label">Фильмы / Flow</string>
+    <string name="location_downloads_label">Загрузки / Glide</string>
+    <string name="location_movies_label">Фильмы / Glide</string>
     <string name="location_internal_app_label">Внутреннее хранилище приложения</string>
     <string name="location_custom_saf_label">Просмотр…</string>
     <string name="location_internal_app_desc">Доступно только в приложении – файлы могут быть удалены при удалении приложения.</string>
@@ -1463,7 +1463,7 @@
     <string name="playlist_sort_date_published_oldest">Дата публикации (сначала старые)</string>
     <string name="remove_selected_playlist_text">Они будут удалены из этого плейлиста.</string>
     <string name="remove_selected_watch_later_text">Они будут удалены из «Смотреть позже».</string>
-    <string name="welcome_to_flow">Добро пожаловать в Flow</string>
+    <string name="welcome_to_flow">Добро пожаловать в Glide</string>
     <string name="onboarding_subtitle">Расскажите нам о ваших предпочтениях</string>
     <string name="onboarding_instructions">Выберите как минимум 3 темы для персонализации</string>
     <string name="onboarding_interests_title">Что вам нравится?</string>
@@ -1573,7 +1573,7 @@
     <string name="subtitle_song_prefix">Трек • %1$s</string>
     <string name="recognition_search_history">Поиск распознанных треков</string>
     <string name="daily_discover_sounds_like">Звучит как %1$s</string>
-    <string name="sync_error_qr_not_flow">Это не похоже на корректные данные для подключения Flow.</string>
+    <string name="sync_error_qr_not_flow">Это не похоже на корректные данные для подключения Glide.</string>
     <string name="appearance_customizer_variant_title">%1$s пользовательская тема</string>
     <string name="appearance_variant_amoled">AMOLED</string>
     <string name="appearance_role_primary_container">Первичный контейнер</string>
@@ -1606,7 +1606,7 @@
     <string name="appearance_color_alpha">Непрозрачность</string>
     <string name="appearance_navigate_back">Вернуться назад</string>
     <string name="appearance_selected">Выбрано</string>
-    <string name="icon_name_flow_play">Flow Play</string>
+    <string name="icon_name_flow_play">Glide Play</string>
     <string name="player_fullscreen_seekbar_width_value">%1$d dp</string>
     <string name="lyrics_provider_lyrics_plus">LyricsPlus</string>
     <string name="currently_blocked">В данный момент заблокировано</string>
@@ -1633,14 +1633,14 @@
     <string name="sleep_window">Период сна:</string>
     <string name="frequency_description">Как часто напоминать</string>
     <string name="tools_subtitle">Установите напоминания, чтобы сбалансировать свои зрительские привычки</string>
-    <string name="donation_prompt_title">Нравится Flow?</string>
+    <string name="donation_prompt_title">Нравится Glide?</string>
     <string name="donation_prompt_methods">Открытый коллектив · Patreon · Биткойн · Эфириум · Солана · USDT · Monero</string>
     <string name="about_creator">Автор</string>
     <string name="newpipe_extractor_title">NewPipe Extractor</string>
     <string name="newpipe_extractor_subtitle">Основная библиотека парсинга</string>
     <string name="about_license">Лицензия</string>
     <string name="about_changelog">Список изменений</string>
-    <string name="whats_new_in_flow">Что нового в Flow</string>
+    <string name="whats_new_in_flow">Что нового в Glide</string>
     <string name="about_device_info">Информация об устройстве</string>
     <string name="app_logo_desc">Логотип приложения</string>
     <string name="board_label">Аппаратная платформа: %1$s</string>
@@ -1759,7 +1759,7 @@
     <string name="persona_initiate_title">Новичок</string>
     <string name="persona_initiate_description">Самое начало. Ваш профиль еще только формируется.</string>
     <string name="persona_audiophile_title">Меломан</string>
-    <string name="persona_audiophile_description">Вы используете Flow в основном для музыки. Атмосфера – это все.</string>
+    <string name="persona_audiophile_description">Вы используете Glide в основном для музыки. Атмосфера – это все.</string>
     <string name="persona_livewire_title">Всегда в эфире</string>
     <string name="persona_night_owl_title">Сова</string>
     <string name="persona_night_owl_description">Тьма – ваша стихия. Чаще всего вы смотрите видео после полуночи.</string>
@@ -1835,7 +1835,7 @@
     <string name="listening">Слушаю…</string>
     <string name="processing">Обработка…</string>
     <string name="recognition_error">Не удалось распознать</string>
-    <string name="search_in_flow">Поиск в Flow</string>
+    <string name="search_in_flow">Поиск в Glide</string>
     <string name="close_popup_player">Закрыть всплывающий плеер</string>
     <string name="topic_score_prefix">Оценка</string>
     <string name="channel_sort_latest">Новые</string>
@@ -1854,7 +1854,7 @@
     <string name="copy_logs">Скопировать отчет</string>
     <string name="logs_copied">Отчет скопирован</string>
     <string name="logs_copy_failed">Не удалось скопировать отчет</string>
-    <string name="channel_error_log_clip_label">Отчет об ошибке Flow</string>
+    <string name="channel_error_log_clip_label">Отчет об ошибке Glide</string>
     <string name="add_comment_placeholder">Оставьте комментарий...</string>
     <string name="search_empty_prompt">Поиск видео, музыки и не только</string>
     <string name="channel_search_failed">Не удалось выполнить поиск по каналу</string>
@@ -1884,9 +1884,9 @@
     <string name="content_settings_hide_watched_subscriptions_subtitle">Скрыть просмотренные видео из подписок</string>
     <string name="desc_more">...еще</string>
     <string name="widget_now_playing_label">Сейчас играет</string>
-    <string name="widget_now_playing_description">Управление воспроизведением в Flow</string>
+    <string name="widget_now_playing_description">Управление воспроизведением в Glide</string>
     <string name="widget_quick_actions_label">Быстрые действия</string>
-    <string name="widget_quick_actions_description">Поиск в Flow и быстрый переход к загрузкам, истории или распознаванию</string>
+    <string name="widget_quick_actions_description">Поиск в Glide и быстрый переход к загрузкам, истории или распознаванию</string>
     <string name="widget_recognize_label">Распознать музыку</string>
     <string name="widget_recognize_description">Узнайте одним касанием, какая песня играет рядом</string>
     <string name="widget_turntable_description">Ваша музыка в виде вращающейся пластинки</string>
@@ -1948,15 +1948,15 @@
     <string name="discord_presence_account">Аккаунт Discord</string>
     <string name="discord_presence_privacy_section">Конфиденциальность и риски</string>
     <string name="discord_presence_privacy_title">Конфиденциальность</string>
-    <string name="discord_presence_privacy_body">Функция Flow передает информацию о том, во что вы играете: название, автора, иллюстрации и ваш игровой прогресс. По умолчанию отключена. Ваш токен Discord зашифрован и никогда не сохраняется в логах.</string>
+    <string name="discord_presence_privacy_body">Функция Glide передает информацию о том, во что вы играете: название, автора, иллюстрации и ваш игровой прогресс. По умолчанию отключена. Ваш токен Discord зашифрован и никогда не сохраняется в логах.</string>
     <string name="discord_presence_gateway_warning">Этот способ выполняет вход с использованием вашего токена Discord вместо стандартной процедуры авторизации. Это нарушает Условия использования Discord и может привести к ограничению или блокировке вашего аккаунта.</string>
     <string name="discord_presence_risk_dialog_title">Принять риски для аккаунта Discord?</string>
-    <string name="discord_presence_risk_dialog_body">При подключении вы предоставляете приложению Flow свой токен Discord. Он хранится на этом устройстве в зашифрованном виде и передается только в Discord. Этот способ нарушает Условия использования Discord, поэтому ваш аккаунт может быть ограничен или заблокирован.</string>
+    <string name="discord_presence_risk_dialog_body">При подключении вы предоставляете приложению Glide свой токен Discord. Он хранится на этом устройстве в зашифрованном виде и передается только в Discord. Этот способ нарушает Условия использования Discord, поэтому ваш аккаунт может быть ограничен или заблокирован.</string>
     <string name="discord_presence_risk_accept">Я понимаю риски, подключить</string>
     <string name="discord_error_not_initialized">Статус Discord не инициализирован.</string>
     <string name="discord_error_enable_before_connect">Включите статус Discord перед подключением аккаунта.</string>
     <string name="discord_error_unavailable">Статус Discord недоступен в этой сборке.</string>
-    <string name="discord_error_open_flow">Откройте Flow перед подключением к Discord.</string>
+    <string name="discord_error_open_flow">Откройте Glide перед подключением к Discord.</string>
     <string name="discord_error_connection_in_progress">Подключение к Discord уже выполняется.</string>
     <string name="discord_error_login_timeout">Время авторизации в Discord истекло.</string>
     <string name="discord_error_login_cancelled">Подключение к Discord отменено.</string>
@@ -1970,7 +1970,7 @@
     <string name="discord_error_heartbeat_unacknowledged">Шлюз Discord не ответил на запрос связи.</string>
     <string name="discord_error_heartbeat_failed">Не удалось проверить связь со шлюзом Discord.</string>
     <string name="discord_account_fallback">Пользователь Discord</string>
-    <string name="discord_presence_playing_fallback">Играет в Flow</string>
+    <string name="discord_presence_playing_fallback">Играет в Glide</string>
     <string name="discord_presence_by_creator">от %1$s</string>
     <string name="settings_item_interface_mode">Режим интерфейса</string>
     <string name="settings_item_interface_mode_subtitle">Мобильный, ТВ или автовыбор</string>
@@ -2034,11 +2034,11 @@
     <string name="tv_music_no_lyrics">Текст песни не найден</string>
     <string name="tv_music_radio">Радио</string>
     <string name="tv_settings_appearance">Внешний вид</string>
-    <string name="tv_settings_flow_engine">Движок Flow</string>
+    <string name="tv_settings_flow_engine">Движок Glide</string>
     <string name="tv_settings_sync">Синхронизация устройств</string>
     <string name="tv_sync_qr_session_active">Код действителен, пока открыт этот экран.</string>
     <string name="tv_remote_guide_title">Справка по пульту и клавиатуре</string>
-    <string name="tv_remote_guide_subtitle">Краткое руководство по управлению Flow с пульта</string>
+    <string name="tv_remote_guide_subtitle">Краткое руководство по управлению Glide с пульта</string>
     <string name="tv_remote_guide_back">Вернуться к настройкам</string>
     <string name="tv_guide_navigation_title">Навигация</string>
     <string name="tv_guide_search_title">Поиск и обзор</string>
@@ -2070,7 +2070,7 @@
     <string name="ui_navigate">Навигация</string>
     <string name="ui_selected">Выбрано</string>
     <string name="ui_options">Параметры</string>
-    <string name="ui_flow_logo">Логотип Flow</string>
+    <string name="ui_flow_logo">Логотип Glide</string>
     <string name="ui_grid_view">Сетка</string>
     <string name="ui_list_view">Список</string>
     <string name="ui_back">Назад</string>
@@ -2091,7 +2091,7 @@
     <string name="ui_no_crash_logs">Журнал ошибок пуст</string>
     <string name="ui_copy_log">Скопировать журнал</string>
     <string name="ui_clear_and_continue">Очистить и продолжить</string>
-    <string name="ui_crashed_last_session">Произошел сбой Flow во время прошлого сеанса</string>
+    <string name="ui_crashed_last_session">Произошел сбой Glide во время прошлого сеанса</string>
     <string name="ui_copy_log_description">Скопируйте журнал ниже и вставьте в описание проблемы на GitHub, чтобы мы могли ее исправить.</string>
     <string name="ui_search_settings">Поиск настроек…</string>
     <string name="ui_custom_interest_title">Добавить свое предпочтение</string>
@@ -2099,7 +2099,7 @@
     <string name="ui_custom_interest_hint">например: джаз, астрофизика</string>
     <string name="ui_add_interest">Добавить предпочтение</string>
     <string name="ui_version">Версия %1$s</string>
-    <string name="update_download_prompt">Доступна новая версия Flow (%1$s). Скачать последнюю версию APK?</string>
+    <string name="update_download_prompt">Доступна новая версия Glide (%1$s). Скачать последнюю версию APK?</string>
     <string name="ui_playlist_empty">Плейлист пуст</string>
     <string name="ui_playlist_saved_to_library">Плейлист добавлен в библиотеку</string>
     <string name="ui_playlist_removed_from_library">Плейлист удален из библиотеки</string>
@@ -2206,9 +2206,9 @@
     <string name="download_failed_audio_length">Не удалось определить размер аудио</string>
     <string name="download_workers_failed">Не удалось завершить одну или несколько задач</string>
     <string name="download_block_failed">Не удалось скачать часть %1$s: %2$s</string>
-    <string name="import_migrate_description">Быстрый перенос подписок и истории с других платформ во Flow.</string>
+    <string name="import_migrate_description">Быстрый перенос подписок и истории с других платформ во Glide.</string>
     <string name="import_backup_restore">Резервное копирование и восстановление</string>
-    <string name="import_manage_backups">Управление резервными копиями Flow</string>
+    <string name="import_manage_backups">Управление резервными копиями Glide</string>
     <string name="import_external_services">Сторонние сервисы</string>
     <string name="import_other_youtube_clients">Импорт из других клиентов YouTube</string>
     <string name="imported_successfully">Успешно импортировано: %1$s</string>
@@ -2256,7 +2256,7 @@
     <string name="remove_from_queue_confirmation">Вы уверены, что хотите удалить это видео из очереди?</string>
     <string name="reorder_queue_item">Изменение порядка в очереди</string>
     <string name="notif_background_restricted_title">Фоновые проверки ограничены</string>
-    <string name="notif_background_restricted_subtitle">Android блокирует проверки, пока Flow закрыт. Нажмите, чтобы разрешить фоновую активность.</string>
+    <string name="notif_background_restricted_subtitle">Android блокирует проверки, пока Glide закрыт. Нажмите, чтобы разрешить фоновую активность.</string>
     <string name="subscriptions_failed_channels_more">%1$s и еще %2$d</string>
     <plurals name="subscriptions_failed_channels_title">
         <item quantity="one">Не удалось загрузить %d канал</item>
@@ -2286,7 +2286,7 @@
     <string name="player_appearance_seek_gesture_subtitle">Проведите по видео вбок, чтобы найти</string>
     <string name="player_settings_subtitle_language">Предпочитаемый язык субтитров</string>
     <string name="player_settings_subtitle_language_dialog_title">Язык субтитров</string>
-    <string name="player_settings_subtitle_language_dialog_body">Субтитры открываются на этом языке, если они доступны. В противном случае Flow переводит существующую дорожку.</string>
+    <string name="player_settings_subtitle_language_dialog_body">Субтитры открываются на этом языке, если они доступны. В противном случае Glide переводит существующую дорожку.</string>
     <string name="player_settings_subtitle_language_none">Без предпочтений</string>
     <string name="player_settings_subtitle_language_none_desc">Использовать рекомендуемые субтитры из видео</string>
     <string name="player_settings_auto_enable_subtitles">Автоматически включать субтитры</string>
@@ -2327,7 +2327,7 @@
     <string name="sync_collection_likes_body">«Нравится» и «Не нравится» для видео и музыки.</string>
     <string name="sync_collection_subscriptions_body">Каналы, на которые вы подписаны.</string>
     <string name="sync_collection_settings_body">Параметры воспроизведения, внешнего вида и скачивания.</string>
-    <string name="sync_collection_recommendation_profile_body">Данные о ваших предпочтениях, собранные Flow.</string>
+    <string name="sync_collection_recommendation_profile_body">Данные о ваших предпочтениях, собранные Glide.</string>
     <string name="sync_waiting_for_peer">Ожидание подключения другого устройства…</string>
     <string name="sync_cancel_session">Отменить синхронизацию</string>
     <string name="sync_expires_label">Срок действия QR-кода истекает</string>
@@ -2566,7 +2566,7 @@
     <string name="lyrics_keep_screen_on_summary">При проигрывании трека со включенным текстом</string>
     <string name="player_appearance_artwork_control_colors_subtitle">Придайте кнопкам и полосе прокрутки оттенок, взятый с обложки</string>
     <string name="player_appearance_sleep_timer_button_title">Кнопка, таймера сна</string>
-    <string name="link_not_supported">Flow не может открыть ссылку такого типа</string>
+    <string name="link_not_supported">Glide не может открыть ссылку такого типа</string>
     <string name="filter_timed">По времени</string>
     <string name="verified">Подтверждено</string>
     <string name="desc_see_more">Смотреть ещё</string>
@@ -2678,7 +2678,7 @@
     <string name="comment_hearted_by_creator">Сердечко от автора</string>
     <string name="comments_with_count_template">Комментарии · %1$s</string>
     <string name="you">Вы</string>
-    <string name="downloads_recover_body">Flow сохраняет загруженные файлы в папках Download/Flow и Music/Flow. Чтобы увидеть файлы, сохранённые там при предыдущей установке, предоставьте доступ к видео и аудио.</string>
+    <string name="downloads_recover_body">Glide сохраняет загруженные файлы в папках Download/Glide и Music/Glide. Чтобы увидеть файлы, сохранённые там при предыдущей установке, предоставьте доступ к видео и аудио.</string>
     <string name="search_filters_reset">Перезагрузить</string>
     <string name="search_filter_group_type">Тип</string>
     <string name="search_filter_group_duration">Продолжительность</string>
@@ -2765,11 +2765,11 @@
         <item quantity="other">Это удалит %d уведомлений. Отменить это действие будет невозможно.</item>
     </plurals>
     <string name="notifications_clear_confirm">Очистить всё</string>
-    <string name="deep_flow_scrobble_title">Скробблить во время Deep Flow</string>
-    <string name="taste_learning_paused">Deep Flow включен, обучение приостановлено</string>
+    <string name="deep_flow_scrobble_title">Скробблить во время Deep Glide</string>
+    <string name="taste_learning_paused">Deep Glide включен, обучение приостановлено</string>
     <string name="deep_flow_scrobble_subtitle">Продолжайте отправлять данные о прослушиваниях в Last.fm, Libre.fm и ListenBrainz</string>
     <string name="deep_flow_on_search_title">Показать в результатах поиска</string>
-    <string name="deep_flow_on_search_subtitle">Переключатель Deep Flow над списком недавних поисковых запросов</string>
+    <string name="deep_flow_on_search_subtitle">Переключатель Deep Glide над списком недавних поисковых запросов</string>
     <string name="notif_type_shorts">Шортсы</string>
     <string name="notif_check_interval_off_new_videos">Выключено, пока функция «Новые видео» отключена</string>
     <string name="icon_name_expressive_scallop">Волнистый</string>
@@ -2835,7 +2835,7 @@
     <string name="content_settings_home_subscriptions_subtitle">Смешивайте видео с каналов, на которые вы подписаны, на главной странице.</string>
     <string name="settings_section_watch_history">История просмотров</string>
     <string name="pause_watch_history_title">Пауза, просмотр истории</string>
-    <string name="pause_watch_history_subtitle">Прекратить сохранять просмотренные материалы. Deep Flow также приостанавливает обучение.</string>
+    <string name="pause_watch_history_subtitle">Прекратить сохранять просмотренные материалы. Deep Glide также приостанавливает обучение.</string>
     <string name="content_settings_channel_shorts_tab_title">Вкладка «Шортс» на каналах</string>
     <string name="content_settings_channel_shorts_tab_subtitle">Сохраняйте вкладку «Шортс» на канале, пока короткие видео скрыты.</string>
     <string name="content_settings_hide_watched_shorts_title">Скрыть просмотренные шортсы</string>
@@ -2910,7 +2910,7 @@
     <string name="cache_videos_size_title">Размер видеокэша</string>
     <string name="cache_songs_size_title">Размер кэша песен</string>
     <string name="cache_artwork_size_title">Размер кэша произведений</string>
-    <string name="cache_size_applies_on_restart">Применяется при следующем запуске Flow</string>
+    <string name="cache_size_applies_on_restart">Применяется при следующем запуске Glide</string>
     <string name="shorts_linked_video">Тематические видео</string>
     <string name="import_label_newpipe_subscriptions">Подписки NewPipe</string>
     <string name="import_label_youtube_subscriptions">подписки на YouTube</string>
@@ -2971,7 +2971,7 @@
     <string name="concurrent_downloads_title">Загрузок за один раз</string>
     <string name="concurrent_downloads_summary">Сколько файлов загрузить одновременно</string>
     <string name="download_location_not_writable">Сохранить там невозможно. Использовать %1$s</string>
-    <string name="support_flow_open_collective">Поддержка Flow на Open Collective</string>
+    <string name="support_flow_open_collective">Поддержка Glide на Open Collective</string>
     <string name="about_notices">Уведомления об открытом исходном коде</string>
     <string name="about_notices_summary">Списки слов и код из других проектов.</string>
     <string name="playlist_downloading_template">Загрузка: %1$s</string>
@@ -2980,7 +2980,7 @@
     <string name="onboarding_step_interests">Интересное</string>
     <string name="onboarding_step_channels">Каналы</string>
     <string name="onboarding_step_import">Импорт</string>
-    <string name="onboarding_import_source_flow">Резервное копирование Flow</string>
+    <string name="onboarding_import_source_flow">Резервное копирование Glide</string>
     <string name="onboarding_import_source_youtube">YouTube</string>
     <string name="onboarding_import_footnote">Здесь всё опционально. В настройках импорт осуществляется тем же способом.</string>
     <string name="onboarding_import_done">Импортировано</string>
@@ -3002,7 +3002,7 @@
         <item quantity="many">Выберите %d и больше</item>
         <item quantity="other">Выберите %d и больше</item>
     </plurals>
-    <string name="onboarding_welcome_title">Сделайте Flow своим</string>
+    <string name="onboarding_welcome_title">Сделайте Glide своим</string>
     <string name="onboarding_welcome_subtitle">Видео и музыка на ваши любимые темы. Настройка займет всего минуту.</string>
     <string name="onboarding_alerts_title">Никогда не пропускать новые загрузки</string>
     <string name="onboarding_alerts_subtitle">Получать уведомления о новых публикациях на ваших каналах.</string>
@@ -3136,7 +3136,7 @@
     <string name="eq_unit_db">дБ</string>
     <string name="eq_remove_band">Удалить группу</string>
     <string name="eq_band_removed">Группа удалена</string>
-    <string name="eq_system_desc">Дополнить собственный эквалайзер Flow</string>
+    <string name="eq_system_desc">Дополнить собственный эквалайзер Glide</string>
     <string name="eq_name">Имя</string>
     <string name="eq_name_taken">Пресет с таким названием уже существует</string>
     <string name="eq_rename">Переименовать</string>
@@ -3214,7 +3214,7 @@
     <string name="subtitle_timing_step_template">%1$s s</string>
     <string name="download_subtitle_file">Файл субтитров</string>
     <string name="download_subtitle_file_subtitle">Сохраняйте субтитры на выбранном вами языке рядом с видео, скачанными без меню</string>
-    <string name="subtitle_add_file_failed">Flow не может распознать этот файл как субтитры</string>
+    <string name="subtitle_add_file_failed">Glide не может распознать этот файл как субтитры</string>
     <string name="subtitle_fullscreen_position_template">Позиция в полноэкранном режиме: %1$d</string>
     <string name="subtitle_fullscreen_landscape">ландшафтный</string>
     <string name="subtitle_fullscreen_vertical">Вертикальный</string>
@@ -3236,10 +3236,10 @@
     <string name="sync_copy_connection_data">Скопировать данные для подключения</string>
     <string name="sync_connect">Подключить</string>
     <string name="sync_verification_after_connect">После подключения убедитесь, что на обоих устройствах отображается один и тот же код.</string>
-    <string name="sync_error_qr_not_local">Этот код указывает за пределы вашей локальной сети, поэтому Flow не сможет к нему подключиться. Используйте только те коды, которые отображаются на ваших собственных устройствах.</string>
+    <string name="sync_error_qr_not_local">Этот код указывает за пределы вашей локальной сети, поэтому Glide не сможет к нему подключиться. Используйте только те коды, которые отображаются на ваших собственных устройствах.</string>
     <string name="sync_error_no_peer">До истечения срока действия кода ни одно устройство не было подключено. Убедитесь, что оба устройства подключены к одной сети Wi-Fi, затем попробуйте снова.</string>
     <string name="sync_error_unreachable">Не удалось связаться с другим устройством. Убедитесь, что оба устройства подключены к одной сети Wi-Fi, а также что VPN или брандмауэр не блокируют соединение.</string>
-    <string name="sync_error_timeout">Другое устройство перестало отвечать. Оставьте Flow открытым на обоих устройствах и попробуйте снова.</string>
+    <string name="sync_error_timeout">Другое устройство перестало отвечать. Оставьте Glide открытым на обоих устройствах и попробуйте снова.</string>
     <string name="sync_error_peer_closed">Другое устройство закрыло соединение. Проверьте, нет ли от него сообщения, а затем попробуйте снова.</string>
     <string name="sync_error_corrupted">Данные были повреждены в процессе передачи. Попробуйте ещё раз.</string>
     <string name="sync_error_apply_failed">Данные поступили, но сохранить их не удалось. На этом устройстве ничего не изменилось.</string>
@@ -3247,7 +3247,7 @@
     <string name="sync_error_code_not_confirmed">Коды подтверждения не были подтверждены, поэтому ничего не было переведено.</string>
     <string name="sync_error_code_rejected">Другое устройство не подтвердило проверочный код, поэтому передача данных не состоялась.</string>
     <string name="sync_error_declined">Слияние было отклонено. Ничего не было перенесено.</string>
-    <string name="sync_error_protocol">Двум устройствам не удалось согласовать этапы синхронизации. Обновите Flow на обоих устройствах и повторите попытку.</string>
+    <string name="sync_error_protocol">Двум устройствам не удалось согласовать этапы синхронизации. Обновите Glide на обоих устройствах и повторите попытку.</string>
     <string name="sync_error_peer">Другое устройство сообщило о проблеме: %1$s</string>
     <string name="sync_step_title_manual">Введите данные для подключения</string>
     <plurals name="sync_selected_count">
@@ -3256,7 +3256,7 @@
         <item quantity="many">Выбрано %1$d из %2$d</item>
         <item quantity="other">Выбрано %1$d из %2$d</item>
     </plurals>
-    <string name="sync_collection_music_profile_body">Что Flow узнал о том, что вы слушаете.</string>
+    <string name="sync_collection_music_profile_body">Что Glide узнал о том, что вы слушаете.</string>
     <plurals name="export_newpipe_subs_skipped">
         <item quantity="one">Экспортировано, но %1$d канал без идентификатора канала не был включен</item>
         <item quantity="few">Экспортировано, но %1$d канала без идентификатора канала не были включены</item>
@@ -3275,10 +3275,10 @@
     <string name="player_settings_overlay_sponsorblock_subtitle">Отображается, когда SponsorBlock включен, а в видео есть сегменты</string>
     <string name="player_settings_overlay_next_prev">Кнопки «Назад» и «Далее»</string>
     <string name="player_settings_overlay_next_prev_subtitle">Отображать кнопки «предыдущее видео» и «следующее видео» на наложении видеоплеера</string>
-    <string name="diagnostics_report_subject">Отчет о диагностике Flow</string>
+    <string name="diagnostics_report_subject">Отчет о диагностике Glide</string>
     <string name="diagnostics_reset_session">Сбросить сеанс YouTube</string>
     <string name="diagnostics_reset_session_confirm_title">Сбросить сеанс YouTube?</string>
-    <string name="diagnostics_reset_session_confirm_body">Flow создаст новую конфигурацию воспроизведения. Воспользуйтесь этим, если видео останавливаются через минуту или вовсе не воспроизводятся.\n\nВ течение минуты или двух воспроизведение может идти с перебоями. Ваши сохраненные данные при этом не пострадают.</string>
+    <string name="diagnostics_reset_session_confirm_body">Glide создаст новую конфигурацию воспроизведения. Воспользуйтесь этим, если видео останавливаются через минуту или вовсе не воспроизводятся.\n\nВ течение минуты или двух воспроизведение может идти с перебоями. Ваши сохраненные данные при этом не пострадают.</string>
     <string name="diagnostics_reset_session_done">Сеанс YouTube сброшен. Откройте видео заново, чтобы попробовать еще раз.</string>
     <string name="reset">Перезагрузить</string>
     <plurals name="merge_playlist_success">
@@ -3344,7 +3344,7 @@
     <string name="widget_week_title">Последние 7 дней</string>
     <string name="widget_week_top_artist">Лучший Артист этого месяца</string>
     <string name="settings_widgets_title">Виджеты</string>
-    <string name="settings_widgets_summary">Добавить Flow на главный экран</string>
+    <string name="settings_widgets_summary">Добавить Glide на главный экран</string>
     <string name="settings_widgets_add_header">Добавить на главный экран</string>
     <string name="settings_widgets_footer">Нажмите на элемент, чтобы разместить его, или выполните долгое нажатие на главном экране.</string>
     <plurals name="ui_downloading_videos">
@@ -3379,7 +3379,7 @@
     </plurals>
     <string name="settings_widgets_unsupported">Ваш лаунчер не может добавлять виджеты для приложений. Чтобы добавить виджет, нажмите и удерживайте свободное место на главном экране.</string>
     <string name="settings_keywords_widgets">главный экран, лаунчер, виджет, «сейчас играет», проигрыватель пластинок</string>
-    <string name="crash_title">Flow неожиданно закрылся</string>
+    <string name="crash_title">Glide неожиданно закрылся</string>
     <string name="crash_subtitle">Этот отчет остается на вашем устройстве, пока вы им не поделитесь.</string>
     <string name="crash_summary_error">Ошибка</string>
     <string name="crash_summary_message">Сообщение</string>
@@ -3403,7 +3403,7 @@
         <item quantity="many">%d-й сегмент в этом видео</item>
         <item quantity="other">%d-й сегмент в этом видео</item>
     </plurals>
-    <string name="notification_channel_downloads_name">Загрузки Flow</string>
+    <string name="notification_channel_downloads_name">Загрузки Glide</string>
     <string name="notification_download_paused">Приостановлено — %1$s</string>
     <string name="notification_download_paused_hint">нажмите, чтобы возобновить</string>
     <string name="notification_download_progress">%1$d%% • %2$s / %3$s</string>
@@ -3419,10 +3419,10 @@
         <item quantity="many">Загрузка %1$d элементов приостановлена</item>
         <item quantity="other">Загрузка %1$d элементов приостановлена</item>
     </plurals>
-    <string name="update_downloading_notification">Загрузка Flow %1$s</string>
-    <string name="update_ready_notification">Flow %1$s готов</string>
+    <string name="update_downloading_notification">Загрузка Glide %1$s</string>
+    <string name="update_ready_notification">Glide %1$s готов</string>
     <string name="update_ready_notification_text">Проверено. Нажмите для установки.</string>
-    <string name="update_title">Flow %1$s здесь</string>
+    <string name="update_title">Glide %1$s здесь</string>
     <string name="update_version_change">%1$s → %2$s</string>
     <string name="update_not_now">Не сейчас</string>
     <string name="update_skip_version">Пропустить эту версию</string>
@@ -3434,11 +3434,11 @@
     <string name="update_action_allow">Разрешить установку</string>
     <string name="update_action_install">Установить обновление</string>
     <string name="update_action_installing">Установка</string>
-    <string name="update_permission_notice">Разрешите приложению Flow устанавливать обновления. Android запрашивает это один раз.</string>
+    <string name="update_permission_notice">Разрешите приложению Glide устанавливать обновления. Android запрашивает это один раз.</string>
     <string name="update_failed_network">Загрузка остановилась. Проверьте подключение и попробуйте снова.</string>
     <string name="update_failed_storage">Для обновления недостаточно места.</string>
     <string name="update_failed_checksum">Файл не соответствовал релизу, поэтому был удален. Попробуйте еще раз.</string>
-    <string name="update_failed_package">Этот файл не был обновлением Flow, поэтому его удалили.</string>
+    <string name="update_failed_package">Этот файл не был обновлением Glide, поэтому его удалили.</string>
     <string name="update_failed_install">Android не удалось установить обновление. Попробуйте ещё раз.</string>
     <string name="error_channel_link_not_found">Не удалось найти канал, на который ведет эта ссылка</string>
     <string name="error_failed_to_load_artist">Не удалось загрузить этого Артиста</string>
@@ -3462,7 +3462,7 @@
         <item quantity="other">Скрыто %1$d файлов</item>
     </plurals>
     <string name="local_manage">Управлять</string>
-    <string name="local_partial_access_title">Flow видит только те видео, которые вы выбрали</string>
+    <string name="local_partial_access_title">Glide видит только те видео, которые вы выбрали</string>
     <string name="local_partial_access_body">Предоставьте доступ ко всем видео, чтобы увидеть остальное.</string>
     <string name="local_open_settings">Открыть настройки</string>
     <string name="local_permission_denied_body">Предоставьте доступ к видео и музыке в настройках приложения, чтобы увидеть их здесь.</string>
@@ -3685,7 +3685,7 @@
     <string name="settings_wellbeing_title">Благополучие</string>
     <string name="downloads_sort_title">Заголовок</string>
     <string name="settings_topics_title">Интересы и заблокированные темы</string>
-    <string name="downloads_storage_used">%1$s в Flow</string>
+    <string name="downloads_storage_used">%1$s в Glide</string>
     <string name="settings_history_summary">История поиска и подсказки</string>
     <string name="font_preview_title">Ночное лоу-фай микс</string>
     <string name="downloads_storage_free">%1$s бесплатно</string>
@@ -3818,7 +3818,7 @@
     <string name="settings_backup_source_youtube">YouTube и Google Takeout</string>
     <string name="settings_quick_download_quality">Качество для быстрой загрузки</string>
     <string name="settings_music_download_quality_summary">Используется для песен, альбомов и музыкальных плейлистов</string>
-    <string name="settings_music_folder_label">Музыка/ Flow</string>
+    <string name="settings_music_folder_label">Музыка/ Glide</string>
     <string name="settings_keywords_downloads">сохранить для офлайн доступа, папка, хранилище, sd карта</string>
     <string name="settings_section_resolution">Разрешение</string>
     <string name="settings_keywords_hide_watched">просмотрено, уже просмотрено, фильтр</string>
@@ -3826,7 +3826,7 @@
     <string name="settings_proxy_unsaved">У вас есть несохранённые изменения</string>
     <string name="error_video_decoder_failed_hint">Нажмите «Повторить», чтобы снова загрузить видео.</string>
     <string name="settings_topics_tab_interests">Интересы</string>
-    <string name="content_settings_shared_links_subtitle">Что происходит с видео, которым поделились в Flow</string>
+    <string name="content_settings_shared_links_subtitle">Что происходит с видео, которым поделились в Glide</string>
     <string name="shared_link_play_now_desc">Заменяет то, что сейчас воспроизводится</string>
     <string name="content_settings_shared_links_play">Играйте прямо сейчас</string>
     <string name="settings_section_sharing">Обмен</string>
@@ -3846,7 +3846,7 @@
     <string name="settings_section_subscriptions">Подписки</string>
     <string name="settings_section_watched">Просмотренные видео</string>
     <string name="settings_section_links">Ссылки</string>
-    <string name="content_settings_open_links_title">Открывать ссылки YouTube в Flow</string>
+    <string name="content_settings_open_links_title">Открывать ссылки YouTube в Glide</string>
     <string name="content_settings_open_links_subtitle">Выберите, какие ссылки открывать здесь</string>
     <string name="content_settings_open_links_all">Для каждого YouTube-адреса</string>
     <string name="content_settings_open_links_some">Включено для %1$d из %2$d адресов</string>
@@ -3865,7 +3865,7 @@
     <string name="settings_backup_tab_export">Экспорт</string>
     <string name="settings_backup_tab_auto">Автоматически</string>
     <string name="settings_backup_tab_import">Импорт</string>
-    <string name="settings_backup_restore_flow">Восстановить из Flow</string>
+    <string name="settings_backup_restore_flow">Восстановить из Glide</string>
     <string name="settings_backup_one_copy">Каждая резервная копия заменяет предыдущую в папке.</string>
     <string name="settings_backup_needs_folder">Сначала выберите папку</string>
     <string name="settings_keywords_backup">экспорт, импорт, восстановление, миграция, перенос, выгрузка данных, NewPipe, LibreTube, FreeTube</string>
