@@ -423,6 +423,7 @@ fun FlowApp(
             railVisible = isNavigationRailVisible,
             onBarHeightChanged = { navigationBarHeight = it },
             onRailWidthChanged = { navigationRailWidth = it },
+            onAnyTap = { navScrollState.reveal() },
         ) {
             ProvideMusicPlaybackState(
                 surfacesVisible = !musicPlayerSheetState.isExpanded && playerSheetState.currentValue != PlayerSheetValue.Expanded,
