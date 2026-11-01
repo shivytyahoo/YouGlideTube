@@ -3,6 +3,7 @@ package io.github.aedev.flow.ui.components.videoplayer
 import io.github.aedev.flow.R
 import io.github.aedev.flow.data.local.MiniBarSwipeAction
 import io.github.aedev.flow.data.model.Video
+import io.github.aedev.flow.innertube.YouTube
 import io.github.aedev.flow.player.EnhancedPlayerManager
 import io.github.aedev.flow.ui.components.shared.MiniBarSwipeCommit
 import io.github.aedev.flow.ui.components.shared.MiniBarSwipeMotion
@@ -27,6 +28,7 @@ internal class VideoBarSwipeActions(
     private val scope: CoroutineScope,
     private val removedFromQueue: String,
     private val onClose: () -> Unit,
+    private val onRequireSignIn: () -> Unit,
 ) {
     private val manager get() = EnhancedPlayerManager.getInstance()
 
@@ -78,8 +80,12 @@ internal class VideoBarSwipeActions(
 
             MiniBarSwipeAction.LIKE -> {
                 MiniBarSwipeCommit(MiniBarSwipeMotion.SpringBack) {
-                    playerViewModel.likeVideo(current.id, current.title, current.thumbnailUrl, current.channelName, current.channelId)
-                    quickActions.announce(R.string.liked)
+                    if (!YouTube.isSignedIn()) {
+                        onRequireSignIn()
+                    } else {
+                        playerViewModel.likeVideo(current.id, current.title, current.thumbnailUrl, current.channelName, current.channelId)
+                        quickActions.announce(R.string.liked)
+                    }
                 }
             }
 
