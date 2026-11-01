@@ -1,6 +1,7 @@
 package io.github.aedev.flow.ui.screens.settings.about
 
 import android.os.Build
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -134,11 +135,10 @@ private fun AboutHeader() {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(HeaderSpacing),
     ) {
-        Icon(
-            painter = painterResource(R.drawable.ic_notification_logo),
+        Image(
+            painter = painterResource(R.drawable.ic_launcher_foreground),
             contentDescription = null,
             modifier = Modifier.size(LogoSize),
-            tint = MaterialTheme.colorScheme.onSurface,
         )
         Text(
             text = stringResource(R.string.app_name),
