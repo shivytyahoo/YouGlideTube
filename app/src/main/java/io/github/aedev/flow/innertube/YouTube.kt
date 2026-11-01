@@ -1748,12 +1748,41 @@ object YouTube {
             }
         }
 
-    suspend fun playlist(playlistId: String): Result<PlaylistPage> =
+    /**
+     * A playlist page, trying the session's own client first: a TV-code (OAuth)
+     * token is a TV client's token, and a WEB_REMIX browse carrying it is a
+     * WEB-context call YouTube refuses. A TVHTML5 answer that parses to nothing
+     * (no header, no songs) falls back to WEB_REMIX, so a shape the TV client
+     * does not carry still loads instead of failing.
+     */
+    suspend fun playlist(playlistId: String): Result<PlaylistPage> {
+        val clients =
+            if (cookie.isNullOrBlank() && hasOAuthSession()) {
+                listOf(YouTubeClient.TVHTML5, WEB_REMIX)
+            } else {
+                listOf(WEB_REMIX)
+            }
+        var lastResult: Result<PlaylistPage>? = null
+        for (client in clients) {
+            val result = playlistWith(playlistId, client)
+            val page = result.getOrNull()
+            if (page != null && (page.songs.isNotEmpty() || page.playlist.title != playlistId)) {
+                return result
+            }
+            lastResult = result
+        }
+        return lastResult ?: Result.failure(IllegalStateException("playlist load failed"))
+    }
+
+    private suspend fun playlistWith(
+        playlistId: String,
+        client: YouTubeClient,
+    ): Result<PlaylistPage> =
         runCatching {
             val response =
                 innerTube
                     .browse(
-                        client = WEB_REMIX,
+                        client = client,
                         browseId = "VL$playlistId",
                         setLogin = true,
                     ).body<BrowseResponse>()
@@ -1773,6 +1802,10 @@ object YouTube {
 
             val editable = base?.musicEditablePlaylistDetailHeaderRenderer != null
 
+            // Authed responses omit header pieces guest responses carry (title runs,
+            // thumbnail, buttons), and one missing piece used to fail the whole page even
+            // when the songs parsed fine. Every header read is optional now; the page
+            // renders with fallbacks instead of showing the load-failed screen.
             PlaylistPage(
                 playlist =
                     PlaylistItem(
@@ -1782,39 +1815,39 @@ object YouTube {
                                 ?.title
                                 ?.runs
                                 ?.firstOrNull()
-                                ?.text!!,
+                                ?.text ?: playlistId,
                         author =
-                            header.straplineTextOne?.runs?.firstOrNull()?.let {
+                            header?.straplineTextOne?.runs?.firstOrNull()?.let {
                                 Artist(
                                     name = it.text,
                                     id = it.navigationEndpoint?.browseEndpoint?.browseId,
                                 )
                             },
                         songCountText =
-                            header.secondSubtitle
+                            header?.secondSubtitle
                                 ?.runs
                                 ?.firstOrNull()
                                 ?.text,
                         thumbnail =
-                            header.thumbnail
+                            header?.thumbnail
                                 ?.musicThumbnailRenderer
                                 ?.thumbnail
                                 ?.thumbnails
                                 ?.lastOrNull()
-                                ?.url!!,
+                                ?.url,
                         playEndpoint = null,
                         shuffleEndpoint =
-                            header.buttons
-                                .lastOrNull()
+                            header?.buttons
+                                ?.lastOrNull()
                                 ?.menuRenderer
                                 ?.items
                                 ?.firstOrNull()
                                 ?.menuNavigationItemRenderer
                                 ?.navigationEndpoint
-                                ?.watchPlaylistEndpoint!!,
+                                ?.watchPlaylistEndpoint,
                         radioEndpoint =
-                            header.buttons
-                                .getOrNull(2)
+                            header?.buttons
+                                ?.getOrNull(2)
                                 ?.menuRenderer
                                 ?.items
                                 ?.find {
@@ -1854,7 +1887,7 @@ object YouTube {
                         ?.sectionListRenderer
                         ?.continuations
                         ?.getContinuation(),
-                trackCount = PlaylistPage.trackCountFrom(header.secondSubtitle),
+                trackCount = PlaylistPage.trackCountFrom(header?.secondSubtitle),
             )
         }
 
@@ -3192,14 +3225,31 @@ object YouTube {
 
     suspend fun accountInfo(): Result<AccountInfo> =
         runCatching {
-            innerTube
-                .accountMenu(WEB_REMIX)
-                .body<AccountMenuResponse>()
-                .actions[0]
-                .openPopupAction.popup.multiPageMenuRenderer
-                .header
-                ?.activeAccountHeaderRenderer
-                ?.toAccountInfo()!!
+            // Same client rule as the playlist: a TV-code (OAuth) session's menu
+            // rides TVHTML5 first, WEB_REMIX second; cookie sessions keep WEB_REMIX.
+            val clients =
+                if (cookie.isNullOrBlank() && hasOAuthSession()) {
+                    listOf(YouTubeClient.TVHTML5, WEB_REMIX)
+                } else {
+                    listOf(WEB_REMIX)
+                }
+            var lastError: Throwable? = null
+            for (client in clients) {
+                val result =
+                    runCatching {
+                        innerTube
+                            .accountMenu(client)
+                            .body<AccountMenuResponse>()
+                            .actions[0]
+                            .openPopupAction.popup.multiPageMenuRenderer
+                            .header
+                            ?.activeAccountHeaderRenderer
+                            ?.toAccountInfo()!!
+                    }
+                if (result.isSuccess) return@runCatching result.getOrThrow()
+                lastError = result.exceptionOrNull()
+            }
+            throw lastError ?: IllegalStateException("account menu failed")
         }
 
     suspend fun getMediaInfo(videoId: String): Result<MediaInfo> =
