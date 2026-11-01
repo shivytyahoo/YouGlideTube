@@ -82,6 +82,14 @@ class FlowApplication :
     @Inject
     internal lateinit var homeFeedLanguageReset: HomeFeedLanguageReset
 
+    // Created at startup so the guest history disk restore starts before any screen reads it.
+    @Inject
+    lateinit var sessionHistory: io.github.aedev.flow.data.local.SessionHistory
+
+    // Same reason: the last account snapshot must be restored before History or Library reads it.
+    @Inject
+    lateinit var accountHistoryCapture: io.github.aedev.flow.data.local.AccountHistoryCapture
+
     override fun newImageLoader(context: PlatformContext): ImageLoader = imageLoader
 
     companion object {
