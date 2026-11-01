@@ -335,6 +335,17 @@ fun TvPlayerScreen(
                     onLiveChat = { openSheet(PlayerSheet.LiveChat(fullscreen = true)) },
                     onInfo = { openSheet(PlayerSheet.Description) },
                     onSettings = { openSheet(PlayerSheet.Settings()) },
+                    onDownload = { openSheet(PlayerSheet.Download) },
+                    onLike = {
+                        if (uiState.likeState == "LIKED") viewModel.removeLikeState(video.id)
+                        else viewModel.likeVideo(video.id, video.title, video.thumbnailUrl, video.channelName)
+                    },
+                    onDislike = {
+                        if (uiState.likeState == "DISLIKED") viewModel.removeLikeState(video.id)
+                        else viewModel.dislikeVideo(video.id)
+                    },
+                    isLiked = uiState.likeState == "LIKED",
+                    isDisliked = uiState.likeState == "DISLIKED",
                 ),
             seekBarFocusRequester = seekBarFocusRequester,
             playPauseFocusRequester = playPauseFocusRequester,
