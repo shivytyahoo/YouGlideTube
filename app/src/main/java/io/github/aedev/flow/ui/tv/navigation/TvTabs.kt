@@ -19,15 +19,16 @@ data class TvNavigation(
 }
 
 /**
- * The user's tabs as TV shows them. Shorts and Explore stay off TV, and Search is always on: a phone
- * keeps it in the top bar, which TV does not have.
+ * The user's tabs as TV shows them. Explore stays off TV, and Search is always on: a phone
+ * keeps it in the top bar, which TV does not have. Shorts follows the user's own
+ * visibility now that TV has its own D-pad Shorts tab.
  */
 fun tvNavigation(
     order: List<Int>,
     defaultTabId: Int,
     visibility: NavigationVisibility,
 ): TvNavigation {
-    val tvVisibility = visibility.copy(shorts = false, search = true, categories = false)
+    val tvVisibility = visibility.copy(search = true, categories = false)
     return TvNavigation(
         tabs = visibleFlowTabs(order, tvVisibility),
         startTab = resolveDefaultFlowTab(defaultTabId, order, tvVisibility),
