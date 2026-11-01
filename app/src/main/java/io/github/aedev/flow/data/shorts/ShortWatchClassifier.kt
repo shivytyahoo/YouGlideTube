@@ -6,7 +6,7 @@
 
 package io.github.aedev.flow.data.shorts
 
-import io.github.aedev.flow.data.recommendation.InteractionType
+import io.github.aedev.flow.data.engagement.InteractionType
 
 /** Classified watch outcome for a Short. */
 data class ShortWatchSignal(
