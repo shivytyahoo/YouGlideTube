@@ -80,6 +80,24 @@ text.
 - **ListenBrainz scrobbling**
 - **Discord rich presence**
 
+### Doubles as a media player
+
+YouGlideTube is not only a YouTube client — it works as a media player
+for what is already on your phone:
+
+- **Library → Local media** scans your device and plays its videos and
+  music in the same player
+- **Downloads play offline**, no connection needed
+- The same player extras carry over: **background audio**,
+  **picture-in-picture** and the **equalizer**
+
+How it works: grant media access once, and the app finds the videos and
+music stored on your device and lists them under Library → Local media.
+Tap any of them and it plays in the same Media3 player used for YouTube,
+with background play, PiP and the equalizer. Downloads are stored on the
+phone itself, so they play offline too. Rescan anytime from Settings to
+pick up new files.
+
 ### Community enhancements
 
 - **SponsorBlock** — skip sponsored segments and more
