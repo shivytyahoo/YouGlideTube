@@ -1,5 +1,7 @@
 package io.github.aedev.flow.data.repository
 
+import io.github.aedev.flow.utils.ShivLog
+
 import android.util.Log
 import android.util.LruCache
 import io.github.aedev.flow.data.comments.CommentsPageResult
@@ -55,6 +57,12 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
+/** A posted reply plus, when the answer carried it, the reply's real server row. */
+data class PostReplyResult(
+    val posted: Boolean,
+    val serverReply: Comment?,
+)
+
 class YouTubeRepository
     @Inject
     constructor(
@@ -520,27 +528,16 @@ class YouTubeRepository
             }
 
         /**
-         * Fetches a channel's creator-declared keyword tags (+ description) and
-         * feeds them to the recommendation engine — authored channel identity,
-         * used for topic profiles and interest clustering. Best-effort.
-         */
-        suspend fun learnChannelTags(
-            context: android.content.Context,
-            channelId: String,
-        ) {
-            val info = getChannelInfo(channelId) ?: return
-            val tags = info.tags.orEmpty()
-            if (tags.isEmpty() && info.description.isNullOrBlank()) return
-            io.github.aedev.flow.data.recommendation.FlowNeuroEngine
-                .onChannelTagsLearned(context, channelId, tags, info.description)
-        }
-
-        /**
          * The web watch response for [videoId], fetched once and shared.
          *
          * Returns null when the request fails; callers fall back to whatever they used before
          * rather than failing the surface.
          */
+        /** Account-scoped responses must not survive an account switch. */
+        fun clearWatchNextCache() {
+            watchNextCache.evictAll()
+        }
+
         suspend fun watchNextResponse(videoId: String): JsonElement? {
             watchNextCache.get(videoId)?.let { return it }
             return watchNextCoalescer.run(videoId) {
@@ -656,20 +653,47 @@ class YouTubeRepository
             withContext(Dispatchers.IO) {
                 val token =
                     sortToken
-                        ?: watchNextResponse(videoId)?.let(YouTube::commentsContinuation)
+                        ?: if (YouTube.isSignedIn()) {
+                            // One lineage, account throughout: a create token grown from
+                            // the guest watch response's continuation is a reference the
+                            // create call cannot resolve (404 on every attempt, logged).
+                            YouTube.commentsContinuationAuthed(videoId)
+                                ?: watchNextResponse(videoId)?.let(YouTube::commentsContinuation)
+                        } else {
+                            watchNextResponse(videoId)?.let(YouTube::commentsContinuation)
+                        }
                 val page = token?.let { YouTube.comments(it, videoId).getOrNull() }
-                if (page != null && page.comments.isNotEmpty()) {
+                // The create box token rides the watch response, not the section payload, so it
+                // is fetched on its own; the section carrying one proves it parsed either way.
+                val createParams =
+                    page?.createCommentParams
+                        ?: if (YouTube.isSignedIn()) YouTube.createCommentParams(videoId) else null
+                val candidates =
+                    page?.createCommentParamsCandidates?.takeIf { it.isNotEmpty() }
+                        ?: listOfNotNull(createParams)
+                ShivLog.i("commentBox video=$videoId params=${createParams != null} candidates=${candidates.size}",
+                )
+                ShivLog.i("commentTokenPaths video=$videoId paths=${page?.createCommentParamsPaths}",
+                )
+                if (page != null && (page.comments.isNotEmpty() || createParams != null)) {
                     return@withContext CommentsPageResult(
                         comments = page.comments,
                         continuation = page.continuation,
                         sortOptions = page.sortOptions,
                         totalText = page.totalText,
                         totalCount = page.totalCount,
+                        createCommentParams = createParams,
+                        createCommentParamsCandidates = candidates,
                     )
                 }
                 Log.i(TAG, "InnerTube comments empty for $videoId, falling back to the extractor")
                 val (comments, legacyPage) = getComments(videoId)
-                CommentsPageResult(comments = comments, legacyPage = legacyPage)
+                CommentsPageResult(
+                    comments = comments,
+                    legacyPage = legacyPage,
+                    createCommentParams = createParams,
+                    createCommentParamsCandidates = candidates,
+                )
             }
 
         suspend fun getMoreVideoComments(
@@ -688,6 +712,120 @@ class YouTubeRepository
             withContext(Dispatchers.IO) {
                 val page = YouTube.commentReplies(continuation, videoId).getOrNull() ?: return@withContext CommentsPageResult.EMPTY
                 CommentsPageResult(comments = page.comments, continuation = page.continuation)
+            }
+
+        /**
+         * Posts a comment with the section's create tokens; true when YouTube accepted it.
+         * The section payload carries several create tokens (the box's own and per-thread
+         * reply ones) and only one of them posts a top-level comment, so each candidate is
+         * tried in payload order; the watch-response scan token is the last resort.
+         */
+        suspend fun postVideoComment(
+            createCommentParamsCandidates: List<String>,
+            commentText: String,
+            videoId: String? = null,
+        ): Boolean =
+            withContext(Dispatchers.IO) {
+                val tried = mutableSetOf<String>()
+                createCommentParamsCandidates.forEachIndexed { index, token ->
+                    if (token.isBlank() || !tried.add(token)) return@forEachIndexed
+                    if (YouTube.createComment(token, commentText).isSuccess) {
+                        ShivLog.i("commentCreate OK candidate=$index")
+                        return@withContext true
+                    }
+                }
+                val alt =
+                    videoId
+                        ?.let { YouTube.createCommentParams(it) }
+                        ?.takeIf { it.isNotBlank() && it !in tried }
+                        ?: return@withContext false
+                ShivLog.i("commentCreate retrying with the watch-response token")
+                YouTube.createComment(alt, commentText).isSuccess
+            }
+
+        /**
+         * Posts with exactly these create tokens and nothing else. A reply must never fall
+         * back to the section's top-level box token the way [postVideoComment] may — that
+         * would silently post the reply as a new top-level comment.
+         */
+        suspend fun postCommentWithParams(
+            createCommentParamsCandidates: List<String>,
+            commentText: String,
+        ): Boolean =
+            withContext(Dispatchers.IO) {
+                val tried = mutableSetOf<String>()
+                for (token in createCommentParamsCandidates) {
+                    if (token.isBlank() || !tried.add(token)) continue
+                    if (YouTube.createComment(token, commentText).isSuccess) return@withContext true
+                }
+                false
+            }
+
+        /**
+         * Posts [commentText] as a reply to [parent], with the reply dialog's own token
+         * (`createReplyParams`) on its own path (`comment/create_comment_reply`). Deliberately
+         * no fallback to any other token: a create token here would post a top-level comment.
+         */
+        suspend fun postCommentReply(
+            parent: Comment,
+            commentText: String,
+        ): PostReplyResult =
+            withContext(Dispatchers.IO) {
+                val params =
+                    parent.replyParams?.takeIf(String::isNotBlank)
+                        ?: return@withContext PostReplyResult(posted = false, serverReply = null)
+                val path = parent.replyPath?.takeIf(String::isNotBlank) ?: "comment/create_comment_reply"
+                val body =
+                    YouTube
+                        .commentWrite(
+                            path = path,
+                            paramsField = "createReplyParams",
+                            params = params,
+                            textField = "commentText",
+                            text = commentText,
+                        ).getOrNull()
+                        ?: return@withContext PostReplyResult(posted = false, serverReply = null)
+                // The answer itself carries the new reply's entity: build its real row from
+                // the mutation batch instead of waiting on a list fetch that may never come.
+                val serverReply =
+                    runCatching {
+                        io.github.aedev.flow.innertube.pages.parsePostedReply(body, commentText)
+                    }.getOrNull()
+                PostReplyResult(posted = true, serverReply = serverReply)
+            }
+
+        /** Edits one of the viewer's own comments with the token its menu dialog issued. */
+        suspend fun editComment(
+            comment: Comment,
+            newText: String,
+        ): Boolean =
+            withContext(Dispatchers.IO) {
+                val params = comment.editParams?.takeIf(String::isNotBlank)
+                val path = comment.editPath?.takeIf(String::isNotBlank)
+                val paramsField = comment.editParamsField
+                if (params == null || path == null || paramsField == null) {
+                    ShivLog.i("editRepo refused params=${params != null} path=${path != null} field=${paramsField != null}")
+                    return@withContext false
+                }
+                val textField = comment.editTextField ?: "commentText"
+                YouTube.commentWrite(path, paramsField, params, textField, newText).isSuccess
+            }
+
+        /** Deletes one of the viewer's own comments: its menu's perform-action, like a vote. */
+        suspend fun deleteComment(comment: Comment): Boolean =
+            withContext(Dispatchers.IO) {
+                val action = comment.deleteAction?.takeIf(String::isNotBlank)
+                if (action == null) {
+                    ShivLog.i("deleteRepo refused: no delete action on the comment")
+                    return@withContext false
+                }
+                YouTube.performCommentAction(action).isSuccess
+            }
+
+        /** Runs a comment's own toolbar vote command (like/dislike and their undos). */
+        suspend fun performCommentAction(endpointJson: String): Boolean =
+            withContext(Dispatchers.IO) {
+                YouTube.performCommentAction(endpointJson).isSuccess
             }
 
         /**
