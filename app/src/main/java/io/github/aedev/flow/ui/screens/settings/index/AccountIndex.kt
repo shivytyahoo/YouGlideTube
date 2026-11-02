@@ -16,15 +16,6 @@ internal object AccountIndex {
             destination = page,
         )
 
-    val signInTvCode =
-        SettingEntry(
-            key = "account.sign_in_tv_code",
-            title = R.string.account_sign_in_tv_code,
-            summary = R.string.account_sign_in_tv_code_subtitle,
-            keywords = R.string.settings_keywords_account,
-            destination = page,
-        )
-
     val addAccount =
         SettingEntry(
             key = "account.add_account",
@@ -43,5 +34,5 @@ internal object AccountIndex {
             destination = page,
         )
 
-    val all = listOf(signIn, signInTvCode, addAccount, signOut)
+    val all = listOf(signIn, addAccount, signOut)
 }
