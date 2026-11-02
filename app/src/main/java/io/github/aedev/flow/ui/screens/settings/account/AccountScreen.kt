@@ -6,12 +6,8 @@ import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Login
 import androidx.compose.material.icons.outlined.Logout
 import androidx.compose.material.icons.outlined.PersonAdd
-import androidx.compose.material.icons.outlined.Pin
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -37,7 +33,6 @@ internal fun AccountScreen(
     val signedIn by viewModel.signedIn.collectAsStateWithLifecycle()
     val accounts by viewModel.accounts.collectAsStateWithLifecycle()
     val activeAccount by viewModel.activeAccount.collectAsStateWithLifecycle()
-    var showTvCode by remember { mutableStateOf(false) }
 
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.refresh() }
 
@@ -85,12 +80,6 @@ internal fun AccountScreen(
                     icon = Icons.Outlined.Login,
                     showChevron = false,
                 )
-                nav(
-                    AccountIndex.signInTvCode,
-                    onClick = { showTvCode = true },
-                    icon = Icons.Outlined.Pin,
-                    showChevron = false,
-                )
             }
         }
         notice(
@@ -99,9 +88,5 @@ internal fun AccountScreen(
                 stringResource(if (signedIn) R.string.account_body_signed_in else R.string.account_body_signed_out)
             },
         )
-    }
-
-    if (showTvCode) {
-        TvCodeLoginDialog(onDismiss = { showTvCode = false })
     }
 }
