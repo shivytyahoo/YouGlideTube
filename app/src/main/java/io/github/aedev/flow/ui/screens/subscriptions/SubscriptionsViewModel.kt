@@ -12,6 +12,7 @@ import io.github.aedev.flow.data.engagement.FeedExclusions
 import io.github.aedev.flow.data.subscriptions.SubscriptionWatchedVideos
 import io.github.aedev.flow.data.subscriptions.withHighQualityThumbnails
 import io.github.aedev.flow.utils.PerformanceDispatcher
+import io.github.aedev.flow.utils.ShivLog
 import io.github.aedev.flow.utils.ThumbnailUrlResolver
 import io.github.aedev.flow.utils.formatYouTubeRelativeTime
 import kotlinx.coroutines.Dispatchers
@@ -353,6 +354,13 @@ class SubscriptionsViewModel
                         ),
                     now = System.currentTimeMillis(),
                 )
+            // The feed-to-screen handoff: the device report proves the feed parses
+            // but cannot see this layer, so the counts land in Diagnostics too.
+            ShivLog.i(
+                "subsUi in=${videos.size} recent=${sections.recentVideos.size} shorts=${sections.shorts.size} " +
+                    "showV=${state.showSubscriptionVideos} showS=${state.showSubscriptionShorts} " +
+                    "watched=${watchedVideoIds.size} unplayable=${unplayableVideoIds.size}",
+            )
             _uiState.update { it.copy(recentVideos = sections.recentVideos, shorts = sections.shorts) }
         }
 
