@@ -51,7 +51,7 @@ internal fun JsonElement.toChannelHeader(requestedId: String): ChannelHeader {
         rows.firstOrNull { it.containsWord("video") && !it.startsWith("@") }
             ?: legacy?.get("videosCountText").youtubeText()
 
-    val title =
+    val rawTitle =
         page
             ?.get("title")
             .objectOrNull()
@@ -62,6 +62,22 @@ internal fun JsonElement.toChannelHeader(requestedId: String): ChannelHeader {
             ?: metadata?.get("title").youtubeText()
             ?: legacy?.get("title").youtubeText()
             ?: ""
+    val rawAvatar = page?.avatarUrl() ?: metadata?.get("avatar").largestImageUrl() ?: legacy?.get("avatar").largestImageUrl() ?: ""
+    // TVHTML5's channel page carries no channelMetadataRenderer, so the header
+    // parses blank even though the page loaded. Only then, fall back to the
+    // response node that names this exact channel id.
+    val channelNode =
+        if (rawTitle.isBlank() || rawAvatar.isBlank()) findChannelNode(requestedId) else null
+    val title =
+        rawTitle.ifBlank {
+            channelNode?.get("title").youtubeText()?.takeIf(String::isNotBlank) ?: ""
+        }
+    val avatarUrl =
+        rawAvatar.ifBlank {
+            channelNode?.get("avatar").largestImageUrl()
+                ?: channelNode?.get("thumbnail").largestImageUrl()
+                ?: ""
+        }
 
     return ChannelHeader(
         id =
@@ -71,7 +87,7 @@ internal fun JsonElement.toChannelHeader(requestedId: String): ChannelHeader {
                 ?: requestedId,
         title = title,
         handle = handle,
-        avatarUrl = page?.avatarUrl() ?: metadata?.get("avatar").largestImageUrl() ?: legacy?.get("avatar").largestImageUrl() ?: "",
+        avatarUrl = avatarUrl,
         bannerUrl = page?.bannerUrl() ?: legacy?.get("banner").largestImageUrl(),
         subscriberCountText = subscriberText,
         subscriberCount = subscriberText?.let { parseYouTubeViewCount(it) }?.takeIf { it > 0L },
@@ -91,6 +107,23 @@ internal fun JsonElement.toChannelHeader(requestedId: String): ChannelHeader {
                 ?: metadata?.get("channelUrl").stringOrNull(),
         subscribed = subscriptionState(page, legacy),
     )
+}
+
+/**
+ * The response node that names this exact channel id, wherever the layout puts
+ * it. Keyed by id, never by position, so another channel's header cannot leak
+ * in — byline endpoints use browseId, not these keys, so they never match.
+ */
+internal fun JsonElement.findChannelNode(channelId: String): JsonObject? {
+    var found: JsonObject? = null
+    forEachObject { node ->
+        if (found != null) return@forEachObject
+        val matches =
+            node["externalChannelId"].stringOrNull() == channelId ||
+                node["externalId"].stringOrNull() == channelId
+        if (matches) found = node
+    }
+    return found
 }
 
 /**
