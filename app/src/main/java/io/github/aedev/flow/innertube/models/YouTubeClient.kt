@@ -206,6 +206,14 @@ data class YouTubeClient(
                 useSignatureTimestamp = true,
             )
 
+        /**
+         * The authenticated TV identity: the Samsung Tizen TV app with login
+         * enabled. The bare TVHTML5 identity answers signed-in sessions with
+         * degraded, anonymous pages; the Samsung device fields are what the
+         * authenticated TV clients (yt-dlp tv_samsung) speak with.
+         */
+        val TV_AUTH = TV_TIZEN.copy(loginSupported = true)
+
         val TVHTML5_SIMPLY_EMBEDDED_PLAYER =
             YouTubeClient(
                 clientName = "TVHTML5_SIMPLY_EMBEDDED_PLAYER",
