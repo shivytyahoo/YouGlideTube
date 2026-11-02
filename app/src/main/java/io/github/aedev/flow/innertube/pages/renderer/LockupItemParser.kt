@@ -124,7 +124,7 @@ private fun JsonObject?.membersOnlyBadge(): String? {
 }
 
 /** The first metadata part that links to a channel, as the owner it names. */
-private fun JsonObject?.lockupByline(): FeedItemOwner? =
+internal fun JsonObject?.lockupByline(): FeedItemOwner? =
     this
         ?.get("metadata")
         .objectOrNull()
