@@ -171,11 +171,13 @@ private fun JsonObject.opensReelPlayer(): Boolean {
 private fun JsonObject.harvestBylineName(): String? =
     listOf("ownerText", "shortBylineText", "longBylineText")
         .firstNotNullOfOrNull { this[it].youtubeText()?.takeIf(String::isNotBlank) }
+        ?: lockupByline()?.name
         ?: nestedBylineText()
 
 private fun JsonObject.harvestBylineChannelId(): String? =
     listOf("ownerText", "shortBylineText", "longBylineText")
         .firstNotNullOfOrNull { this[it].bylineBrowseId() }
+        ?: lockupByline()?.id
         ?: nestedBylineId()
 
 /**
