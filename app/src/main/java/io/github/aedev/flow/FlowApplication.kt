@@ -210,6 +210,10 @@ class FlowApplication :
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             try {
                 oauthSessionManager.restore()
+                // Account restore runs in its own coroutine and can backfill
+                // before these tokens exist, so its identity fetch silently
+                // misses — re-run it once the OAuth session is restored.
+                accountSessionManager.backfillIdentityIfNeeded()
             } catch (e: Exception) {
                 Log.w(TAG, "OAuth session restore error: ${e.message}")
             }
