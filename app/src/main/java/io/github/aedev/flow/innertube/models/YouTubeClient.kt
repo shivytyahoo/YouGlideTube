@@ -58,6 +58,9 @@ data class YouTubeClient(
      * `explicitNulls = false` — so their request bodies are byte-identical to before this existed.
      */
     val sendUserAgentInContext: Boolean = false,
+    val referer: String? = null,
+    val clientScreen: String? = null,
+    val useTvAppInfo: Boolean = false,
 ) {
     fun toContext(
         locale: YouTubeLocale,
@@ -80,6 +83,16 @@ data class YouTubeClient(
                 hl = locale.hl,
                 visitorData = visitorData,
                 userAgent = userAgent.takeIf { sendUserAgentInContext },
+                clientScreen = clientScreen,
+                tvAppInfo =
+                    if (useTvAppInfo) {
+                        Context.TvAppInfo(
+                            appQuality = "TV_APP_QUALITY_FULL_ANIMATION",
+                            zylonLeftNav = true,
+                        )
+                    } else {
+                        null
+                    },
             ),
         user =
             Context.User(
@@ -213,6 +226,30 @@ data class YouTubeClient(
          * authenticated TV clients (yt-dlp tv_samsung) speak with.
          */
         val TV_AUTH = TV_TIZEN.copy(loginSupported = true)
+
+        /**
+         * The authenticated TV identity shaped like SmartTube's Fire TV client:
+         * current TVHTML5 version, Cobalt UA in header and context, youtube.com/tv
+         * referer, WATCH screen, full-animation tvAppInfo, no device fields. The
+         * Samsung Tizen shape answers accounts_list with a bare account-selection
+         * prompt and no accounts (device report 2026-11-02 17:31).
+         */
+        val TV_FIRETV =
+            YouTubeClient(
+                clientName = "TVHTML5",
+                clientVersion = "7.20260901.15.00",
+                clientId = "7",
+                userAgent =
+                    "Mozilla/5.0 (ChromiumStylePlatform) Cobalt/25.lts.30.1034943-gold " +
+                        "(unlike Gecko), Unknown_TV_Unknown_0/Unknown (Unknown, Unknown)",
+                utcOffsetMinutes = 0,
+                loginSupported = true,
+                loginRequired = true,
+                referer = "https://www.youtube.com/tv",
+                clientScreen = "WATCH",
+                useTvAppInfo = true,
+                sendUserAgentInContext = true,
+            )
 
         val TVHTML5_SIMPLY_EMBEDDED_PLAYER =
             YouTubeClient(
