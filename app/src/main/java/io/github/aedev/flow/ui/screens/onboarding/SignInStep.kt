@@ -45,6 +45,7 @@ internal fun SignInStep(
     state: OnboardingUiState,
     header: LazyListScope.() -> Unit,
     contentPadding: PaddingValues,
+    onTvCodeDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
     var showTvCode by remember { mutableStateOf(false) }
@@ -111,6 +112,14 @@ internal fun SignInStep(
     }
 
     if (showTvCode) {
-        TvCodeLoginDialog(onDismiss = { showTvCode = false })
+        // The TV-code dialog never leaves the screen, so no resume refreshes
+        // the session — re-read it when the dialog closes, or the step keeps
+        // showing sign-in after a successful TV-code login.
+        TvCodeLoginDialog(
+            onDismiss = {
+                showTvCode = false
+                onTvCodeDismiss()
+            },
+        )
     }
 }
