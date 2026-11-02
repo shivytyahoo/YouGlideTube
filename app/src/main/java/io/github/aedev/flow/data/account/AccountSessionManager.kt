@@ -98,29 +98,6 @@ class AccountSessionManager
             scope.launch { fetchIdentity(cookie)?.let { identified -> mergeIdentity(identified) } }
         }
 
-        /**
-         * A completed TV-code (OAuth) sign-in: the OAuth session joins the account
-         * list so the account page can show whose it is, exactly like a WebView
-         * sign-in. The entry carries no cookie — its session is the stored OAuth
-         * token — so its key is the fixed "oauth" until the fetched identity
-         * replaces it, and the identity merge matches it by its blank cookie.
-         */
-        fun onOAuthLogin() {
-            val existing = _accounts.value.firstOrNull { it.cookie.isBlank() }
-            val entry =
-                existing ?: SavedAccount(
-                    key = "oauth",
-                    cookie = "",
-                )
-            _accounts.value = (_accounts.value.filterNot { it.key == entry.key } + entry)
-            _active.value = entry
-            persist()
-            applySession(entry)
-            resetAccountScopedState()
-            FeedInvalidationBus.emit(FeedInvalidationBus.Event.AccountChanged)
-            scope.launch { fetchIdentity("")?.let { identified -> mergeIdentity(identified) } }
-        }
-
         /** Makes the saved account with [key] the active one. */
         fun switchTo(key: String) {
             val target = _accounts.value.firstOrNull { it.key == key } ?: return
