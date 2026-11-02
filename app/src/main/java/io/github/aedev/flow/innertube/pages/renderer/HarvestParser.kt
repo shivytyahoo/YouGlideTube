@@ -126,7 +126,9 @@ private fun JsonObject.toHarvestedVideo(isShort: Boolean): Video? {
         viewCount = parseYouTubeViewCount(this["viewCountText"].youtubeText()),
         uploadDate = uploadText,
         timestamp = RelativeUploadDateParser.parse(uploadText, YouTube.locale.hl) ?: 0L,
-        channelThumbnailUrl = this["channelThumbnail"].largestImageUrl().orEmpty(),
+        channelThumbnailUrl =
+            this["channelThumbnail"].largestImageUrl().orEmpty()
+                .ifEmpty { nestedChannelThumbnail().orEmpty() },
         isShort = isShort,
     )
 }
@@ -169,10 +171,49 @@ private fun JsonObject.opensReelPlayer(): Boolean {
 private fun JsonObject.harvestBylineName(): String? =
     listOf("ownerText", "shortBylineText", "longBylineText")
         .firstNotNullOfOrNull { this[it].youtubeText()?.takeIf(String::isNotBlank) }
+        ?: nestedBylineText()
 
 private fun JsonObject.harvestBylineChannelId(): String? =
     listOf("ownerText", "shortBylineText", "longBylineText")
         .firstNotNullOfOrNull { this[it].bylineBrowseId() }
+        ?: nestedBylineId()
+
+/**
+ * A tile's channel line often sits one metadata block down, not on the tile
+ * itself — without the walk, those cards render a placeholder avatar and a
+ * blank name. Only reached when the tile itself carries no byline, and the
+ * walk visits parents first, so the shallowest nested line wins.
+ */
+private fun JsonObject.nestedBylineText(): String? {
+    var found: String? = null
+    forEachObject { node ->
+        if (found != null) return@forEachObject
+        found =
+            listOf("ownerText", "shortBylineText", "longBylineText")
+                .firstNotNullOfOrNull { node[it].youtubeText()?.takeIf(String::isNotBlank) }
+    }
+    return found
+}
+
+private fun JsonObject.nestedBylineId(): String? {
+    var found: String? = null
+    forEachObject { node ->
+        if (found != null) return@forEachObject
+        found =
+            listOf("ownerText", "shortBylineText", "longBylineText")
+                .firstNotNullOfOrNull { node[it].bylineBrowseId() }
+    }
+    return found
+}
+
+private fun JsonObject.nestedChannelThumbnail(): String? {
+    var found: String? = null
+    forEachObject { node ->
+        if (found != null) return@forEachObject
+        found = node["channelThumbnail"].largestImageUrl()?.takeIf(String::isNotBlank)
+    }
+    return found
+}
 
 /** The channel id behind a byline's runs: the browseId its navigation endpoint points at. */
 private fun JsonElement?.bylineBrowseId(): String? =
