@@ -232,7 +232,7 @@ object YouTube {
     /** Bound at startup: given an expired OAuth session, produce a fresh access token or null. */
     var onOAuthTokenExpired: (suspend () -> String?)? = null
 
-    /** A session of either kind: the WebView cookie, or OAuth from a TV code. */
+    /** Whether a stored OAuth session exists: an access token, a refresh token, or both. */
     fun hasOAuthSession(): Boolean = oauthAccessToken != null || oauthRefreshToken != null
 
     fun isSignedIn(): Boolean = !cookie.isNullOrBlank() || hasOAuthSession()
