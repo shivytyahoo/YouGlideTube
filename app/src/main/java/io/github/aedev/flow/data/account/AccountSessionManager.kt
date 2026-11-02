@@ -163,7 +163,7 @@ class AccountSessionManager
         }
 
         /** Fetches the active account's identity once, for entries saved before it was known. */
-        private fun backfillIdentityIfNeeded() {
+        fun backfillIdentityIfNeeded() {
             val current = _active.value ?: return
             if (current.name != null && (current.cookie.isNotBlank() || current.pageIdToken != null)) return
             scope.launch { fetchIdentity(current.cookie)?.let { identified -> mergeIdentity(identified) } }
