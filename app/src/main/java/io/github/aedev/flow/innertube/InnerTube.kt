@@ -273,7 +273,8 @@ class InnerTube {
     ) {
         val useMainSite = apiUrl != null && apiUrl != YouTubeClient.API_URL_YOUTUBE_MUSIC
         val origin = if (useMainSite) YouTubeClient.ORIGIN_YOUTUBE else YouTubeClient.ORIGIN_YOUTUBE_MUSIC
-        val referer = if (useMainSite) YouTubeClient.REFERER_YOUTUBE else YouTubeClient.REFERER_YOUTUBE_MUSIC
+        val referer = client.referer
+            ?: if (useMainSite) YouTubeClient.REFERER_YOUTUBE else YouTubeClient.REFERER_YOUTUBE_MUSIC
         contentType(ContentType.Application.Json)
         headers {
             append("X-Goog-Api-Format-Version", "1")
@@ -480,7 +481,7 @@ class InnerTube {
     ) = browseMainSite(
         client =
             if (cookie.isNullOrBlank() && oauthAccessToken != null) {
-                YouTubeClient.TV_AUTH
+                YouTubeClient.TV_FIRETV
             } else {
                 YouTubeClient.WEB.copy(loginSupported = true)
             },
@@ -852,7 +853,7 @@ class InnerTube {
         // YouTube rejects it in a WEB context with 400 — the guide must speak TVHTML5 too.
         val client =
             if (cookie.isNullOrBlank() && oauthAccessToken != null) {
-                YouTubeClient.TV_AUTH
+                YouTubeClient.TV_FIRETV
             } else {
                 YouTubeClient.WEB.copy(loginSupported = true)
             }
@@ -995,7 +996,7 @@ class InnerTube {
         // token; in a WEB context YouTube refuses it. Cookie sessions keep WEB.
         val client =
             if (cookie.isNullOrBlank() && oauthAccessToken != null) {
-                YouTubeClient.TV_AUTH
+                YouTubeClient.TV_FIRETV
             } else {
                 YouTubeClient.WEB.copy(loginSupported = true)
             }
@@ -1321,10 +1322,10 @@ class InnerTube {
         ShivLog.i("accountsList start")
         val response =
             httpClient.post("https://www.youtube.com/youtubei/v1/account/accounts_list") {
-                ytClient(YouTubeClient.TV_AUTH, setLogin = true, apiUrl = YouTubeClient.API_URL_YOUTUBE)
+                ytClient(YouTubeClient.TV_FIRETV, setLogin = true, apiUrl = YouTubeClient.API_URL_YOUTUBE)
                 setBody(
                     AccountsListBody(
-                        context = YouTubeClient.TV_AUTH.toContext(locale, visitorData, null),
+                        context = YouTubeClient.TV_FIRETV.toContext(locale, visitorData, null),
                         accountReadMask =
                             AccountsListBody.AccountReadMask(
                                 returnOwner = true,
@@ -1345,7 +1346,7 @@ class InnerTube {
             items.firstOrNull { it["isSelected"]?.jsonPrimitive?.booleanOrNull == true }
                 ?: items.firstOrNull()
         val item = selected ?: run {
-            ShivLog.i("accountsList empty items=${items.size} topKeys=${root.keys} body=${text.take(300)}")
+            ShivLog.i("accountsList empty items=${items.size} topKeys=${root.keys} selectText=${root["selectText"]?.jsonObject.readText()}")
             error("accounts_list empty")
         }
         val identity =
