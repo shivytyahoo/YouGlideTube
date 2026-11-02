@@ -24,89 +24,17 @@ import kotlinx.serialization.json.longOrNull
 object TvOAuth {
     private const val CLIENT_ID = "861556708454-d6dlm3lh05idd8npek18k6be8ba3oc68.apps.googleusercontent.com"
     private const val CLIENT_SECRET = "SboVhoG9s0rNafixCSGGKXAT"
-    private const val SCOPE = "https://www.googleapis.com/auth/youtube"
-    private const val DEVICE_CODE_URL = "https://oauth2.googleapis.com/device/code"
     private const val TOKEN_URL = "https://oauth2.googleapis.com/token"
-    private const val GRANT_DEVICE_CODE = "urn:ietf:params:oauth:grant-type:device_code"
     private const val GRANT_REFRESH = "refresh_token"
 
     private val json = Json { ignoreUnknownKeys = true }
     private val client = HttpClient(OkHttp)
-
-    data class DeviceSession(
-        val userCode: String,
-        val verificationUrl: String,
-        val deviceCode: String,
-        val intervalSeconds: Int,
-        val expiresInSeconds: Int,
-    )
 
     data class Tokens(
         val accessToken: String,
         val refreshToken: String?,
         val expiresInSeconds: Long,
     )
-
-    sealed interface PollResult {
-        data class Success(
-            val tokens: Tokens,
-        ) : PollResult
-
-        /** The person has not approved yet — keep polling at the session's interval. */
-        data object Pending : PollResult
-
-        /** Polling too fast — back off before the next attempt. */
-        data object SlowDown : PollResult
-
-        /** Denied, expired or otherwise finished: this code will never succeed. */
-        data class Failed(
-            val error: String,
-        ) : PollResult
-    }
-
-    suspend fun requestDeviceCode(): Result<DeviceSession> =
-        runCatching {
-            val root =
-                postForm(
-                    DEVICE_CODE_URL,
-                    "client_id" to CLIENT_ID,
-                    "scope" to SCOPE,
-                )
-            DeviceSession(
-                userCode = root.string("user_code") ?: error("no user_code"),
-                verificationUrl = root.string("verification_url") ?: "https://www.google.com/device",
-                deviceCode = root.string("device_code") ?: error("no device_code"),
-                intervalSeconds = root.int("interval") ?: 5,
-                expiresInSeconds = root.int("expires_in") ?: 900,
-            )
-        }
-
-    suspend fun pollToken(deviceCode: String): PollResult {
-        val root =
-            runCatching {
-                postForm(
-                    TOKEN_URL,
-                    "client_id" to CLIENT_ID,
-                    "client_secret" to CLIENT_SECRET,
-                    "device_code" to deviceCode,
-                    "grant_type" to GRANT_DEVICE_CODE,
-                )
-            }.getOrElse { return PollResult.Failed(it.message ?: "network") }
-        root.string("access_token")?.let { access ->
-            return PollResult.Success(
-                Tokens(
-                    accessToken = access,
-                    refreshToken = root.string("refresh_token"),
-                    expiresInSeconds = root.long("expires_in") ?: 3600L,
-                ),
-            )
-        }
-        return when (val error = root.string("error")) {
-            "authorization_pending" -> PollResult.Pending
-            "slow_down" -> PollResult.SlowDown
-            else -> PollResult.Failed(error ?: "unknown")
-        }
-    }
 
     suspend fun refreshAccessToken(refreshToken: String): Result<Tokens> =
         runCatching {
