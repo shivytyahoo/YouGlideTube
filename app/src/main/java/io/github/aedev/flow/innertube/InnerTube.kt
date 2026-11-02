@@ -772,6 +772,13 @@ class InnerTube {
     ) = withRetry {
         httpClient.post("browse") {
             ytClient(client, setLogin = setLogin || useLoginForBrowse)
+            // Same account-slot rule as the main-site browse: a Bearer without
+            // X-Goog-AuthUser is unresolvable to the server.
+            if (cookie.isNullOrBlank() && oauthAccessToken != null &&
+                (setLogin || useLoginForBrowse) && client.loginSupported
+            ) {
+                header("X-Goog-AuthUser", "0")
+            }
             setBody(
                 BrowseBody(
                     context =
@@ -805,6 +812,15 @@ class InnerTube {
     ) = withRetry {
         httpClient.post("https://www.youtube.com/youtubei/v1/browse") {
             ytClient(client, setLogin = setLogin || useLoginForBrowse, apiUrl = YouTubeClient.API_URL_YOUTUBE)
+            // An OAuth Bearer alone does not tell YouTube which account slot it
+            // belongs to — the comment path proved the server cannot resolve the
+            // token without X-Goog-AuthUser; browses degrade to anonymous shells
+            // or 400 FAILED_PRECONDITION instead. Sent exactly when a Bearer is.
+            if (cookie.isNullOrBlank() && oauthAccessToken != null &&
+                (setLogin || useLoginForBrowse) && client.loginSupported
+            ) {
+                header("X-Goog-AuthUser", "0")
+            }
             setBody(
                 BrowseBody(
                     context =
@@ -836,6 +852,9 @@ class InnerTube {
             }
         httpClient.post("https://www.youtube.com/youtubei/v1/guide") {
             ytClient(client, setLogin = true, apiUrl = YouTubeClient.API_URL_YOUTUBE)
+            // Same account-slot rule as browse: a Bearer without X-Goog-AuthUser
+            // is unresolvable to the server.
+            if (cookie.isNullOrBlank() && oauthAccessToken != null) header("X-Goog-AuthUser", "0")
             setBody(
                 GuideBody(
                     context = client.toContext(locale, visitorData, dataSyncId),
@@ -975,6 +994,9 @@ class InnerTube {
             }
         httpClient.post("https://www.youtube.com/youtubei/v1/next") {
             ytClient(client, setLogin = true, apiUrl = YouTubeClient.API_URL_YOUTUBE)
+            // Same account-slot rule as browse: a Bearer without X-Goog-AuthUser
+            // is unresolvable to the server.
+            if (cookie.isNullOrBlank() && oauthAccessToken != null) header("X-Goog-AuthUser", "0")
             setBody(
                 NextBody(
                     context = client.toContext(locale, visitorData, dataSyncId),
@@ -1268,6 +1290,9 @@ class InnerTube {
     suspend fun accountMenu(client: YouTubeClient) =
         httpClient.post("account/account_menu") {
             ytClient(client, setLogin = true)
+            // Same account-slot rule as browse: a Bearer without X-Goog-AuthUser
+            // is unresolvable to the server.
+            if (cookie.isNullOrBlank() && oauthAccessToken != null) header("X-Goog-AuthUser", "0")
             setBody(AccountMenuBody(client.toContext(locale, visitorData, dataSyncId)))
         }
 
