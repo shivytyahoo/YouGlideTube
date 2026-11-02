@@ -2,9 +2,11 @@ package io.github.aedev.flow.innertube.pages.channel
 
 import io.github.aedev.flow.innertube.pages.arrayOrNull
 import io.github.aedev.flow.innertube.pages.objectOrNull
+import io.github.aedev.flow.innertube.pages.renderer.FeedItem
 import io.github.aedev.flow.innertube.pages.renderer.FeedItemOwner
 import io.github.aedev.flow.innertube.pages.renderer.distinctKey
 import io.github.aedev.flow.innertube.pages.renderer.findRenderers
+import io.github.aedev.flow.innertube.pages.renderer.harvestFeedPage
 import io.github.aedev.flow.innertube.pages.renderer.largestImageUrl
 import io.github.aedev.flow.innertube.pages.renderer.toFeedItem
 import io.github.aedev.flow.innertube.pages.renderer.toFeedShelves
@@ -25,19 +27,31 @@ internal fun JsonElement.toChannelTabContent(
 ): ChannelTabContent {
     val owner = resolveOwner(fallbackOwner)
     val sections = if (kind == ChannelTabKind.Home) selectedTabContent().toFeedShelves(owner) else emptyList()
+    val strictItems =
+        if (sections.isNotEmpty()) {
+            emptyList()
+        } else {
+            gridItemLists()
+                .flatMap { list -> list.mapNotNull { it.toFeedItem(owner) } }
+                .distinctBy { it.distinctKey() }
+        }
+    // TVHTML5 channel tabs carry their rows as tiles, which the strict grid map
+    // misses — the tab then parses empty. Only then, harvest the same tree the
+    // feed parser already trusts. Posts are not videos, so they stay out of
+    // this fallback and keep their own shape to be handled.
+    val harvested = if (strictItems.isEmpty() && sections.isEmpty()) harvestFeedPage() else null
     return ChannelTabContent(
         kind = kind,
         items =
-            if (sections.isNotEmpty()) {
-                emptyList()
-            } else {
-                gridItemLists()
-                    .flatMap { list -> list.mapNotNull { it.toFeedItem(owner) } }
-                    .distinctBy { it.distinctKey() }
+            strictItems.ifEmpty {
+                when (kind) {
+                    ChannelTabKind.Shorts -> harvested?.shorts.orEmpty().map { FeedItem.ShortItem(it) }
+                    else -> harvested?.videos.orEmpty().map { FeedItem.VideoItem(it) }
+                }
             },
         sections = sections,
         filters = channelFilterGroups(),
-        continuation = channelItemContinuation(),
+        continuation = harvested?.continuation ?: channelItemContinuation(),
         owner = owner,
     )
 }
@@ -45,13 +59,31 @@ internal fun JsonElement.toChannelTabContent(
 /** Only the first browse carries the header; a continuation is anonymous, so the caller's owner wins. */
 internal fun JsonElement.resolveOwner(fallback: FeedItemOwner): FeedItemOwner {
     val metadata = findRenderers("channelMetadataRenderer")["channelMetadataRenderer"]
+    val rawName = metadata?.get("title").youtubeText()?.takeIf(String::isNotBlank) ?: fallback.name
+    val rawAvatar = metadata?.get("avatar").largestImageUrl() ?: fallback.avatarUrl
+    // Same TVHTML5 gap as the header: no channelMetadataRenderer, so the owner
+    // parses blank. Only then, fall back to the node naming this channel id.
+    val channelNode =
+        if ((rawName.isBlank() || rawAvatar.isBlank()) && fallback.id.isNotBlank()) {
+            findChannelNode(fallback.id)
+        } else {
+            null
+        }
     return FeedItemOwner(
         id =
             metadata?.get("externalChannelId").stringOrNull()
                 ?: metadata?.get("externalId").stringOrNull()
                 ?: fallback.id,
-        name = metadata?.get("title").youtubeText()?.takeIf(String::isNotBlank) ?: fallback.name,
-        avatarUrl = metadata?.get("avatar").largestImageUrl() ?: fallback.avatarUrl,
+        name =
+            rawName.ifBlank {
+                channelNode?.get("title").youtubeText()?.takeIf(String::isNotBlank) ?: ""
+            },
+        avatarUrl =
+            rawAvatar.ifBlank {
+                channelNode?.get("avatar").largestImageUrl()
+                    ?: channelNode?.get("thumbnail").largestImageUrl()
+                    ?: ""
+            },
     )
 }
 
