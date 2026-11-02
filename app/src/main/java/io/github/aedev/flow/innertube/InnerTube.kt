@@ -1314,7 +1314,11 @@ class InnerTube {
      * OAuth sessions only; a plain account simply has no page id token.
      */
     suspend fun accountsList(): OAuthIdentity {
-        if (!cookie.isNullOrBlank() || oauthAccessToken == null) error("accounts_list needs an OAuth session")
+        if (!cookie.isNullOrBlank() || oauthAccessToken == null) {
+            ShivLog.i("accountsList skipped cookie=${!cookie.isNullOrBlank()} token=${oauthAccessToken != null}")
+            error("accounts_list needs an OAuth session")
+        }
+        ShivLog.i("accountsList start")
         val response =
             httpClient.post("https://www.youtube.com/youtubei/v1/account/accounts_list") {
                 ytClient(YouTubeClient.TV_AUTH, setLogin = true, apiUrl = YouTubeClient.API_URL_YOUTUBE)
@@ -1330,12 +1334,19 @@ class InnerTube {
                     ),
                 )
             }
-        if (!response.status.isSuccess()) error("accounts_list ${response.status.value}")
-        val items = Json.parseToJsonElement(response.bodyAsText()).jsonObject.accountsItems()
+        val text = response.bodyAsText()
+        if (!response.status.isSuccess()) {
+            ShivLog.i("accountsList FAILED status=${response.status.value} body=${text.take(200)}")
+            error("accounts_list ${response.status.value}")
+        }
+        val items = Json.parseToJsonElement(text).jsonObject.accountsItems()
         val selected =
             items.firstOrNull { it["isSelected"]?.jsonPrimitive?.booleanOrNull == true }
                 ?: items.firstOrNull()
-        val item = selected ?: error("accounts_list empty")
+        val item = selected ?: run {
+            ShivLog.i("accountsList empty items=${items.size}")
+            error("accounts_list empty")
+        }
         val identity =
             OAuthIdentity(
                 name = item["accountName"]?.jsonObject.readText(),
