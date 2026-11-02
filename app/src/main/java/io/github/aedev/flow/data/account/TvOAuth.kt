@@ -15,9 +15,8 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
 
 /**
- * Google's OAuth 2.0 device flow (the "TV code" sign-in): the app shows a short code,
- * the person approves it on any signed-in device at the verification URL, and the app
- * polls for tokens. Client credentials are the public YouTube TV client — the same
+ * Token refresh for stored OAuth sessions: a stored refresh token is exchanged for a
+ * fresh access token. Client credentials are the public YouTube TV client — the same
  * arrangement every open-source YouTube TV client uses; the secret is not confidential
  * for installed apps and is verified against the upstream source.
  */
