@@ -8,6 +8,7 @@ import io.github.aedev.flow.FlowApplication
 import io.github.aedev.flow.data.local.PlayerPreferences
 import io.github.aedev.flow.innertube.models.Context
 import io.github.aedev.flow.innertube.models.MediaInfo
+import io.github.aedev.flow.innertube.models.OAuthIdentity
 import io.github.aedev.flow.innertube.models.ReturnYouTubeDislikeResponse
 import io.github.aedev.flow.innertube.models.YouTubeClient
 import io.github.aedev.flow.innertube.models.YouTubeLocale
@@ -36,6 +37,11 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.put
@@ -83,6 +89,7 @@ class InnerTube {
     /** Every change of identity, including a refused one dropped to null, so it can be persisted. */
     var onVisitorDataChanged: ((String?) -> Unit)? = null
     var dataSyncId: String? = null
+    var pageIdToken: String? = null
     var cookie: String? = null
         set(value) {
             field = value
@@ -772,12 +779,12 @@ class InnerTube {
     ) = withRetry {
         httpClient.post("browse") {
             ytClient(client, setLogin = setLogin || useLoginForBrowse)
-            // Same account-slot rule as the main-site browse: a Bearer without
-            // X-Goog-AuthUser is unresolvable to the server.
+            // Same brand-page rule as the main-site browse: X-Goog-Pageid from
+            // accounts_list, never AuthUser: 0 (the owner slot, not the brand).
             if (cookie.isNullOrBlank() && oauthAccessToken != null &&
                 (setLogin || useLoginForBrowse) && client.loginSupported
             ) {
-                header("X-Goog-AuthUser", "0")
+                pageIdToken?.takeIf { it.isNotBlank() }?.let { header("X-Goog-Pageid", it) }
             }
             setBody(
                 BrowseBody(
@@ -812,14 +819,13 @@ class InnerTube {
     ) = withRetry {
         httpClient.post("https://www.youtube.com/youtubei/v1/browse") {
             ytClient(client, setLogin = setLogin || useLoginForBrowse, apiUrl = YouTubeClient.API_URL_YOUTUBE)
-            // An OAuth Bearer alone does not tell YouTube which account slot it
-            // belongs to — the comment path proved the server cannot resolve the
-            // token without X-Goog-AuthUser; browses degrade to anonymous shells
-            // or 400 FAILED_PRECONDITION instead. Sent exactly when a Bearer is.
+            // A brand channel's identity rides X-Goog-Pageid, learned from
+            // accounts_list — AuthUser: 0 points at the owner slot instead,
+            // and a Bearer alone selects no brand channel at all.
             if (cookie.isNullOrBlank() && oauthAccessToken != null &&
                 (setLogin || useLoginForBrowse) && client.loginSupported
             ) {
-                header("X-Goog-AuthUser", "0")
+                pageIdToken?.takeIf { it.isNotBlank() }?.let { header("X-Goog-Pageid", it) }
             }
             setBody(
                 BrowseBody(
@@ -852,9 +858,10 @@ class InnerTube {
             }
         httpClient.post("https://www.youtube.com/youtubei/v1/guide") {
             ytClient(client, setLogin = true, apiUrl = YouTubeClient.API_URL_YOUTUBE)
-            // Same account-slot rule as browse: a Bearer without X-Goog-AuthUser
-            // is unresolvable to the server.
-            if (cookie.isNullOrBlank() && oauthAccessToken != null) header("X-Goog-AuthUser", "0")
+            // Same brand-page rule as browse: X-Goog-Pageid from accounts_list.
+            if (cookie.isNullOrBlank() && oauthAccessToken != null) {
+                pageIdToken?.takeIf { it.isNotBlank() }?.let { header("X-Goog-Pageid", it) }
+            }
             setBody(
                 GuideBody(
                     context = client.toContext(locale, visitorData, dataSyncId),
@@ -994,9 +1001,10 @@ class InnerTube {
             }
         httpClient.post("https://www.youtube.com/youtubei/v1/next") {
             ytClient(client, setLogin = true, apiUrl = YouTubeClient.API_URL_YOUTUBE)
-            // Same account-slot rule as browse: a Bearer without X-Goog-AuthUser
-            // is unresolvable to the server.
-            if (cookie.isNullOrBlank() && oauthAccessToken != null) header("X-Goog-AuthUser", "0")
+            // Same brand-page rule as browse: X-Goog-Pageid from accounts_list.
+            if (cookie.isNullOrBlank() && oauthAccessToken != null) {
+                pageIdToken?.takeIf { it.isNotBlank() }?.let { header("X-Goog-Pageid", it) }
+            }
             setBody(
                 NextBody(
                     context = client.toContext(locale, visitorData, dataSyncId),
@@ -1290,11 +1298,80 @@ class InnerTube {
     suspend fun accountMenu(client: YouTubeClient) =
         httpClient.post("account/account_menu") {
             ytClient(client, setLogin = true)
-            // Same account-slot rule as browse: a Bearer without X-Goog-AuthUser
-            // is unresolvable to the server.
-            if (cookie.isNullOrBlank() && oauthAccessToken != null) header("X-Goog-AuthUser", "0")
+            // A brand channel's identity rides X-Goog-Pageid, learned from
+            // accounts_list — AuthUser: 0 points at the owner slot instead,
+            // and a Bearer alone selects no brand channel at all.
+            if (cookie.isNullOrBlank() && oauthAccessToken != null) {
+                pageIdToken?.takeIf { it.isNotBlank() }?.let { header("X-Goog-Pageid", it) }
+            }
             setBody(AccountMenuBody(client.toContext(locale, visitorData, dataSyncId)))
         }
+
+    /**
+     * The TV identity endpoint (SmartTube's accounts_list): the account menu's
+     * shape never parses on the TV client, but this returns the account name
+     * and, for brand channels, the page id token authed browses must carry.
+     * OAuth sessions only; a plain account simply has no page id token.
+     */
+    suspend fun accountsList(): OAuthIdentity {
+        if (!cookie.isNullOrBlank() || oauthAccessToken == null) error("accounts_list needs an OAuth session")
+        val response =
+            httpClient.post("https://www.youtube.com/youtubei/v1/account/accounts_list") {
+                ytClient(YouTubeClient.TV_AUTH, setLogin = true, apiUrl = YouTubeClient.API_URL_YOUTUBE)
+                setBody(
+                    AccountsListBody(
+                        context = YouTubeClient.TV_AUTH.toContext(locale, visitorData, null),
+                        accountReadMask =
+                            AccountsListBody.AccountReadMask(
+                                returnOwner = true,
+                                returnBrandAccounts = true,
+                                returnPersonaAccounts = false,
+                            ),
+                    ),
+                )
+            }
+        if (!response.status.isSuccess()) error("accounts_list ${response.status.value}")
+        val items = Json.parseToJsonElement(response.bodyAsText()).jsonObject.accountsItems()
+        val selected =
+            items.firstOrNull { it["isSelected"]?.jsonPrimitive?.booleanOrNull == true }
+                ?: items.firstOrNull()
+        val item = selected ?: error("accounts_list empty")
+        val identity =
+            OAuthIdentity(
+                name = item["accountName"]?.jsonObject.readText(),
+                email = item["accountByline"]?.jsonObject.readText(),
+                channelHandle = item["channelHandle"]?.jsonObject.readText(),
+                pageIdToken =
+                    item["serviceEndpoint"]?.jsonObject
+                        ?.get("selectActiveIdentityEndpoint")?.jsonObject
+                        ?.get("supportedTokens")?.jsonArray
+                        ?.firstNotNullOfOrNull { token ->
+                            token.jsonObject["pageIdToken"]?.jsonObject
+                                ?.get("pageId")?.jsonPrimitive?.contentOrNull
+                        },
+            )
+        ShivLog.i("accountsList name=${identity.name != null} pageId=${identity.pageIdToken != null}")
+        return identity
+    }
+
+    private fun JsonObject.accountsItems(): List<JsonObject> {
+        val contents = get("contents")?.jsonArray ?: return emptyList()
+        val section =
+            contents.firstOrNull()?.jsonObject
+                ?.get("accountSectionListRenderer")?.jsonObject
+                ?.get("contents")?.jsonArray?.firstOrNull()?.jsonObject
+        val items = section?.get("accountItemSectionRenderer")?.jsonObject?.get("contents")?.jsonArray
+            ?: return emptyList()
+        return items.mapNotNull { it.jsonObject["accountItem"]?.jsonObject }
+    }
+
+    private fun JsonObject?.readText(): String? {
+        if (this == null) return null
+        get("simpleText")?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }?.let { return it }
+        return get("runs")?.jsonArray
+            ?.joinToString("") { run -> run.jsonObject["text"]?.jsonPrimitive?.contentOrNull.orEmpty() }
+            ?.takeIf { it.isNotBlank() }
+    }
 
     suspend fun likeVideo(
         client: YouTubeClient,
