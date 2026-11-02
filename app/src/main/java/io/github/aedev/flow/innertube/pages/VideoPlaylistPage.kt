@@ -5,6 +5,7 @@ import io.github.aedev.flow.innertube.pages.renderer.FeedItem
 import io.github.aedev.flow.innertube.pages.renderer.FeedItemOwner
 import io.github.aedev.flow.innertube.pages.renderer.findRenderers
 import io.github.aedev.flow.innertube.pages.renderer.forEachObject
+import io.github.aedev.flow.innertube.pages.renderer.harvestFeedPage
 import io.github.aedev.flow.innertube.pages.renderer.largestImageUrl
 import io.github.aedev.flow.innertube.pages.renderer.toFeedItem
 import kotlinx.serialization.json.JsonElement
@@ -45,6 +46,22 @@ internal fun JsonElement.toVideoPlaylistPage(): VideoPlaylistPage {
     // Courses still arrive with the older playlistHeaderRenderer.
     val legacyHeader = header["playlistHeaderRenderer"]
     val sidebar = header["playlistSidebarPrimaryInfoRenderer"]
+    val strictVideos =
+        items
+            .mapNotNull { item ->
+                val video =
+                    when (val feedItem = item.toFeedItem(FeedItemOwner())) {
+                        is FeedItem.VideoItem -> feedItem.video
+                        is FeedItem.ShortItem -> feedItem.video
+                        else -> null
+                    }
+                video?.let { it.copy(playlistSetVideoId = item.findSetVideoId()) }
+            }.distinctBy { it.id }
+    // TVHTML5 playlist pages carry their items as tiles, which the strict item map
+    // misses entirely — the page then parses to zero songs. Only when the strict
+    // parse found nothing, harvest the same tree the feed parser already trusts,
+    // so an account list never renders empty for a shape difference.
+    val harvested = if (strictVideos.isEmpty()) harvestFeedPage() else null
     val owner = pageHeader?.headerOwner() ?: legacyHeader?.legacyOwner()
     return VideoPlaylistPage(
         title =
@@ -78,18 +95,8 @@ internal fun JsonElement.toVideoPlaylistPage(): VideoPlaylistPage {
                 .objectOrNull()
                 ?.get("thumbnail")
                 .largestImageUrl(),
-        videos =
-            items
-                .mapNotNull { item ->
-                    val video =
-                        when (val feedItem = item.toFeedItem(FeedItemOwner())) {
-                            is FeedItem.VideoItem -> feedItem.video
-                            is FeedItem.ShortItem -> feedItem.video
-                            else -> null
-                        }
-                    video?.let { it.copy(playlistSetVideoId = item.findSetVideoId()) }
-                }.distinctBy { it.id },
-        continuation = items.lastOrNull().continuationToken(),
+        videos = strictVideos.ifEmpty { harvested?.videos.orEmpty() },
+        continuation = harvested?.continuation ?: items.lastOrNull().continuationToken(),
         isCourse = header["courseProgressViewModel"] != null,
         isShortsGrid = isShortsGrid,
         videoCount =
