@@ -25,6 +25,14 @@ data class Context(
         val hl: String,
         val visitorData: String?,
         val userAgent: String? = null,
+        val clientScreen: String? = null,
+        val tvAppInfo: TvAppInfo? = null,
+    )
+
+    @Serializable
+    data class TvAppInfo(
+        val appQuality: String,
+        val zylonLeftNav: Boolean,
     )
 
     @Serializable
