@@ -13,6 +13,8 @@ data class SavedAccount(
     val key: String,
     val cookie: String,
     val dataSyncId: String? = null,
+    /** Brand page id from accounts_list; empty means checked with no brand page, null means unchecked. */
+    val pageIdToken: String? = null,
     val name: String? = null,
     val email: String? = null,
     val channelHandle: String? = null,
