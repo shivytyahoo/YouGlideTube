@@ -233,17 +233,18 @@ object YouTube {
 
     /**
      * The client the session's own calls use: cookie sessions browse as WEB,
-     * OAuth (TV-code) sessions as TVHTML5 — the client their token was issued
-     * to (a WEB-context browse carrying an OAuth token 400s, device log
-     * 2026-10-22). History beacons must ride this client, not the
-     * extractor's playback client: on device every extraction came back
-     * VISIONOS, and VISIONOS-context beacons never landed in the account
-     * history (0.3.47–0.3.52, all 204).
+     * OAuth (TV-code) sessions as the Samsung TV identity — the client their
+     * token was issued to (a WEB-context browse carrying an OAuth token 400s,
+     * device log 2026-10-22). The bare TVHTML5 identity answers signed-in
+     * sessions with degraded, anonymous pages. History beacons must ride this
+     * client, not the extractor's playback client: on device every extraction
+     * came back VISIONOS, and VISIONOS-context beacons never landed in the
+     * account history (0.3.47–0.3.52, all 204).
      */
     fun sessionClient(): YouTubeClient =
         when {
             !cookie.isNullOrBlank() -> WEB.copy(loginSupported = true)
-            hasOAuthSession() -> YouTubeClient.TVHTML5
+            hasOAuthSession() -> YouTubeClient.TV_AUTH
             else -> WEB
         }
 
@@ -595,7 +596,7 @@ object YouTube {
         // sending WEB, so every channel visit failed on TV-code login.
         val baseClient =
             if (cookie.isNullOrBlank() && hasOAuthSession()) {
-                YouTubeClient.TVHTML5
+                YouTubeClient.TV_AUTH
             } else {
                 currentWebClient()
             }
@@ -1772,7 +1773,7 @@ object YouTube {
     suspend fun playlist(playlistId: String): Result<PlaylistPage> {
         val clients =
             if (cookie.isNullOrBlank() && hasOAuthSession()) {
-                listOf(YouTubeClient.TVHTML5, WEB_REMIX)
+                listOf(YouTubeClient.TV_AUTH, WEB_REMIX)
             } else {
                 listOf(WEB_REMIX)
             }
@@ -2047,12 +2048,14 @@ object YouTube {
             val loggedIn = isSignedIn()
             // A TV-code (OAuth) session's token is issued to the TV client: YouTube answers
             // a WEB-context browse carrying it with 400 INVALID_ARGUMENT, every time (device
-            // log, 2026-10-22). OAuth sessions browse as TVHTML5 — the client the token is
-            // for — while cookie sessions keep the WEB path the phone is proven on.
+            // log, 2026-10-22). OAuth sessions browse as the Samsung TV identity — the
+            // client the token is for — while cookie sessions keep the WEB path the phone
+            // is proven on. The bare TVHTML5 identity answers signed-in sessions with
+            // degraded, anonymous pages.
             val client =
                 when {
                     !cookie.isNullOrBlank() -> WEB.copy(loginSupported = true)
-                    hasOAuthSession() -> YouTubeClient.TVHTML5
+                    hasOAuthSession() -> YouTubeClient.TV_AUTH
                     else -> WEB
                 }
             val mode =
@@ -3243,7 +3246,7 @@ object YouTube {
             // rides TVHTML5 first, WEB_REMIX second; cookie sessions keep WEB_REMIX.
             val clients =
                 if (cookie.isNullOrBlank() && hasOAuthSession()) {
-                    listOf(YouTubeClient.TVHTML5, WEB_REMIX)
+                    listOf(YouTubeClient.TV_AUTH, WEB_REMIX)
                 } else {
                     listOf(WEB_REMIX)
                 }
