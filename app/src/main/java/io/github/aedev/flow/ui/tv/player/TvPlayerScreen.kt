@@ -7,7 +7,10 @@ import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -23,9 +26,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.ui.AspectRatioFrameLayout
+import io.github.aedev.flow.R
 import io.github.aedev.flow.data.local.PlayerOverlayPreferences
 import io.github.aedev.flow.data.model.Video
 import io.github.aedev.flow.innertube.YouTube
@@ -46,7 +51,6 @@ import io.github.aedev.flow.ui.screens.player.state.PlayerSheet
 import io.github.aedev.flow.ui.screens.player.state.rememberPlayerCommentsUiState
 import io.github.aedev.flow.ui.screens.player.state.rememberPlayerScreenState
 import io.github.aedev.flow.ui.screens.player.state.rememberVideoPlayerPreferences
-import io.github.aedev.flow.ui.screens.settings.account.TvCodeLoginDialog
 import io.github.aedev.flow.ui.tv.input.TvPlayerAction
 import io.github.aedev.flow.ui.tv.player.state.TvOverlayMode
 import io.github.aedev.flow.ui.tv.player.state.TvPlayerOverlayController
@@ -390,8 +394,8 @@ fun TvPlayerScreen(
             commentsUiState = commentsUiState,
             onNavigateToChannel = onOpenChannel,
             onClose = ::closeSheet,
-            // The prompt is only for a signed-out viewer: a signed-in TV-code
-            // session without create params must not be told to sign in again.
+            // The prompt is only for a signed-out viewer: a signed-in session
+            // without create params must not be told to sign in again.
             onRequireSignIn = if (!YouTube.isSignedIn()) ({ showSignIn = true }) else null,
         )
 
@@ -411,6 +415,15 @@ fun TvPlayerScreen(
         SaveVideoSheet(video = video, onDismiss = { showSave = false })
     }
     if (showSignIn) {
-        TvCodeLoginDialog(onDismiss = { showSignIn = false })
+        AlertDialog(
+            onDismissRequest = { showSignIn = false },
+            title = { Text(stringResource(R.string.tv_signin_unavailable_title)) },
+            text = { Text(stringResource(R.string.tv_signin_unavailable_text)) },
+            confirmButton = {
+                TextButton(onClick = { showSignIn = false }) {
+                    Text(stringResource(R.string.dismiss))
+                }
+            },
+        )
     }
 }
