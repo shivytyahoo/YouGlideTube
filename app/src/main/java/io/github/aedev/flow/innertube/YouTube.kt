@@ -15,6 +15,7 @@ import io.github.aedev.flow.innertube.models.GridRenderer
 import io.github.aedev.flow.innertube.models.MediaInfo
 import io.github.aedev.flow.innertube.models.MusicCarouselShelfRenderer
 import io.github.aedev.flow.innertube.models.MusicShelfRenderer
+import io.github.aedev.flow.innertube.models.OAuthIdentity
 import io.github.aedev.flow.innertube.models.PlaylistItem
 import io.github.aedev.flow.innertube.models.ReturnYouTubeDislikeResponse
 import io.github.aedev.flow.innertube.models.Run
@@ -184,6 +185,11 @@ object YouTube {
         get() = innerTube.dataSyncId
         set(value) {
             innerTube.dataSyncId = value
+        }
+    var pageIdToken: String?
+        get() = innerTube.pageIdToken
+        set(value) {
+            innerTube.pageIdToken = value
         }
     var cookie: String?
         get() = innerTube.cookie
@@ -3239,6 +3245,9 @@ object YouTube {
                     } ?: false
                 }.jsonPrimitive.content
         }
+
+    suspend fun oauthIdentity(): Result<OAuthIdentity> =
+        runCatching { innerTube.accountsList() }
 
     suspend fun accountInfo(): Result<AccountInfo> =
         runCatching {
