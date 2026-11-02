@@ -473,7 +473,7 @@ class InnerTube {
     ) = browseMainSite(
         client =
             if (cookie.isNullOrBlank() && oauthAccessToken != null) {
-                YouTubeClient.TVHTML5
+                YouTubeClient.TV_AUTH
             } else {
                 YouTubeClient.WEB.copy(loginSupported = true)
             },
@@ -830,7 +830,7 @@ class InnerTube {
         // YouTube rejects it in a WEB context with 400 — the guide must speak TVHTML5 too.
         val client =
             if (cookie.isNullOrBlank() && oauthAccessToken != null) {
-                YouTubeClient.TVHTML5
+                YouTubeClient.TV_AUTH
             } else {
                 YouTubeClient.WEB.copy(loginSupported = true)
             }
@@ -969,7 +969,7 @@ class InnerTube {
         // token; in a WEB context YouTube refuses it. Cookie sessions keep WEB.
         val client =
             if (cookie.isNullOrBlank() && oauthAccessToken != null) {
-                YouTubeClient.TVHTML5
+                YouTubeClient.TV_AUTH
             } else {
                 YouTubeClient.WEB.copy(loginSupported = true)
             }
@@ -1025,7 +1025,7 @@ class InnerTube {
         // posts from a TV-code session ride TVHTML5. Cookie sessions keep WEB.
         val client =
             if (cookie.isNullOrBlank() && oauthAccessToken != null) {
-                YouTubeClient.TVHTML5
+                YouTubeClient.TV_AUTH
             } else {
                 YouTubeClient.WEB.copy(loginSupported = true)
             }
