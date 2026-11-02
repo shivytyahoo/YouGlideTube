@@ -135,7 +135,6 @@ private fun StepBody(
                 state = state,
                 header = header,
                 contentPadding = contentPadding,
-                onTvCodeDismiss = viewModel::refreshSignedIn,
             )
         }
 
