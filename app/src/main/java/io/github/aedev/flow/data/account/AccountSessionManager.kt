@@ -165,12 +165,33 @@ class AccountSessionManager
         /** Fetches the active account's identity once, for entries saved before it was known. */
         private fun backfillIdentityIfNeeded() {
             val current = _active.value ?: return
-            if (current.name != null) return
+            if (current.name != null && (current.cookie.isNotBlank() || current.pageIdToken != null)) return
             scope.launch { fetchIdentity(current.cookie)?.let { identified -> mergeIdentity(identified) } }
         }
 
         private suspend fun fetchIdentity(cookie: String): SavedAccount? {
             if (YouTube.cookie != cookie) return null
+            if (cookie.isBlank()) {
+                // TV-code sessions never get an identity from the account menu —
+                // its shape does not parse on the TV client. accounts_list is the
+                // TV identity endpoint (SmartTube): it returns the name and, for
+                // brand channels, the page id token authed browses must carry.
+                // An empty token means the list answered with no brand page.
+                val identity = YouTube.oauthIdentity().getOrNull() ?: return null
+                val key =
+                    identity.channelHandle?.takeIf { it.isNotBlank() }
+                        ?: identity.email?.takeIf { it.isNotBlank() }
+                        ?: identity.name?.takeIf { it.isNotBlank() }
+                        ?: return null
+                return SavedAccount(
+                    key = key,
+                    cookie = "",
+                    pageIdToken = identity.pageIdToken ?: "",
+                    name = identity.name,
+                    email = identity.email,
+                    channelHandle = identity.channelHandle,
+                )
+            }
             val info = YouTube.accountInfo().getOrNull() ?: return null
             val key =
                 info.channelHandle?.takeIf { it.isNotBlank() }
@@ -194,6 +215,7 @@ class AccountSessionManager
                 identified.copy(
                     cookie = current.cookie,
                     dataSyncId = identified.dataSyncId ?: current.dataSyncId,
+                    pageIdToken = identified.pageIdToken ?: current.pageIdToken,
                 )
             _accounts.value = _accounts.value.map { if (it.key == current.key) merged else it }
             if (_active.value?.key == current.key) _active.value = merged
@@ -204,6 +226,7 @@ class AccountSessionManager
         private fun applySession(account: SavedAccount?) {
             YouTube.cookie = account?.cookie
             YouTube.dataSyncId = account?.dataSyncId
+            YouTube.pageIdToken = account?.pageIdToken?.takeIf { it.isNotBlank() }
             YouTube.useLoginForBrowse = account != null
             // A fresh visitor identity for the new session; InnerTube re-fetches it on demand.
             YouTube.visitorData = null
