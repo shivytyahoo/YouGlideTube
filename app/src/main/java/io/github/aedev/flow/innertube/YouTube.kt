@@ -239,7 +239,7 @@ object YouTube {
 
     /**
      * The client the session's own calls use: cookie sessions browse as WEB,
-     * OAuth (TV-code) sessions as the Samsung TV identity — the client their
+     * OAuth (TV-code) sessions as the Fire TV identity — the client their
      * token was issued to (a WEB-context browse carrying an OAuth token 400s,
      * device log 2026-10-22). The bare TVHTML5 identity answers signed-in
      * sessions with degraded, anonymous pages. History beacons must ride this
@@ -250,7 +250,7 @@ object YouTube {
     fun sessionClient(): YouTubeClient =
         when {
             !cookie.isNullOrBlank() -> WEB.copy(loginSupported = true)
-            hasOAuthSession() -> YouTubeClient.TV_AUTH
+            hasOAuthSession() -> YouTubeClient.TV_FIRETV
             else -> WEB
         }
 
@@ -602,7 +602,7 @@ object YouTube {
         // sending WEB, so every channel visit failed on TV-code login.
         val baseClient =
             if (cookie.isNullOrBlank() && hasOAuthSession()) {
-                YouTubeClient.TV_AUTH
+                YouTubeClient.TV_FIRETV
             } else {
                 currentWebClient()
             }
@@ -1779,7 +1779,7 @@ object YouTube {
     suspend fun playlist(playlistId: String): Result<PlaylistPage> {
         val clients =
             if (cookie.isNullOrBlank() && hasOAuthSession()) {
-                listOf(YouTubeClient.TV_AUTH, WEB_REMIX)
+                listOf(YouTubeClient.TV_FIRETV, WEB_REMIX)
             } else {
                 listOf(WEB_REMIX)
             }
@@ -2061,7 +2061,7 @@ object YouTube {
             val client =
                 when {
                     !cookie.isNullOrBlank() -> WEB.copy(loginSupported = true)
-                    hasOAuthSession() -> YouTubeClient.TV_AUTH
+                    hasOAuthSession() -> YouTubeClient.TV_FIRETV
                     else -> WEB
                 }
             val mode =
@@ -3255,7 +3255,7 @@ object YouTube {
             // rides TVHTML5 first, WEB_REMIX second; cookie sessions keep WEB_REMIX.
             val clients =
                 if (cookie.isNullOrBlank() && hasOAuthSession()) {
-                    listOf(YouTubeClient.TV_AUTH, WEB_REMIX)
+                    listOf(YouTubeClient.TV_FIRETV, WEB_REMIX)
                 } else {
                     listOf(WEB_REMIX)
                 }
