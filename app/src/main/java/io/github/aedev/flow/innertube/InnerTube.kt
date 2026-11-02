@@ -1339,12 +1339,13 @@ class InnerTube {
             ShivLog.i("accountsList FAILED status=${response.status.value} body=${text.take(200)}")
             error("accounts_list ${response.status.value}")
         }
-        val items = Json.parseToJsonElement(text).jsonObject.accountsItems()
+        val root = Json.parseToJsonElement(text).jsonObject
+        val items = root.accountsItems()
         val selected =
             items.firstOrNull { it["isSelected"]?.jsonPrimitive?.booleanOrNull == true }
                 ?: items.firstOrNull()
         val item = selected ?: run {
-            ShivLog.i("accountsList empty items=${items.size}")
+            ShivLog.i("accountsList empty items=${items.size} topKeys=${root.keys} body=${text.take(300)}")
             error("accounts_list empty")
         }
         val identity =
@@ -1361,19 +1362,33 @@ class InnerTube {
                                 ?.get("pageId")?.jsonPrimitive?.contentOrNull
                         },
             )
-        ShivLog.i("accountsList name=${identity.name != null} pageId=${identity.pageIdToken != null}")
+        ShivLog.i("accountsList name=${identity.name != null} pageId=${identity.pageIdToken != null} items=${items.size}")
         return identity
     }
 
     private fun JsonObject.accountsItems(): List<JsonObject> {
-        val contents = get("contents")?.jsonArray ?: return emptyList()
+        val contents = get("contents")?.jsonArray
         val section =
-            contents.firstOrNull()?.jsonObject
+            contents?.firstOrNull()?.jsonObject
                 ?.get("accountSectionListRenderer")?.jsonObject
                 ?.get("contents")?.jsonArray?.firstOrNull()?.jsonObject
-        val items = section?.get("accountItemSectionRenderer")?.jsonObject?.get("contents")?.jsonArray
-            ?: return emptyList()
-        return items.mapNotNull { it.jsonObject["accountItem"]?.jsonObject }
+        val exact = section?.get("accountItemSectionRenderer")?.jsonObject?.get("contents")?.jsonArray
+            ?.mapNotNull { it.jsonObject["accountItem"]?.jsonObject }
+            .orEmpty()
+        if (exact.isNotEmpty()) return exact
+        return deepAccountItems()
+    }
+
+    private fun JsonElement.deepAccountItems(acc: MutableList<JsonObject> = mutableListOf()): List<JsonObject> {
+        when (this) {
+            is JsonObject -> {
+                get("accountItem")?.jsonObject?.let { acc += it }
+                values.forEach { it.deepAccountItems(acc) }
+            }
+            is JsonArray -> forEach { it.deepAccountItems(acc) }
+            else -> {}
+        }
+        return acc
     }
 
     private fun JsonObject?.readText(): String? {
