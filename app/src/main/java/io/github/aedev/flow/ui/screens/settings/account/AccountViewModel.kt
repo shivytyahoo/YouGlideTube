@@ -29,7 +29,7 @@ internal class AccountViewModel
         /** The account currently in use, if any. */
         val activeAccount: StateFlow<SavedAccount?> = accountSessionManager.active
 
-        /** Either session kind counts: a saved WebView-cookie account, or OAuth from a TV code. */
+        /** Either session kind counts: a saved WebView-cookie account, or a stored OAuth session. */
         private fun isSignedIn(): Boolean = accountSessionManager.isSignedIn || store.restoreOAuth() != null
 
         /** The login screens write the store from outside this graph, so re-read on resume. */
