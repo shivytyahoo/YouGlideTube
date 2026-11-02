@@ -37,7 +37,11 @@ class AccountPlaylists
         private var loaded = false
 
         fun ensureLoaded() {
-            if (loaded || YouTube.cookie == null) return
+            // A TV-code (OAuth) session has no cookie at all, so gating on the
+            // cookie left account playlists unloaded forever on that login —
+            // the Music library reads this store, which is why it stayed empty
+            // while the playlist pages themselves parsed. Signed-in is the gate.
+            if (loaded || !YouTube.isSignedIn()) return
             loaded = true
             scope.launch { refresh() }
         }
