@@ -589,7 +589,21 @@ object YouTube {
     ): JsonElement {
         // Channel rows carry server-rendered times ("Scheduled for 9/16/26, 6:45 PM"); the WEB
         // client's zero offset would print them in UTC.
-        val client = currentWebClient().copy(utcOffsetMinutes = localUtcOffsetMinutes())
+        // Same session rule as every other authed browse: a TV-code (OAuth) token is a
+        // TV client's token, and YouTube answers a WEB-context browse carrying it with
+        // 400 INVALID_ARGUMENT — the profile page was the one signed-in browse still
+        // sending WEB, so every channel visit failed on TV-code login.
+        val baseClient =
+            if (cookie.isNullOrBlank() && hasOAuthSession()) {
+                YouTubeClient.TVHTML5
+            } else {
+                currentWebClient()
+            }
+        val client =
+            baseClient.copy(
+                utcOffsetMinutes = localUtcOffsetMinutes(),
+                loginSupported = true,
+            )
         val response =
             if (isSignedIn()) {
                 // Signed in, the channel page must be the account's: only the logged-in
