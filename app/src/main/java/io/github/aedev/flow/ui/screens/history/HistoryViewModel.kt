@@ -292,7 +292,9 @@ class HistoryViewModel
                             channelId = entry.channelId,
                             thumbnailUrl = entry.thumbnailUrl,
                             duration = (entry.duration / 1000).toInt(),
-                            viewCount = 0,
+                            // History entries never store a view count: -1 is the
+                            // codebase's unknown sentinel (see toVideo), not 0.
+                            viewCount = -1L,
                             uploadDate = "",
                             timestamp = entry.timestamp,
                             isMusic = entry.isMusic,
