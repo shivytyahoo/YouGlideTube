@@ -1416,89 +1416,20 @@ class InnerTube {
     }
 
     /**
-     * Replays a post like toggle's own endpoint, verbatim like youtubei.js's LikeEndpoint:
-     * the status picks the path (DISLIKE to `like/dislike`, INDIFFERENT to `like/removelike`,
-     * anything else to `like/like`) and the target rides through untouched.
+     * A post like is a comment action, not a video like: the post card's like
+     * toggle carries a performCommentActionEndpoint (proven by the device
+     * report — no likeEndpoint exists anywhere in it), so the toggle replays
+     * through the same comment/perform_comment_action route comment votes use,
+     * with the same delegated-channel 404 ladder.
      */
-    private fun findLikeEndpoint(element: JsonElement): JsonObject? {
-        if (element is JsonArray) {
-            for (value in element) {
-                findLikeEndpoint(value)?.let { return it }
-            }
-            return null
-        }
-        if (element !is JsonObject) return null
-        element["likeEndpoint"]?.jsonObject?.let { return it }
-        if (element.containsKey("status") &&
-            (element.containsKey("target") || element.containsKey("likeParams") ||
-                element.containsKey("dislikeParams") || element.containsKey("removeLikeParams"))
-        ) {
-            return element
-        }
-        for ((_, value) in element) {
-            findLikeEndpoint(value)?.let { return it }
-        }
-        return null
-    }
-
-    /**
-     * A post like replays the endpoint YouTube itself sent, verbatim: its target
-     * object goes through unchanged and the status picks the params
-     * (likeParams/dislikeParams/removeLikeParams), exactly like youtubei.js
-     * LikeEndpoint.buildRequest. Rebuilding the target as { postId } was wrong:
-     * the device proved the real endpoint carries no postId in its target, so
-     * every tap died before any request left the phone.
-     *
-     * Posts are main-site entities, so the like goes to www.youtube.com like
-     * every other working write (comment create) — the client's default host is
-     * music.youtube.com, and the music like endpoint answers a post target with
-     * 400 INVALID_ARGUMENT.
-     *
-     * The stored service endpoint may wrap the like endpoint (command executor,
-     * nested commands), so it is located by deep search, not just at the top
-     * level — a top-level-only read silently sent a context-only body before.
-     */
-    suspend fun postLike(endpointJson: String): HttpResponse {
-        val root =
+    suspend fun postLikeAction(endpointJson: String): HttpResponse {
+        val outer =
             Json.parseToJsonElement(endpointJson) as? JsonObject
                 ?: throw IllegalArgumentException("post like endpoint is not an object")
-        // Logged before the search so a failure still reveals what the stored
-        // endpoint actually is — keys only, never values.
-        ShivLog.i("postLike stored keys=${root.keys}")
-        val endpoint =
-            findLikeEndpoint(root)
-                ?: throw IllegalArgumentException("post like endpoint has no likeEndpoint")
-        val status = endpoint["status"]?.jsonPrimitive?.contentOrNull.orEmpty()
-        val target = endpoint["target"]?.jsonObject
-        val params =
-            when (status) {
-                "DISLIKE" -> endpoint["dislikeParams"]
-                "INDIFFERENT" -> endpoint["removeLikeParams"]
-                else -> endpoint["likeParams"]
-            }?.jsonPrimitive?.contentOrNull?.takeIf(String::isNotBlank)
-        // Keys only, never values: the shape of the endpoint is the diagnostic
-        // that decides the next fix, and tokens must never land in a report.
-        ShivLog.i(
-            "postLike keys=${root.keys} likeKeys=${endpoint.keys} " +
-                "targetKeys=${target?.keys} hasParams=${params != null} status=$status",
-        )
-        val path =
-            when (status) {
-                "DISLIKE" -> "like/dislike"
-                "INDIFFERENT" -> "like/removelike"
-                else -> "like/like"
-            }
-        val client = YouTubeClient.WEB.copy(loginSupported = true)
-        val body =
-            buildJsonObject {
-                put("context", json.encodeToJsonElement(client.toContext(locale, visitorData, dataSyncId)))
-                target?.let { put("target", it) }
-                params?.let { put("params", it) }
-            }
-        return httpClient.post("https://www.youtube.com/youtubei/v1/$path") {
-            ytClient(client, setLogin = true, apiUrl = YouTubeClient.API_URL_YOUTUBE)
-            setBody(body)
-        }
+        val inner =
+            outer["performCommentActionEndpoint"]?.jsonObject
+                ?: throw IllegalArgumentException("post like endpoint has no performCommentActionEndpoint")
+        return performCommentAction(inner.toString())
     }
 
     suspend fun unlikeVideo(
