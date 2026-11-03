@@ -5,6 +5,7 @@ import io.github.aedev.flow.data.model.Comment
 import io.github.aedev.flow.innertube.YouTube
 import io.github.aedev.flow.innertube.pages.parsePostedReply
 import io.github.aedev.flow.innertube.pages.renderer.CommunityPost
+import io.github.aedev.flow.utils.ShivLog
 import io.github.aedev.flow.utils.PerformanceDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -151,7 +152,13 @@ internal class ChannelCommunityController(
                         page.createCommentParamsCandidates.ifEmpty {
                             page.createCommentParams?.let(::listOf).orEmpty()
                         }
-                    Log.i(TAG, "postComments createParams=${candidates.size}")
+                    ShivLog.i(
+                        "postComments createParams=${candidates.size} " +
+                            "postLike=${post.likeAction != null} " +
+                            "comments=${page.comments.size} " +
+                            "commentLikes=${page.comments.count { it.likeAction != null }} " +
+                            "commentReplies=${page.comments.count { it.replyParams != null }}",
+                    )
                     _state.update {
                         it.copy(
                             comments = page.comments,
@@ -188,7 +195,11 @@ internal class ChannelCommunityController(
 
     fun togglePostLike(post: CommunityPost) {
         val endpoint = if (post.isLiked) post.unlikeAction else post.likeAction
-        if (endpoint.isNullOrBlank() || !votesInFlight.add("post:${post.id}")) return
+        if (endpoint.isNullOrBlank()) {
+            ShivLog.i("postLike tap no endpoint")
+            return
+        }
+        if (!votesInFlight.add("post:${post.id}")) return
         val optimistic = post.copy(isLiked = !post.isLiked)
         _state.update { state ->
             state.copy(posts = state.posts.map { if (it.id == post.id) optimistic else it })
@@ -212,6 +223,7 @@ internal class ChannelCommunityController(
         val candidates = _state.value.commentCreateParams
         val post = _state.value.activePost
         if (candidates.isEmpty() || post == null || text.isBlank()) {
+            ShivLog.i("postComment refused candidates=${candidates.size}")
             onResult(false)
             return
         }
@@ -242,6 +254,7 @@ internal class ChannelCommunityController(
                 else -> comment.dislikeAction
             }
         if (endpoint.isNullOrBlank()) {
+            ShivLog.i("postCommentVote no endpoint")
             votesInFlight.remove("comment:${comment.id}")
             return
         }
