@@ -1462,6 +1462,9 @@ class InnerTube {
         val root =
             Json.parseToJsonElement(endpointJson) as? JsonObject
                 ?: throw IllegalArgumentException("post like endpoint is not an object")
+        // Logged before the search so a failure still reveals what the stored
+        // endpoint actually is — keys only, never values.
+        ShivLog.i("postLike stored keys=${root.keys}")
         val endpoint =
             findLikeEndpoint(root)
                 ?: throw IllegalArgumentException("post like endpoint has no likeEndpoint")
