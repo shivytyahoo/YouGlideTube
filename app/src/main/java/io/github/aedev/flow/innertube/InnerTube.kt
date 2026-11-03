@@ -1420,6 +1420,14 @@ class InnerTube {
      * the status picks the path (DISLIKE to `like/dislike`, INDIFFERENT to `like/removelike`,
      * anything else to `like/like`) and the target rides through untouched.
      */
+    /**
+     * A post like replays the endpoint YouTube itself sent, verbatim: its target
+     * object goes through unchanged and the status picks the params
+     * (likeParams/dislikeParams/removeLikeParams), exactly like youtubei.js
+     * LikeEndpoint.buildRequest. Rebuilding the target as { postId } was wrong:
+     * the device proved the real endpoint carries no postId in its target, so
+     * every tap died before any request left the phone.
+     */
     suspend fun postLike(endpointJson: String): HttpResponse {
         val endpoint =
             (Json.parseToJsonElement(endpointJson) as? JsonObject)
@@ -1428,10 +1436,13 @@ class InnerTube {
                 ?: (Json.parseToJsonElement(endpointJson) as? JsonObject)
                 ?: throw IllegalArgumentException("post like endpoint is not an object")
         val status = endpoint["status"]?.jsonPrimitive?.contentOrNull.orEmpty()
-        val postId =
-            endpoint["target"]?.jsonObject?.get("postId")?.jsonPrimitive?.contentOrNull
-                ?.takeIf(String::isNotBlank)
-                ?: throw IllegalArgumentException("post like endpoint carries no postId")
+        val target = endpoint["target"]?.jsonObject
+        val params =
+            when (status) {
+                "DISLIKE" -> endpoint["dislikeParams"]
+                "INDIFFERENT" -> endpoint["removeLikeParams"]
+                else -> endpoint["likeParams"]
+            }?.jsonPrimitive?.contentOrNull?.takeIf(String::isNotBlank)
         val path =
             when (status) {
                 "DISLIKE" -> "like/dislike"
@@ -1439,14 +1450,15 @@ class InnerTube {
                 else -> "like/like"
             }
         val client = YouTubeClient.WEB.copy(loginSupported = true)
+        val body =
+            buildJsonObject {
+                put("context", json.encodeToJsonElement(client.toContext(locale, visitorData, dataSyncId)))
+                target?.let { put("target", it) }
+                params?.let { put("params", it) }
+            }
         return httpClient.post(path) {
             ytClient(client, setLogin = true)
-            setBody(
-                LikeBody(
-                    context = client.toContext(locale, visitorData, dataSyncId),
-                    target = LikeBody.Target.PostTarget(postId),
-                ),
-            )
+            setBody(body)
         }
     }
 
