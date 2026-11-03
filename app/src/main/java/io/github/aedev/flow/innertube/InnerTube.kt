@@ -1420,6 +1420,27 @@ class InnerTube {
      * the status picks the path (DISLIKE to `like/dislike`, INDIFFERENT to `like/removelike`,
      * anything else to `like/like`) and the target rides through untouched.
      */
+    private fun findLikeEndpoint(element: JsonElement): JsonObject? {
+        if (element is JsonArray) {
+            for (value in element) {
+                findLikeEndpoint(value)?.let { return it }
+            }
+            return null
+        }
+        if (element !is JsonObject) return null
+        element["likeEndpoint"]?.jsonObject?.let { return it }
+        if (element.containsKey("status") &&
+            (element.containsKey("target") || element.containsKey("likeParams") ||
+                element.containsKey("dislikeParams") || element.containsKey("removeLikeParams"))
+        ) {
+            return element
+        }
+        for ((_, value) in element) {
+            findLikeEndpoint(value)?.let { return it }
+        }
+        return null
+    }
+
     /**
      * A post like replays the endpoint YouTube itself sent, verbatim: its target
      * object goes through unchanged and the status picks the params
@@ -1432,14 +1453,18 @@ class InnerTube {
      * every other working write (comment create) — the client's default host is
      * music.youtube.com, and the music like endpoint answers a post target with
      * 400 INVALID_ARGUMENT.
+     *
+     * The stored service endpoint may wrap the like endpoint (command executor,
+     * nested commands), so it is located by deep search, not just at the top
+     * level — a top-level-only read silently sent a context-only body before.
      */
     suspend fun postLike(endpointJson: String): HttpResponse {
-        val endpoint =
-            (Json.parseToJsonElement(endpointJson) as? JsonObject)
-                ?.get("likeEndpoint")
-                ?.jsonObject
-                ?: (Json.parseToJsonElement(endpointJson) as? JsonObject)
+        val root =
+            Json.parseToJsonElement(endpointJson) as? JsonObject
                 ?: throw IllegalArgumentException("post like endpoint is not an object")
+        val endpoint =
+            findLikeEndpoint(root)
+                ?: throw IllegalArgumentException("post like endpoint has no likeEndpoint")
         val status = endpoint["status"]?.jsonPrimitive?.contentOrNull.orEmpty()
         val target = endpoint["target"]?.jsonObject
         val params =
@@ -1448,6 +1473,12 @@ class InnerTube {
                 "INDIFFERENT" -> endpoint["removeLikeParams"]
                 else -> endpoint["likeParams"]
             }?.jsonPrimitive?.contentOrNull?.takeIf(String::isNotBlank)
+        // Keys only, never values: the shape of the endpoint is the diagnostic
+        // that decides the next fix, and tokens must never land in a report.
+        ShivLog.i(
+            "postLike keys=${root.keys} likeKeys=${endpoint.keys} " +
+                "targetKeys=${target?.keys} hasParams=${params != null} status=$status",
+        )
         val path =
             when (status) {
                 "DISLIKE" -> "like/dislike"
