@@ -2830,6 +2830,19 @@ object YouTube {
             ShivLog.i("commentAction FAILED ${e.message?.take(240)}")
         }
 
+    /** Runs a community post like toggle's own endpoint; see InnerTube.postLike. */
+    suspend fun likePost(endpointJson: String): Result<Unit> =
+        runCatching {
+            val response = innerTube.postLike(endpointJson)
+            val bodyText = runCatching { response.bodyAsText() }.getOrDefault("")
+            ShivLog.i("postLike status=${response.status.value} body=${bodyText.take(200)}",
+            )
+            check(response.status.isSuccess()) { "post like answered ${response.status.value}" }
+            Unit
+        }.onFailure { e ->
+            ShivLog.i("postLike FAILED ${e.message?.take(240)}")
+        }
+
     suspend fun commentReplies(
         continuation: String,
         ownVideoId: String?,
