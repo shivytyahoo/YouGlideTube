@@ -92,6 +92,7 @@ import coil3.compose.AsyncImage
 import io.github.aedev.flow.R
 import io.github.aedev.flow.ui.screens.settings.account.GoogleLoginActivity
 import io.github.aedev.flow.data.model.Video
+import io.github.aedev.flow.innertube.YouTube
 import io.github.aedev.flow.innertube.pages.channel.ChannelHeader
 import io.github.aedev.flow.innertube.pages.channel.ChannelTabKind
 import io.github.aedev.flow.innertube.pages.renderer.CommunityPost
@@ -252,6 +253,7 @@ fun ChannelScreen(
                             onSearchToggle = { viewModel.setSearchActive(!uiState.searchActive) },
                             onSearchQueryChange = { viewModel.searchInChannel(it) },
                             onCommunityPostComments = viewModel::openCommunityPostComments,
+                            onCommunityPostLike = viewModel::toggleCommunityPostLike,
                             onCommunityPostShare = { post ->
                                 val shareIntent =
                                     Intent(Intent.ACTION_SEND).apply {
@@ -291,6 +293,23 @@ fun ChannelScreen(
                 onLoadMoreReplies = viewModel::loadMoreCommunityCommentReplies,
                 onAuthorClick = { authorChannelId ->
                     if (authorChannelId.isNotBlank()) onChannelClick(authorChannelId)
+                },
+                canPostComment =
+                    YouTube.isSignedIn() &&
+                        communityUiState.commentCreateParams.isNotEmpty(),
+                onPostComment = { text, onResult ->
+                    viewModel.postCommunityPostComment(text, onResult)
+                },
+                onToggleLike = viewModel::toggleCommunityCommentLike,
+                onToggleDislike = viewModel::toggleCommunityCommentDislike,
+                onPostReply = { comment, text, onResult ->
+                    viewModel.postCommunityCommentReply(comment, text, onResult)
+                },
+                onEditComment = { comment, text, onResult ->
+                    viewModel.editCommunityComment(comment, text, onResult)
+                },
+                onDeleteComment = { comment, onResult ->
+                    viewModel.deleteCommunityComment(comment, onResult)
                 },
             )
         }
