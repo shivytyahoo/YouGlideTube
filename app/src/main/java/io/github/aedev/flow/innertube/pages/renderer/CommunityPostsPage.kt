@@ -16,6 +16,7 @@ import io.github.aedev.flow.innertube.pages.stringOrNull
 import io.github.aedev.flow.innertube.pages.toLegacyComment
 import io.github.aedev.flow.innertube.pages.toModernComment
 import io.github.aedev.flow.innertube.pages.youtubeText
+import io.github.aedev.flow.utils.ShivLog
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -259,7 +260,15 @@ internal fun JsonObject.toCommunityPost(
                 ?: likeButtonEndpoint?.toString(),
         unlikeAction =
             likeToggle?.get("toggledServiceEndpoint").objectOrNull()?.toString(),
-    )
+    ).also {
+        // Keys only: identifies what endpoint the like button actually carries,
+        // since the stored endpoint turned out to hold no likeEndpoint at all.
+        ShivLog.i(
+            "postCard like toggle=${likeToggle != null} " +
+                "defaultKeys=${likeToggle?.get("defaultServiceEndpoint").objectOrNull()?.keys} " +
+                "buttonKeys=${likeButtonEndpoint?.keys} toggled=${it.isLiked}",
+        )
+    }
 }
 
 private fun findCommentCountText(root: JsonObject?): String? {
