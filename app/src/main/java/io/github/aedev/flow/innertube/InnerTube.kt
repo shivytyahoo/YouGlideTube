@@ -1427,6 +1427,11 @@ class InnerTube {
      * LikeEndpoint.buildRequest. Rebuilding the target as { postId } was wrong:
      * the device proved the real endpoint carries no postId in its target, so
      * every tap died before any request left the phone.
+     *
+     * Posts are main-site entities, so the like goes to www.youtube.com like
+     * every other working write (comment create) — the client's default host is
+     * music.youtube.com, and the music like endpoint answers a post target with
+     * 400 INVALID_ARGUMENT.
      */
     suspend fun postLike(endpointJson: String): HttpResponse {
         val endpoint =
@@ -1456,8 +1461,8 @@ class InnerTube {
                 target?.let { put("target", it) }
                 params?.let { put("params", it) }
             }
-        return httpClient.post(path) {
-            ytClient(client, setLogin = true)
+        return httpClient.post("https://www.youtube.com/youtubei/v1/$path") {
+            ytClient(client, setLogin = true, apiUrl = YouTubeClient.API_URL_YOUTUBE)
             setBody(body)
         }
     }
