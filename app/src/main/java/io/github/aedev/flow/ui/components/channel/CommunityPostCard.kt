@@ -58,6 +58,7 @@ fun CommunityPostCard(
     onVideoClick: (Video) -> Unit = {},
     showDivider: Boolean = true,
     compact: Boolean = false,
+    onLikeClick: () -> Unit = {},
 ) {
     var textExpanded by rememberSaveable(post.id) { mutableStateOf(false) }
     var textOverflows by rememberSaveable(post.id) { mutableStateOf(false) }
@@ -146,18 +147,33 @@ fun CommunityPostCard(
                     .padding(horizontal = PostHorizontalPadding),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(
-                imageVector = Icons.Outlined.ThumbUp,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(20.dp),
-            )
-            Spacer(Modifier.width(8.dp))
-            Text(
-                text = post.likeCountText.ifBlank { stringResource(R.string.like) },
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Row(
+                modifier = Modifier.clickable(onClick = onLikeClick),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.ThumbUp,
+                    contentDescription = null,
+                    tint =
+                        if (post.isLiked) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                    modifier = Modifier.size(20.dp),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = post.likeCountText.ifBlank { stringResource(R.string.like) },
+                    style = MaterialTheme.typography.labelLarge,
+                    color =
+                        if (post.isLiked) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                )
+            }
             Spacer(Modifier.weight(1f))
             TextButton(onClick = onShareClick) {
                 Icon(
