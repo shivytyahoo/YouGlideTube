@@ -1413,6 +1413,41 @@ class InnerTube {
         )
     }
 
+    /**
+     * Replays a post like toggle's own endpoint, verbatim like youtubei.js's LikeEndpoint:
+     * the status picks the path (DISLIKE to `like/dislike`, INDIFFERENT to `like/removelike`,
+     * anything else to `like/like`) and the target rides through untouched.
+     */
+    suspend fun postLike(endpointJson: String): HttpResponse {
+        val endpoint =
+            (Json.parseToJsonElement(endpointJson) as? JsonObject)
+                ?.get("likeEndpoint")
+                ?.jsonObject
+                ?: (Json.parseToJsonElement(endpointJson) as? JsonObject)
+                ?: throw IllegalArgumentException("post like endpoint is not an object")
+        val status = endpoint["status"]?.jsonPrimitive?.contentOrNull.orEmpty()
+        val postId =
+            endpoint["target"]?.jsonObject?.get("postId")?.jsonPrimitive?.contentOrNull
+                ?.takeIf(String::isNotBlank)
+                ?: throw IllegalArgumentException("post like endpoint carries no postId")
+        val path =
+            when (status) {
+                "DISLIKE" -> "like/dislike"
+                "INDIFFERENT" -> "like/removelike"
+                else -> "like/like"
+            }
+        val client = YouTubeClient.WEB.copy(loginSupported = true)
+        return httpClient.post(path) {
+            ytClient(client, setLogin = true)
+            setBody(
+                LikeBody(
+                    context = client.toContext(locale, visitorData, dataSyncId),
+                    target = LikeBody.Target.PostTarget(postId),
+                ),
+            )
+        }
+    }
+
     suspend fun unlikeVideo(
         client: YouTubeClient,
         videoId: String,
