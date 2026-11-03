@@ -5,6 +5,8 @@ import io.github.aedev.flow.innertube.pages.accessibilityLabel
 import io.github.aedev.flow.innertube.pages.arrayOrNull
 import io.github.aedev.flow.innertube.pages.bestThumbnailUrl
 import io.github.aedev.flow.innertube.pages.commentMutations
+import io.github.aedev.flow.innertube.pages.findAllCreateCommentParams
+import io.github.aedev.flow.innertube.pages.findCreateCommentParams
 import io.github.aedev.flow.innertube.pages.continuationToken
 import io.github.aedev.flow.innertube.pages.countTextFromAccessibilityLabel
 import io.github.aedev.flow.innertube.pages.findReplyContinuation
@@ -17,6 +19,8 @@ import io.github.aedev.flow.innertube.pages.youtubeText
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
 
 data class CommunityPost(
     val id: String,
@@ -28,6 +32,11 @@ data class CommunityPost(
     val commentCountText: String,
     val commentEndpointParams: String?,
     val publishedTimeText: String,
+    // The like toggle's own endpoints, raw JSON; null when the post carried none
+    // (signed out, or a shape without action buttons), where liking cannot be offered.
+    val isLiked: Boolean = false,
+    val likeAction: String? = null,
+    val unlikeAction: String? = null,
 )
 
 data class CommunityPostsPage(
@@ -39,6 +48,10 @@ data class CommunityCommentsPage(
     val comments: List<Comment>,
     val continuation: String?,
     val commentCountText: String? = null,
+    // The section's top-level comment box tokens, same scan video comments use;
+    // empty for guests, where the composer must stay hidden.
+    val createCommentParams: String? = null,
+    val createCommentParamsCandidates: List<String> = emptyList(),
 )
 
 internal fun JsonElement.toCommunityPostsPage(
@@ -168,6 +181,8 @@ internal fun JsonElement.toCommunityCommentsPage(): CommunityCommentsPage {
         comments = comments.distinctBy(Comment::id),
         continuation = continuation,
         commentCountText = findCommentCountText(root),
+        createCommentParams = findCreateCommentParams(),
+        createCommentParamsCandidates = findAllCreateCommentParams(),
     )
 }
 
@@ -177,16 +192,32 @@ internal fun JsonObject.toCommunityPost(
     owner: FeedItemOwner,
 ): CommunityPost? {
     val id = this["postId"].stringOrNull()?.takeIf(String::isNotBlank) ?: return null
-    val replyButton =
+    val actionButtons =
         this["actionButtons"]
             .objectOrNull()
             ?.get("commentActionButtonsRenderer")
             .objectOrNull()
+    val replyButton =
+        actionButtons
             ?.get("replyButton")
             .objectOrNull()
             ?.get("buttonRenderer")
             .objectOrNull()
     val navigationEndpoint = replyButton?.get("navigationEndpoint").objectOrNull()
+    val likeToggle =
+        actionButtons
+            ?.get("likeButton")
+            .objectOrNull()
+            ?.get("toggleButtonRenderer")
+            .objectOrNull()
+    val likeButtonEndpoint =
+        actionButtons
+            ?.get("likeButton")
+            .objectOrNull()
+            ?.get("buttonRenderer")
+            .objectOrNull()
+            ?.get("serviceEndpoint")
+            .objectOrNull()
     val authorAvatar =
         this["authorThumbnail"].bestThumbnailUrl()
             ?: fallbackAuthorAvatarUrl
@@ -221,6 +252,13 @@ internal fun JsonObject.toCommunityPost(
                     ?.get("params")
                     .stringOrNull(),
         publishedTimeText = this["publishedTimeText"].youtubeText().orEmpty(),
+        isLiked =
+            (likeToggle?.get("isToggled") as? JsonPrimitive)?.booleanOrNull ?: false,
+        likeAction =
+            likeToggle?.get("defaultServiceEndpoint").objectOrNull()?.toString()
+                ?: likeButtonEndpoint?.toString(),
+        unlikeAction =
+            likeToggle?.get("toggledServiceEndpoint").objectOrNull()?.toString(),
     )
 }
 
