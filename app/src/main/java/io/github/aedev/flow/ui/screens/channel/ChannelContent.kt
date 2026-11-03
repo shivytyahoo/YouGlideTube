@@ -96,6 +96,7 @@ internal fun ChannelContent(
     onSearchQueryChange: (String) -> Unit = {},
     onCommunityPostComments: (CommunityPost) -> Unit,
     onCommunityPostShare: (CommunityPost) -> Unit,
+    onCommunityPostLike: (CommunityPost) -> Unit = {},
     onLoadMoreCommunityPosts: () -> Unit,
     onRetryCommunityPosts: () -> Unit,
     initialScrollIndex: Int = 0,
@@ -308,6 +309,7 @@ internal fun ChannelContent(
                             onAuthorClick = { onChannelClick(header.id) },
                             onCommentsClick = onCommunityPostComments,
                             onShareClick = onCommunityPostShare,
+                            onLikeClick = onCommunityPostLike,
                             onLoadMore = onLoadMoreCommunityPosts,
                             onRetry = onRetryCommunityPosts,
                         )
@@ -367,6 +369,7 @@ internal fun ChannelContent(
                                         onAuthorClick = { onChannelClick(header.id) },
                                         onCommentsClick = { onCommunityPostComments(post) },
                                         onShareClick = { onCommunityPostShare(post) },
+                                        onLikeClick = { onCommunityPostLike(post) },
                                         showDivider = !compact,
                                         compact = compact,
                                         modifier = if (compact) Modifier.padding(bottom = 4.dp) else Modifier,
