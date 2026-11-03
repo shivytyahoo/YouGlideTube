@@ -35,6 +35,7 @@ internal fun ChannelCommunityPosts(
     onAuthorClick: () -> Unit,
     onCommentsClick: (CommunityPost) -> Unit,
     onShareClick: (CommunityPost) -> Unit,
+    onLikeClick: (CommunityPost) -> Unit = {},
     onLoadMore: () -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
@@ -96,6 +97,7 @@ internal fun ChannelCommunityPosts(
                         onAuthorClick = onAuthorClick,
                         onCommentsClick = { onCommentsClick(post) },
                         onShareClick = { onShareClick(post) },
+                        onLikeClick = { onLikeClick(post) },
                     )
                 }
                 if (hasMore) {
