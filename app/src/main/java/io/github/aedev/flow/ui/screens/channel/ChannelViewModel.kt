@@ -263,6 +263,42 @@ class ChannelViewModel
 
         fun closeCommunityPostComments() = communityController.closeComments()
 
+        fun toggleCommunityPostLike(post: CommunityPost) {
+            if (YouTube.isSignedIn()) {
+                communityController.togglePostLike(post)
+            } else {
+                _uiState.update { it.copy(showSignInPrompt = true) }
+            }
+        }
+
+        fun postCommunityPostComment(
+            text: String,
+            onResult: (Boolean) -> Unit,
+        ) = communityController.postPostComment(text, onResult)
+
+        fun toggleCommunityCommentLike(comment: Comment) =
+            communityController.togglePostCommentVote(comment, like = true)
+
+        fun toggleCommunityCommentDislike(comment: Comment) =
+            communityController.togglePostCommentVote(comment, like = false)
+
+        fun postCommunityCommentReply(
+            comment: Comment,
+            text: String,
+            onResult: (Boolean) -> Unit,
+        ) = communityController.postPostCommentReply(comment, text, onResult)
+
+        fun editCommunityComment(
+            comment: Comment,
+            text: String,
+            onResult: (Boolean) -> Unit,
+        ) = communityController.editPostComment(comment, text, onResult)
+
+        fun deleteCommunityComment(
+            comment: Comment,
+            onResult: (Boolean) -> Unit,
+        ) = communityController.deletePostComment(comment, onResult)
+
         fun retryCommunityPosts() = communityController.retryPosts()
 
         fun loadMoreCommunityPosts() = communityController.loadMorePosts()
