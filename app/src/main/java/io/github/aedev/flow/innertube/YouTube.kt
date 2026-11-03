@@ -43,6 +43,7 @@ import io.github.aedev.flow.innertube.models.response.GetTranscriptResponse
 import io.github.aedev.flow.innertube.models.response.ImageUploadResponse
 import io.github.aedev.flow.innertube.models.response.NextResponse
 import io.github.aedev.flow.innertube.models.response.PlayerResponse
+import io.ktor.client.statement.HttpResponse
 import io.github.aedev.flow.innertube.models.response.ResolveUrlResponse
 import io.github.aedev.flow.innertube.models.response.SearchResponse
 import io.github.aedev.flow.innertube.models.response.channelVideoCountText
@@ -961,17 +962,68 @@ object YouTube {
         runCatching {
             val client = currentWebClient()
             val response =
-                innerTube.channelBrowse(
+                postBrowse(
                     client = client,
-                    channelId = channelId.takeIf { continuation == null },
+                    browseId = channelId.takeIf { continuation == null },
                     params = CHANNEL_POSTS_PARAMS.takeIf { continuation == null },
                     continuation = continuation,
+                    canonicalBaseUrl = null,
+                    guest = {
+                        innerTube.channelBrowse(
+                            client = client,
+                            channelId = channelId.takeIf { continuation == null },
+                            params = CHANNEL_POSTS_PARAMS.takeIf { continuation == null },
+                            continuation = continuation,
+                        )
+                    },
                 )
             Json.parseToJsonElement(response.bodyAsText()).toCommunityPostsPage(
                 fallbackAuthorName = channelName,
                 fallbackAuthorAvatarUrl = channelThumbnailUrl,
             )
         }
+
+    /**
+     * A post browse that travels signed-in when a cookie session exists, and falls back
+     * to the guest path when it does not or when the authed call fails. The guest path
+     * answers reads but carries no engagement endpoints — a signed-in post list or
+     * comment section fetched as guest has no like endpoints, no composer token and no
+     * vote or reply commands, which is exactly how post like/comment/reply stayed dead
+     * while video comments (authed) worked. OAuth-only sessions stay guest: a TV-issued
+     * token in a WEB context is refused with 400.
+     */
+    private suspend fun postBrowse(
+        client: YouTubeClient,
+        browseId: String?,
+        params: String?,
+        continuation: String?,
+        canonicalBaseUrl: String?,
+        guest: suspend () -> HttpResponse,
+    ): HttpResponse {
+        if (cookie.isNullOrBlank()) return guest()
+        val authed =
+            runCatching {
+                innerTube.browseMainSite(
+                    client = client.copy(loginSupported = true),
+                    browseId = browseId,
+                    params = params,
+                    continuation = continuation,
+                    setLogin = true,
+                    canonicalBaseUrl = canonicalBaseUrl,
+                )
+            }
+        if (authed.isSuccess) {
+            val response = authed.getOrThrow()
+            if (response.status.isSuccess()) {
+                ShivLog.i("postBrowse authed")
+                return response
+            }
+            ShivLog.i("postBrowse authed status=${response.status.value}, guest fallback")
+            return guest()
+        }
+        ShivLog.i("postBrowse authed failed, guest fallback")
+        return guest()
+    }
 
     private suspend fun communityPostCommentsPage(
         postId: String? = null,
@@ -980,11 +1032,25 @@ object YouTube {
     ): CommunityCommentsPage {
         val client = currentWebClient()
         val response =
-            innerTube.postCommentsBrowse(
+            postBrowse(
                 client = client,
-                postId = postId,
-                params = params,
+                browseId = if (continuation == null) "FEpost_detail" else null,
+                params = if (continuation == null) params else null,
                 continuation = continuation,
+                canonicalBaseUrl =
+                    if (continuation == null && params == null) {
+                        postId?.let { "/post/$it" }
+                    } else {
+                        null
+                    },
+                guest = {
+                    innerTube.postCommentsBrowse(
+                        client = client,
+                        postId = postId,
+                        params = params,
+                        continuation = continuation,
+                    )
+                },
             )
         return Json.parseToJsonElement(response.bodyAsText()).toCommunityCommentsPage()
     }
