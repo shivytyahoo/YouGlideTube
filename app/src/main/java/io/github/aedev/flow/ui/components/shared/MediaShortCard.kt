@@ -120,12 +120,18 @@ fun MediaShortCard(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Text(
-                text = stringResource(R.string.views_template, formatViewCount(video.viewCount)),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.extendedColors.textSecondary,
-                modifier = Modifier.weight(1f),
-            )
+            // A count of 0 or less means unknown (history stubs carry -1), never
+            // a real zero: showing "0 views" for an unwatched count is fabrication.
+            if (video.viewCount > 0) {
+                Text(
+                    text = stringResource(R.string.views_template, formatViewCount(video.viewCount)),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.extendedColors.textSecondary,
+                    modifier = Modifier.weight(1f),
+                )
+            } else {
+                Spacer(modifier = Modifier.weight(1f))
+            }
             trailingContent?.invoke()
         }
     }
