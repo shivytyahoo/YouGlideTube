@@ -7,6 +7,7 @@ import io.github.aedev.flow.innertube.pages.parsePostedReply
 import io.github.aedev.flow.innertube.pages.renderer.CommunityPost
 import io.github.aedev.flow.utils.ShivLog
 import io.github.aedev.flow.utils.PerformanceDispatcher
+import io.github.aedev.flow.utils.formatViewCount
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -200,7 +201,14 @@ internal class ChannelCommunityController(
             return
         }
         if (!votesInFlight.add("post:${post.id}")) return
-        val optimistic = post.copy(isLiked = !post.isLiked)
+        // The count text is the only visible counter: flip it with the icon, or
+        // a successful tap looks like nothing happened. Compact counts round
+        // back to themselves (2.2K + 1 still reads 2.2K), same as YouTube.
+        val optimistic =
+            post.copy(
+                isLiked = !post.isLiked,
+                likeCountText = adjustLikeCountText(post.likeCountText, if (post.isLiked) -1 else 1),
+            )
         _state.update { state ->
             state.copy(posts = state.posts.map { if (it.id == post.id) optimistic else it })
         }
@@ -467,4 +475,23 @@ internal class ChannelCommunityController(
     private companion object {
         const val TAG = "ChannelCommunity"
     }
+}
+
+private fun adjustLikeCountText(text: String, delta: Int): String {
+    val parsed = parseCompactCount(text) ?: return text
+    return formatViewCount((parsed + delta).coerceAtLeast(0))
+}
+
+private fun parseCompactCount(text: String): Long? {
+    val trimmed = text.trim()
+    if (trimmed.isEmpty()) return null
+    val multiplier =
+        when (trimmed.last()) {
+            'K', 'k' -> 1_000L
+            'M', 'm' -> 1_000_000L
+            else -> 1L
+        }
+    val numberPart = if (multiplier == 1L) trimmed else trimmed.dropLast(1)
+    val number = numberPart.replace(",", "").toDoubleOrNull() ?: return null
+    return (number * multiplier).toLong()
 }
