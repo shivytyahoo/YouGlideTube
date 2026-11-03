@@ -817,6 +817,7 @@ class InnerTube {
         params: String? = null,
         continuation: String? = null,
         setLogin: Boolean = false,
+        canonicalBaseUrl: String? = null,
     ) = withRetry {
         httpClient.post("https://www.youtube.com/youtubei/v1/browse") {
             ytClient(client, setLogin = setLogin || useLoginForBrowse, apiUrl = YouTubeClient.API_URL_YOUTUBE)
@@ -839,6 +840,7 @@ class InnerTube {
                     browseId = browseId,
                     params = params,
                     continuation = continuation,
+                    canonicalBaseUrl = canonicalBaseUrl,
                 ),
             )
         }
