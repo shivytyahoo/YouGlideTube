@@ -2,6 +2,7 @@
 
 package io.github.aedev.flow.ui.screens.update
 
+import androidx.compose.ui.graphics.Color
 import android.text.format.Formatter
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -90,7 +91,7 @@ fun UpdateScreen(
     val release = state.release
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = Color.Transparent,
         contentWindowInsets = WindowInsets(0.dp),
         topBar = {
             FlowTopBar(
