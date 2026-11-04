@@ -18,6 +18,7 @@ import io.github.aedev.flow.data.music.model.toMusicTrack
 import io.github.aedev.flow.data.music.model.toVideo
 import io.github.aedev.flow.data.shorts.queue.ShortsQueueSource
 import io.github.aedev.flow.player.GlobalPlayerState
+import io.github.aedev.flow.player.preview.FeedPreviewController
 import io.github.aedev.flow.ui.components.layout.LocalFlowBottomInsets
 import io.github.aedev.flow.ui.components.layout.navigation.MediaNavigator
 import io.github.aedev.flow.ui.components.musicplayer.sheet.MusicPlayerSheetState
@@ -78,8 +79,16 @@ fun NavGraphBuilder.flowAppGraph(
         currentRoute.value = "home"
         HomeScreen(
             onVideoClick = { video ->
+                // Read before opening: the tap navigates away and the preview
+                // stops, so reading after would always see position 0. The link
+                // path (navigateToPlayer) already carries the preview position,
+                // but this feed path played the video directly and never asked —
+                // so tapping a previewing card restarted it instead of continuing
+                // where the preview left off. Sub-second positions are ignored,
+                // the same rule the link path uses.
+                val previewMs = FeedPreviewController.positionIfPreviewing(video.id).takeIf { it > 1000L }
                 navController.openVideoOrShorts(video, disableShortsPlayer) {
-                    playerViewModel.playVideo(it)
+                    playerViewModel.playVideo(it, startPositionMs = previewMs)
                     GlobalPlayerState.setCurrentVideo(it)
                 }
             },
