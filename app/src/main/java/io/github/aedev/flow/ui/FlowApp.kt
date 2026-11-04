@@ -59,6 +59,7 @@ import io.github.aedev.flow.ui.screens.home.HomeViewModel
 import io.github.aedev.flow.ui.screens.player.VideoPlayerViewModel
 import io.github.aedev.flow.ui.screens.update.UPDATE_ROUTE
 import io.github.aedev.flow.ui.screens.update.UpdateLaunchEffect
+import io.github.aedev.flow.ui.theme.MorpheCirclesBackground
 import io.github.aedev.flow.ui.theme.ThemeMode
 import io.github.aedev.flow.ui.theme.ThemeVariant
 import io.github.aedev.flow.ui.utils.LocalWindowSizeClass
@@ -459,6 +460,15 @@ fun FlowApp(
                                 .padding(if (isInPipMode) PaddingValues(0.dp) else contentPadding)
                                 .nestedScroll(navScrollState.nestedScrollConnection),
                     ) {
+                        // Morphe Circles: behind every screen, frozen while a full-screen
+                        // surface (Shorts, expanded player) covers them.
+                        MorpheCirclesBackground(
+                            modifier = Modifier.fillMaxSize(),
+                            animated =
+                                !isShortsPlayerRoute &&
+                                    playerSheetState.currentValue != PlayerSheetValue.Expanded &&
+                                    !musicPlayerSheetState.isExpanded,
+                        )
                         if (needsOnboarding != null) {
                             val homeViewModel: HomeViewModel = hiltViewModel(activity!!)
                             LaunchedEffect(homeViewModel) {
