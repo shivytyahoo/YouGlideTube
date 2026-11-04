@@ -60,6 +60,8 @@ fun MediaShortsShelf(
     title: String? = null,
     onSeeAllClick: (() -> Unit)? = null,
     onShortsShown: ((ids: List<String>) -> Unit)? = null,
+    previewVideoId: String? = null,
+    previewReady: Boolean = false,
 ) {
     val uniqueShorts = remember(shorts) { shorts.distinctByNonBlankKey(Video::id) }
     if (uniqueShorts.isEmpty()) return
@@ -115,7 +117,16 @@ fun MediaShortsShelf(
             horizontalArrangement = Arrangement.spacedBy(ShortCardDefaults.StripSpacing),
         ) {
             items(uniqueShorts, key = { it.id }) { short ->
-                MediaShortCard(video = short, onClick = { onShortClick(uniqueShorts, short) })
+                MediaShortCard(
+                    video = short,
+                    onClick = { onShortClick(uniqueShorts, short) },
+                    previewContent =
+                        if (short.id == previewVideoId) {
+                            { FeedPreviewSurface(previewReady, showMuteButton = false) }
+                        } else {
+                            null
+                        },
+                )
             }
         }
     }
