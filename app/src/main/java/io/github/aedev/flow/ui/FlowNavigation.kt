@@ -79,20 +79,24 @@ fun NavGraphBuilder.flowAppGraph(
         currentRoute.value = "home"
         HomeScreen(
             onVideoClick = { video ->
-                // Read before opening: the tap navigates away and the preview
-                // stops, so reading after would always see position 0. The link
-                // path (navigateToPlayer) already carries the preview position,
-                // but this feed path played the video directly and never asked —
-                // so tapping a previewing card restarted it instead of continuing
-                // where the preview left off. Sub-second positions are ignored,
-                // the same rule the link path uses.
+                // Read before stopping: the preview's position is needed to
+                // continue from it, and stop clears it. The stop itself must
+                // be explicit — the player opens as a sheet over Home, so the
+                // feed never disposes and nothing else would silence a
+                // preview, unmuted or not, while the player plays.
+                // Sub-second positions are ignored, the same rule the link
+                // path uses.
                 val previewMs = FeedPreviewController.positionIfPreviewing(video.id).takeIf { it > 1000L }
+                FeedPreviewController.stop()
                 navController.openVideoOrShorts(video, disableShortsPlayer) {
                     playerViewModel.playVideo(it, startPositionMs = previewMs)
                     GlobalPlayerState.setCurrentVideo(it)
                 }
             },
             onShortClick = { source ->
+                // A previewing shelf shares the feed preview player, so it
+                // must die here too, not when the Shorts player starts.
+                FeedPreviewController.stop()
                 navController.openShortsOrPlayer(source, disableShortsPlayer)
             },
             onSearchClick = {
