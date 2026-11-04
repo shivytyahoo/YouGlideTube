@@ -42,6 +42,7 @@ internal fun LazyListScope.relatedVideosContent(
                 MediaVideoCard(
                     video = relatedVideo,
                     onClick = { onVideoClick(relatedVideo) },
+                    modifier = Modifier.padding(vertical = RelatedCardVerticalPadding),
                 )
             }
         }
@@ -117,3 +118,10 @@ internal fun relatedGridRows(
 }
 
 private val GridRowVerticalPadding = 6.dp
+
+/**
+ * Home's grid gaps cards by 12 dp; a list scope cannot take arrangement spacing,
+ * so each full-width related card carries half the gap on each side. Compact rows
+ * already carry their own 4 dp each side and are left alone.
+ */
+private val RelatedCardVerticalPadding = 6.dp
