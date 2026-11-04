@@ -267,7 +267,13 @@ class EnhancedPlayerManager private constructor() {
                         resolved.enrichedVideo
                             .toVideoSessionMetadata()
                             .toMedia3Metadata(),
-                    adaptiveLadder = AdaptiveLadder.forPreload(resolved.videoStream, videoStreams, resolved.preferredCodec),
+                    adaptiveLadder =
+                        AdaptiveLadder.forPreload(
+                            resolved.videoStream,
+                            videoStreams,
+                            resolved.preferredCodec,
+                            bandwidthMeter?.bitrateEstimate,
+                        ),
                 )
             },
             log = { autoNextLog(it) },
@@ -2299,7 +2305,13 @@ class EnhancedPlayerManager private constructor() {
         availableAudioStreams = StreamProcessor.processAudioStreams(data.audioStreams)
         subtitleTracks.load(data.enrichedVideo.id, StreamProcessor.processCaptions(data.subtitles), acceptsEmbedded = false)
         resetSubtitleDelayFor(data.enrichedVideo.id)
-        val ladder = AdaptiveLadder.forPreload(data.videoStream, availableVideoStreams, data.preferredCodec)
+        val ladder =
+            AdaptiveLadder.forPreload(
+                data.videoStream,
+                availableVideoStreams,
+                data.preferredCodec,
+                bandwidthMeter?.bitrateEstimate,
+            )
         currentVideoStream = data.videoStream ?: ladder.lastOrNull() ?: availableVideoStreams.firstOrNull()
         currentAudioStream = data.audioStream
         applySubtitleTrackSelection()
