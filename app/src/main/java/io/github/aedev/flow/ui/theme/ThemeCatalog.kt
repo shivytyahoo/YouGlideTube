@@ -24,6 +24,7 @@ object ThemeCatalog {
      */
     val palettes: List<ThemeCatalogEntry> =
         listOf(
+            ThemeCatalogEntry(ThemeMode.MORPHE, R.string.theme_name_morphe, R.string.theme_desc_morphe),
             ThemeCatalogEntry(ThemeMode.DARK, R.string.theme_name_classic_dark, R.string.theme_desc_classic_dark),
             ThemeCatalogEntry(ThemeMode.MATERIAL_YOU, R.string.theme_name_material_you, R.string.theme_desc_material_you),
             ThemeCatalogEntry(ThemeMode.MONOCHROME, R.string.theme_name_monochrome, R.string.theme_desc_monochrome),
