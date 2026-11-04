@@ -1,5 +1,6 @@
 package io.github.aedev.flow.ui.screens.history
 
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -123,7 +124,7 @@ fun HistoryScreen(
         snackbarHost = {
             SnackbarHost(snackbarHostState, Modifier.floatAboveBottomChrome(LocalFlowBottomInsets.current))
         },
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = Color.Transparent,
     ) { paddingValues ->
         Column(
             modifier =
