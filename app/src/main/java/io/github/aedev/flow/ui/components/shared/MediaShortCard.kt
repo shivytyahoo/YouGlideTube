@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -70,6 +71,7 @@ fun MediaShortCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier.width(ShortCardDefaults.MinWidth),
     trailingContent: (@Composable () -> Unit)? = null,
+    previewContent: (@Composable BoxScope.() -> Unit)? = null,
 ) {
     var showQuickActions by remember { mutableStateOf(false) }
     val interactionSource = remember { MutableInteractionSource() }
@@ -107,6 +109,13 @@ fun MediaShortCard(
                 portrait = true,
             )
             ShortWatchedIndicator(videoId = video.id)
+            // A preview surface over the poster, the same shared player the video cards
+            // use; the poster box clips it to the card's shape.
+            if (previewContent != null) {
+                Box(Modifier.matchParentSize()) {
+                    previewContent()
+                }
+            }
         }
         Spacer(modifier = Modifier.height(TitleSpacing))
         Text(
