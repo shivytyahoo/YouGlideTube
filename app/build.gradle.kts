@@ -57,8 +57,8 @@ android {
         applicationId = "shivyt.android.glidetube"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.0.1"
 
         buildConfigField("int", "NIGHTLY_RUN", "0")
         buildConfigField("String", "APP_LANGUAGE_TAGS", "\"${(listOf("en") + translatedLocaleTags()).joinToString(",")}\"")
@@ -312,6 +312,10 @@ dependencies {
     implementation(libs.coil.video)
     implementation(libs.coil.network.okhttp)
     implementation("androidx.palette:palette-ktx:1.0.0")
+
+    // --- Frosted Glass (Morphe-style backdrop blur for the floating pill) ---
+    implementation(libs.haze)
+    implementation(libs.haze.blur)
 
     // --- Dependency Injection ---
     implementation(libs.hilt.android)
