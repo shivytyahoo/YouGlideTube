@@ -36,6 +36,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
@@ -124,6 +125,7 @@ fun HomeScreen(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         contentWindowInsets = WindowInsets(0.dp),
+        containerColor = Color.Transparent,
         snackbarHost = {
             SnackbarHost(snackbarHostState, Modifier.floatAboveBottomChrome(LocalFlowBottomInsets.current))
         },
@@ -166,7 +168,7 @@ fun HomeScreen(
                 Modifier
                     .fillMaxSize()
                     .padding(padding)
-                    .background(MaterialTheme.colorScheme.background),
+                    .background(Color.Transparent),
         ) {
             if (homeFeedEnabled && chips.chips.size > 1) {
                 HomeChipRow(
@@ -221,7 +223,7 @@ fun HomeScreen(
                         modifier =
                             Modifier
                                 .fillMaxSize()
-                                .background(MaterialTheme.colorScheme.background)
+                                .background(Color.Transparent)
                                 .padding(32.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center,
