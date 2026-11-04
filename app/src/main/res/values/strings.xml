@@ -1041,6 +1041,8 @@
     <string name="theme_desc_cream_paper">Warm paper tones for cosy daytime reading.</string>
     <string name="theme_name_classic_dark">YouGlideTube Default</string>
     <string name="theme_desc_classic_dark">YouGlideTube signature: deep violet with a saffron accent.</string>
+    <string name="theme_name_morphe">Morphe</string>
+    <string name="theme_desc_morphe">Dark-first blue and teal theme with glass cards.</string>
     <string name="theme_name_true_black">True Black</string>
     <string name="theme_desc_true_black">Pure OLED</string>
     <string name="theme_name_monochrome">Monochrome</string>
