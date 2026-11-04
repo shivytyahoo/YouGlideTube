@@ -1,5 +1,6 @@
 package io.github.aedev.flow.ui.screens.library
 
+import androidx.compose.ui.graphics.Color
 import android.app.Activity
 import android.net.Uri
 import androidx.activity.compose.BackHandler
@@ -242,7 +243,7 @@ fun LocalMediaScreen(
                 onOpenSettings = onOpenSettings,
             )
         },
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = Color.Transparent,
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
             Column(Modifier.fillMaxSize()) {
