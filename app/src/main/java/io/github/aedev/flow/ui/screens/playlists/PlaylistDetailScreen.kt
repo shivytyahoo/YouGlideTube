@@ -1,5 +1,6 @@
 package io.github.aedev.flow.ui.screens.playlists
 
+import androidx.compose.ui.graphics.Color
 import android.content.Context
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -185,7 +186,7 @@ fun PlaylistDetailScreen(
                 },
             )
         },
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = Color.Transparent,
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
             when {
