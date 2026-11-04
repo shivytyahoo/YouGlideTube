@@ -7,12 +7,24 @@ import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import io.github.aedev.flow.player.preview.FeedPreviewController
+import kotlinx.coroutines.delay
 import io.github.aedev.flow.R
 import io.github.aedev.flow.data.local.VideoHistoryEntry
 import io.github.aedev.flow.data.model.Video
@@ -20,6 +32,7 @@ import io.github.aedev.flow.ui.components.FeedGridLayout
 import io.github.aedev.flow.ui.components.home.ContinueWatchingShelf
 import io.github.aedev.flow.ui.components.home.ContinueWatchingShelfDefaults
 import io.github.aedev.flow.ui.components.layout.flowBottomContentPadding
+import io.github.aedev.flow.ui.components.shared.FeedPreviewSurface
 import io.github.aedev.flow.ui.components.shared.FlowFeedProgress
 import io.github.aedev.flow.ui.components.shared.MediaShortsShelf
 import io.github.aedev.flow.ui.components.shared.card.MediaVideoCard
@@ -29,6 +42,9 @@ import io.github.aedev.flow.ui.components.shared.feedStripCardWidth
 import io.github.aedev.flow.ui.components.shared.rememberFeedGridPlan
 
 private const val FEED_FOOTER_MIN_VIDEOS = 100
+
+/** Scroll must rest this long before the most-visible card starts its muted preview. */
+private const val PREVIEW_DWELL_MS = 400L
 private val FeedTopPadding = 4.dp
 
 @Composable
@@ -74,6 +90,59 @@ internal fun HomeFeedGrid(
         )
     val stripCardWidth = feedStripCardWidth(feedLayout.rowWidth, ContinueWatchingShelfDefaults.CardWidth)
 
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val previewVideoId by FeedPreviewController.previewVideoId.collectAsState()
+    val previewReady by FeedPreviewController.previewReady.collectAsState()
+
+    DisposableEffect(lifecycleOwner) {
+        val observer =
+            LifecycleEventObserver { _, event ->
+                when (event) {
+                    Lifecycle.Event.ON_PAUSE -> FeedPreviewController.pause()
+                    Lifecycle.Event.ON_RESUME -> FeedPreviewController.resume()
+                    else -> Unit
+                }
+            }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    DisposableEffect(Unit) { onDispose { FeedPreviewController.release() } }
+
+    // The most-visible card previews once scrolling settles; the dwell keeps a fast fling
+    // from minting an extraction per card it passes. Live and upcoming videos never preview.
+    // A Shorts shelf previews its first visible short the same way, fed by the shelf's own
+    // visible-ids report, so the shelf is no longer the one row that never previews. The
+    // effect restarts when that id changes, so a horizontal shelf swipe re-targets the
+    // preview without waiting for a vertical scroll.
+    var shelfFirstVisibleShortId by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(gridState, rows, shelfFirstVisibleShortId) {
+        snapshotFlow { gridState.isScrollInProgress }.collect { scrolling ->
+            if (scrolling) return@collect
+            delay(PREVIEW_DWELL_MS)
+            val info = gridState.layoutInfo
+            val viewportHeight = info.viewportSize.height
+            val fallback =
+                info.visibleItemsInfo.firstNotNullOfOrNull { item ->
+                    val row = rows.getOrNull(item.index) as? HomeFeedRow.VideoCard ?: return@firstNotNullOfOrNull null
+                    val video = row.video
+                    if (video.isLive || video.isUpcoming) null else video.id
+                }
+            val firstFullyVisible =
+                info.visibleItemsInfo.firstOrNull { item ->
+                    item.offset.y >= 0 && item.offset.y + item.size.height <= viewportHeight
+                }?.let { rows.getOrNull(it.index) }
+            val target =
+                when (firstFullyVisible) {
+                    is HomeFeedRow.Shorts -> shelfFirstVisibleShortId
+                    is HomeFeedRow.VideoCard ->
+                        firstFullyVisible.video.takeIf { !it.isLive && !it.isUpcoming }?.id ?: fallback
+                    else -> fallback
+                }
+            if (target != null) FeedPreviewController.play(context, target) else FeedPreviewController.stop()
+        }
+    }
+
     LazyVerticalGrid(
         columns = plan.cells,
         modifier =
@@ -105,6 +174,12 @@ internal fun HomeFeedGrid(
                         reason = channelMemoryReason.takeIf { uiState.origins[row.video.id]?.kind == HomeCardOrigin.Kind.CHANNEL_MEMORY },
                         whyShown = uiState.origins[row.video.id]?.label(),
                         modifier = Modifier.testTag("home_video_card"),
+                        previewContent =
+                            if (!plan.isListCard(index) && row.video.id == previewVideoId) {
+                                { FeedPreviewSurface(previewReady) }
+                            } else {
+                                null
+                            },
                     )
                 }
 
@@ -128,7 +203,12 @@ internal fun HomeFeedGrid(
                         shorts = uiState.shorts,
                         onShortClick = onShortClick,
                         onSeeAllClick = onOpenShortsFeed,
-                        onShortsShown = onShortsShown,
+                        onShortsShown = { ids ->
+                            onShortsShown(ids)
+                            shelfFirstVisibleShortId = ids.firstOrNull()
+                        },
+                        previewVideoId = previewVideoId,
+                        previewReady = previewReady,
                         modifier = Modifier.testTag("home_shorts_shelf"),
                     )
                 }
