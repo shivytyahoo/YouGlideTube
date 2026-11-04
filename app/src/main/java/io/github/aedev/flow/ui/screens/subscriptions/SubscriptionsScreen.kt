@@ -1,5 +1,6 @@
 package io.github.aedev.flow.ui.screens.subscriptions
 
+import androidx.compose.ui.graphics.Color
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -170,7 +171,7 @@ fun SubscriptionsScreen(
         snackbarHost = {
             SnackbarHost(snackbarHostState, Modifier.floatAboveBottomChrome(LocalFlowBottomInsets.current))
         },
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = Color.Transparent,
         contentWindowInsets = WindowInsets(0.dp),
     ) { padding ->
         Column(
