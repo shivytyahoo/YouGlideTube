@@ -1,5 +1,6 @@
 package io.github.aedev.flow.ui.screens.search
 
+import androidx.compose.ui.graphics.Color
 import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Context
@@ -121,7 +122,7 @@ fun SearchScreen(
     // Back leaves the screen, but a query typed over a finished search returns to that search first.
     BackHandler(enabled = state.isTyping && uiState.query.isNotBlank()) { state.stopTyping() }
 
-    Surface(modifier = modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+    Surface(modifier = modifier.fillMaxSize(), color = Color.Transparent) {
         Column(modifier = Modifier.fillMaxSize()) {
             SearchTopBar(
                 textFieldState = state.textFieldState,
