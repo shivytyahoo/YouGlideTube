@@ -65,8 +65,11 @@ class LocalDataManager
             private val ACTIVE_CUSTOM_THEME = stringPreferencesKey("custom_theme_id")
             private const val LEGACY_CUSTOM_THEME_ID = "custom-android-legacy"
             private val THEME_VARIANT = stringPreferencesKey("theme_variant")
-            private val SYSTEM_LIGHT_THEME_MODE = stringPreferencesKey("system_light_theme_mode")
-            private val SYSTEM_DARK_THEME_MODE = stringPreferencesKey("system_dark_theme_mode")
+            // v2-only keys: this project is a fresh-look rebuild, so the v1-saved system themes
+            // must not drag the old violet default in front of the Morphe palette. Login lives in
+            // its own preferences file, so this touches theme only.
+            private val SYSTEM_LIGHT_THEME_MODE = stringPreferencesKey("v2_system_light_theme_mode")
+            private val SYSTEM_DARK_THEME_MODE = stringPreferencesKey("v2_system_dark_theme_mode")
             private val SYSTEM_DARK_THEME_VARIANT = stringPreferencesKey("system_dark_theme_variant")
 
         }
@@ -127,7 +130,7 @@ class LocalDataManager
 
         val systemLightThemeMode: Flow<ThemeMode> =
             context.dataStore.data.map { prefs ->
-                parseThemeMode(prefs[SYSTEM_LIGHT_THEME_MODE], ThemeMode.DARK)
+                parseThemeMode(prefs[SYSTEM_LIGHT_THEME_MODE], ThemeMode.MORPHE)
             }
 
         suspend fun setSystemLightThemeMode(mode: ThemeMode) {
@@ -138,7 +141,7 @@ class LocalDataManager
 
         val systemDarkThemeMode: Flow<ThemeMode> =
             context.dataStore.data.map { prefs ->
-                parseThemeMode(prefs[SYSTEM_DARK_THEME_MODE], ThemeMode.DARK)
+                parseThemeMode(prefs[SYSTEM_DARK_THEME_MODE], ThemeMode.MORPHE)
             }
 
         suspend fun setSystemDarkThemeMode(mode: ThemeMode) {
