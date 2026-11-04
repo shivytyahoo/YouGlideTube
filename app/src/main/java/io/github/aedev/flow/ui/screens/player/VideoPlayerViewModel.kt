@@ -29,6 +29,7 @@ import io.github.aedev.flow.player.EnhancedPlayerManager
 import io.github.aedev.flow.player.GlobalPlayerState
 import io.github.aedev.flow.player.LifecyclePlaybackPreferences
 import io.github.aedev.flow.player.MiniPlayerExpansionState
+import io.github.aedev.flow.player.preview.FeedPreviewController
 import io.github.aedev.flow.player.state.EnhancedPlayerState
 import io.github.aedev.flow.player.stream.PlaybackLoadResolver
 import io.github.aedev.flow.player.stream.ResetYouTubeSession
@@ -337,6 +338,10 @@ class VideoPlayerViewModel
             userOpened: Boolean = true,
             startPositionMs: Long? = null,
         ) {
+            // Every player entry silences the feed preview first: the player
+            // opens as a sheet over the feed, so no lifecycle or dispose
+            // would stop it, and its audio would collide with the player's.
+            FeedPreviewController.stop()
             val isMiniPlayerCollapsed =
                 GlobalPlayerState.miniPlayerExpansionState.value == MiniPlayerExpansionState.COLLAPSED
             if (_uiState.value.shouldReopenInsteadOfPlaying(video.id, playerManager.playerState.value, isMiniPlayerCollapsed)) {
@@ -446,6 +451,7 @@ class VideoPlayerViewModel
             shuffle: Boolean? = null,
         ) {
             if (videos.isEmpty()) return
+            FeedPreviewController.stop()
             val startVideo = videos.getOrNull(startIndex) ?: videos.first()
 
             EnhancedMusicPlayerManager.stop()
