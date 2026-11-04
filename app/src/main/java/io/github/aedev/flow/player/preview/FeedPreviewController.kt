@@ -141,6 +141,10 @@ object FeedPreviewController {
 
     fun stop() {
         playJob?.cancel()
+        // A load in flight checks only the generation after extraction, so a
+        // stop during extraction must invalidate it — otherwise the preview
+        // starts playing under the player that was just opened.
+        playGeneration++
         player?.playWhenReady = false
         _previewVideoId.value = null
         _previewReady.value = false
