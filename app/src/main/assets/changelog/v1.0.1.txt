@@ -1,0 +1,8 @@
+VERSION: 1.0.1
+DATE: 2026-11-04
+• Fresh Morphe-style look: blue-to-teal brand, dark-first theme, glass navigation pill, and a floating circles background on every screen
+• Video cards redesigned: colours picked from each thumbnail, glass look, and proper gaps between cards everywhere
+• Faster on slow networks: videos start buffered before you press play, Shorts pre-buffer ahead while you scroll, and quality steps up smoothly
+• Feed previews: videos preview as you scroll, tapping one continues from the preview, with an unmute button on the preview
+• Shorts scroll without loading pauses, and the Shorts tab indicator now sits centred on its icon
+• Fixes: logo background, Settings cards, and spacing between up-next suggestions
