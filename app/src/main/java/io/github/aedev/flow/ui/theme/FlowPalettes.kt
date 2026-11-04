@@ -42,6 +42,34 @@ object FlowPalettes {
                             error = Color(0xFFFF6B6B),
                         ),
                 ),
+            ThemeMode.MORPHE to
+                PalettePair(
+                    id = "morphe",
+                    light =
+                        PaletteSeed(
+                            primary = Color(0xFF005FAC),
+                            onPrimary = Color(0xFFFFFFFF),
+                            secondary = Color(0xFF545F71),
+                            background = Color(0xFFFDFCFF),
+                            surface = Color(0xFFFDFCFF),
+                            onSurface = Color(0xFF1A1C1E),
+                            onSurfaceVariant = Color(0xFF43474E),
+                            outline = Color(0xFF73777F),
+                            error = Color(0xFFBA1A1A),
+                        ),
+                    dark =
+                        PaletteSeed(
+                            primary = Color(0xFFA4C9FF),
+                            onPrimary = Color(0xFF00315D),
+                            secondary = Color(0xFFBCC7DB),
+                            background = Color(0xFF1A1C1E),
+                            surface = Color(0xFF1A1C1E),
+                            onSurface = Color(0xFFE3E2E6),
+                            onSurfaceVariant = Color(0xFFC3C6CF),
+                            outline = Color(0xFF8D9199),
+                            error = Color(0xFFFFB4AB),
+                        ),
+                ),
             ThemeMode.MONOCHROME to
                 PalettePair(
                     id = "monochrome",
