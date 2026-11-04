@@ -64,7 +64,9 @@ internal fun ShortsPagerPlaybackEffects(
     val previousShortId = shorts.getOrNull(settledPage - 1)?.id
     val nextShortId = shorts.getOrNull(settledPage + 1)?.id
     val preloadShortId = shorts.getOrNull(settledPage + 2)?.id
-    LaunchedEffect(settledPage, settledShortId, previousShortId, nextShortId, preloadShortId, targetHeight) {
+    val preloadShortId3 = shorts.getOrNull(settledPage + 3)?.id
+    val preloadShortId4 = shorts.getOrNull(settledPage + 4)?.id
+    LaunchedEffect(settledPage, settledShortId, previousShortId, nextShortId, preloadShortId, preloadShortId3, preloadShortId4, targetHeight) {
         val height = targetHeight ?: return@LaunchedEffect
         val currentId = settledShortId ?: return@LaunchedEffect
         val settled = settledPage
@@ -80,9 +82,18 @@ internal fun ShortsPagerPlaybackEffects(
         shorts.getOrNull(settled - 1)?.let { previous ->
             launch { prepareReel(playerPool, viewModel, settled - 1, previous, height, preferredLang, shouldPlay = false) }
         }
-        // Two ahead: resolved only, not handed to a player. Last so it never competes with the visible short.
-        shorts.getOrNull(settled + 2)?.let { preload ->
-            launch { runCatching { viewModel.getPlaybackStreams(preload.id, height, preferredLang) } }
+        // Two to four ahead: resolved, and the progressive ones' first bytes warmed into the
+        // shared cache — never handed to a player (the 3 slots already hold current, next and
+        // previous). Sequential and last, so warming never competes with the visible short; the
+        // effect's cancellation on the next settle stops the queue mid-flight.
+        launch {
+            for (offset in 2..4) {
+                val ahead = shorts.getOrNull(settled + offset) ?: continue
+                val streams = runCatching { viewModel.getPlaybackStreams(ahead.id, height, preferredLang) }.getOrNull() ?: continue
+                if (streams.videoDashManifest == null) {
+                    runCatching { playerPool.warmAhead(streams.videoUrl) }
+                }
+            }
         }
     }
 
