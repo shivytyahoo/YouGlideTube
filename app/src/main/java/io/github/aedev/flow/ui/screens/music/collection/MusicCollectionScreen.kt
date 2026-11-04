@@ -1,5 +1,6 @@
 package io.github.aedev.flow.ui.screens.music.collection
 
+import androidx.compose.ui.graphics.Color
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -96,7 +97,7 @@ fun MusicCollectionScreen(
             Scaffold(
                 topBar = { FlowTopBar(title = "", onBack = callbacks.onBackClick) },
                 contentWindowInsets = WindowInsets(0.dp),
-                containerColor = MaterialTheme.colorScheme.background,
+                containerColor = Color.Transparent,
             ) { padding ->
                 FlowErrorState(
                     error = stringResource(R.string.error_failed_to_load_playlist),
@@ -261,7 +262,7 @@ private fun CollectionContent(
                 )
             },
             contentWindowInsets = WindowInsets(0.dp),
-            containerColor = MaterialTheme.colorScheme.background,
+            containerColor = Color.Transparent,
         ) { padding ->
             Box(Modifier.fillMaxSize().padding(padding)) {
                 val toggle: (String) -> Unit = { key -> selectedKeys = selected.orEmpty().let { if (key in it) it - key else it + key } }
