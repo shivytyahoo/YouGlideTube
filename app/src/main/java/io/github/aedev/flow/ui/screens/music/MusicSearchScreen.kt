@@ -1,5 +1,6 @@
 package io.github.aedev.flow.ui.screens.music
 
+import androidx.compose.ui.graphics.Color
 import android.app.Activity
 import android.content.Intent
 import android.speech.RecognizerIntent
@@ -107,7 +108,7 @@ fun MusicSearchScreen(
                 focusRequester = focusRequester,
             )
         },
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = Color.Transparent,
         contentWindowInsets = WindowInsets(0.dp),
     ) { padding ->
         Column(
