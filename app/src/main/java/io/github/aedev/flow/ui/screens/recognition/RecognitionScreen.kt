@@ -1,5 +1,6 @@
 package io.github.aedev.flow.ui.screens.recognition
 
+import androidx.compose.ui.graphics.Color
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -124,7 +125,7 @@ fun RecognitionScreen(
                 onBack = onBackClick,
             )
         },
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = Color.Transparent,
         contentWindowInsets = WindowInsets(0.dp),
     ) { padding ->
         AnimatedContent(
