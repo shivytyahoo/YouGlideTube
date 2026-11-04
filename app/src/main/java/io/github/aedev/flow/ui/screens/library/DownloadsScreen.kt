@@ -1,5 +1,6 @@
 package io.github.aedev.flow.ui.screens.library
 
+import androidx.compose.ui.graphics.Color
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -192,7 +193,7 @@ fun DownloadsScreen(
                 },
             )
         },
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = Color.Transparent,
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
