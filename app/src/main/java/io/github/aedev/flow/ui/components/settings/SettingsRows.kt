@@ -1,8 +1,11 @@
 package io.github.aedev.flow.ui.components.settings
 
 import androidx.annotation.DrawableRes
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.indication
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -16,6 +19,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
@@ -26,6 +31,7 @@ import io.github.aedev.flow.ui.components.shared.FlowSelectionRow
 import io.github.aedev.flow.ui.components.shared.FlowSwitchRow
 import io.github.aedev.flow.ui.components.shared.FlowToggleOption
 import io.github.aedev.flow.ui.components.shared.LocalDpadNavigation
+import androidx.compose.ui.graphics.RectangleShape
 import kotlinx.coroutines.flow.StateFlow
 
 /**
@@ -163,10 +169,27 @@ private fun InfoRow(
             Modifier
         }
     SegmentedListItem(
-        modifier = focusModifier,
+        modifier =
+            focusModifier
+                .fillMaxWidth()
+                .then(
+                    if (shape == RectangleShape) {
+                        Modifier
+                    } else {
+                        Modifier.border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f), shape)
+                    },
+                ),
         verticalAlignment = Alignment.CenterVertically,
         shapes = ListItemDefaults.shapes(shape = shape),
-        colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+        colors =
+            ListItemDefaults.segmentedColors(
+                containerColor =
+                    if (shape == RectangleShape) {
+                        Color.Transparent
+                    } else {
+                        MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.55f)
+                    },
+            ),
         leadingContent = icon?.let { { Icon(imageVector = it, contentDescription = null) } },
         supportingContent = value?.let { { Text(it) } },
     ) {
