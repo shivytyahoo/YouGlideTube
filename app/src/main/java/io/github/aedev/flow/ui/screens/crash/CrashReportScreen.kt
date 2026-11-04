@@ -2,6 +2,7 @@
 
 package io.github.aedev.flow.ui.screens.crash
 
+import androidx.compose.ui.graphics.Color
 import android.content.ClipData
 import android.content.Intent
 import androidx.compose.foundation.horizontalScroll
@@ -86,7 +87,7 @@ fun CrashReportScreen(
     fun copy() = scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(CLIP_LABEL, report))) }
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = Color.Transparent,
         snackbarHost = { SnackbarHost(snackbar) },
         bottomBar = {
             Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
