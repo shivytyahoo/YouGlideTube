@@ -13,7 +13,9 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.cache.Cache
+import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.cache.CacheDataSource
+import androidx.media3.datasource.cache.CacheWriter
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.audio.AudioSink
@@ -672,6 +674,31 @@ class ShortsPlayerPool private constructor() {
         return ProgressiveMediaSource
             .Factory(factory)
             .createMediaSource(MediaItem.fromUri(url))
+    }
+
+    /**
+     * Warms the first [maxBytes] of a progressive stream into the shared cache, so a swipe onto
+     * it starts from disk instead of the network. No-op while the cache is not attached, and
+     * never for DASH: a generated manifest's segments are not addressable from its URL alone.
+     * Callers resolve first (which the stream cache reuses at prepare time), so the warmed URL
+     * is the same one playback will read.
+     */
+    suspend fun warmAhead(
+        videoUrl: String,
+        maxBytes: Long = 2_000_000L,
+    ) {
+        val dataSource =
+            (cachedDataSourceFactory as? CacheDataSource.Factory)?.createDataSource() ?: return
+        runCatching {
+            withContext(Dispatchers.IO) {
+                CacheWriter(
+                    dataSource,
+                    DataSpec(Uri.parse(videoUrl), 0, maxBytes),
+                    null,
+                    null,
+                ).cache()
+            }
+        }.onFailure { Log.d(TAG, "Ahead warm failed: ${it.javaClass.simpleName}") }
     }
 
     // PLAYBACK CONTROL
