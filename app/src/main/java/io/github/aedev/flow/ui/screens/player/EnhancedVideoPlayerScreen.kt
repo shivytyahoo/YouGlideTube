@@ -30,6 +30,7 @@ import io.github.aedev.flow.ui.components.videoplayer.sheet.PlaylistQueueDock
 import io.github.aedev.flow.ui.components.videoplayer.sheet.PlaylistQueueDockDefaults
 import io.github.aedev.flow.ui.components.videoplayer.sheet.PlaylistQueuePaneCard
 import io.github.aedev.flow.ui.screens.player.content.PlayerDetailSideColumn
+import io.github.aedev.flow.ui.theme.MorpheCirclesBackground
 import io.github.aedev.flow.ui.screens.player.content.VideoInfoContent
 import io.github.aedev.flow.ui.screens.player.content.relatedListUsesGrid
 import io.github.aedev.flow.ui.screens.player.content.relatedVideosContent
@@ -97,6 +98,14 @@ internal fun EnhancedVideoPlayerScreen(
                 .graphicsLayer { this.alpha = alpha() }
                 .background(MaterialTheme.colorScheme.background),
     ) {
+        // The player page is its own surface over the feed: its background is opaque,
+        // so the root circles never reach it. It gets its own layer, animated while
+        // the page is actually visible — fullscreen video covers it anyway, and PiP
+        // hides the page, so both freeze it instead of burning frames behind video.
+        MorpheCirclesBackground(
+            modifier = Modifier.fillMaxSize(),
+            animated = !isFullscreenShown && !isInPipMode,
+        )
         val layoutMode =
             playerLayoutModeFor(
                 windowSizeClass = windowSizeClass,
