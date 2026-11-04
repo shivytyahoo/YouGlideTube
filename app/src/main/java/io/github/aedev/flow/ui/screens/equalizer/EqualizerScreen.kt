@@ -1,5 +1,6 @@
 package io.github.aedev.flow.ui.screens.equalizer
 
+import androidx.compose.ui.graphics.Color
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -113,7 +114,7 @@ fun EqualizerScreen(
     Scaffold(
         modifier = modifier,
         contentWindowInsets = WindowInsets(0.dp),
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = Color.Transparent,
         snackbarHost = { SnackbarHost(snackbar, Modifier.floatAboveBottomChrome(LocalFlowBottomInsets.current)) },
         topBar = {
             if (showPresets) {
