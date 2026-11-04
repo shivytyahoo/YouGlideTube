@@ -26,6 +26,9 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.Dp
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import androidx.compose.ui.unit.dp
 import io.github.aedev.flow.ui.utils.LocalWindowSizeClass
 import io.github.aedev.flow.ui.utils.isExpandedWidth
@@ -100,7 +103,14 @@ fun FlowNavigationChrome(
                         },
                     ),
         ) {
-            content()
+            // The bar's blur source: the content under it, marked here, with the bar as
+            // a sibling — never inside the source, where it would blur itself. Morphe
+            // draws the same line in its GlassBlur docs, and its pager subcomposes
+            // content and bar separately for exactly this reason.
+            val barHaze = rememberHazeState()
+            Box(Modifier.fillMaxSize().hazeSource(barHaze)) {
+                content()
+            }
             if (!usesRail) {
                 NavigationBarSlot(
                     tabs = tabs,
@@ -108,6 +118,7 @@ fun FlowNavigationChrome(
                     onTabSelected = onTabSelected,
                     visible = barVisible,
                     onHeightChanged = onBarHeightChanged,
+                    hazeState = barHaze,
                 )
             }
         }
@@ -139,6 +150,7 @@ private fun BoxScope.NavigationBarSlot(
     onTabSelected: (FlowTab) -> Unit,
     visible: Boolean,
     onHeightChanged: (Dp) -> Unit,
+    hazeState: HazeState,
 ) {
     val density = LocalDensity.current
     val bottomInsetPx = ShortNavigationBarDefaults.windowInsets.getBottom(density)
@@ -157,6 +169,7 @@ private fun BoxScope.NavigationBarSlot(
                 Modifier
                     .testTag(FLOW_NAV_BAR_TAG)
                     .onSizeChanged { onHeightChanged(with(density) { (it.height - bottomInsetPx).toDp() }) },
+            hazeState = hazeState,
         )
     }
 }
