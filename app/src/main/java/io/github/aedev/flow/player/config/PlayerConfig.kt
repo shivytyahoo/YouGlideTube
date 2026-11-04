@@ -73,8 +73,13 @@ object PlayerConfig {
 
     // ===== Bandwidth Thresholds =====
 
-    /** Initial bandwidth estimate in bits per second (5 Mbps) */
-    const val INITIAL_BANDWIDTH_ESTIMATE = 5_000_000L
+    /**
+     * Initial bandwidth estimate in bits per second. Deliberately assumes slow 4G (1.5 Mbps) rather
+     * than fast broadband: the meter corrects upward within seconds on a fast network, but an
+     * optimistic start stalls the first seconds on a slow one — and a stall is what this build
+     * exists to remove.
+     */
+    const val INITIAL_BANDWIDTH_ESTIMATE = 1_500_000L
 
     // ===== Quality Adaptation =====
 
