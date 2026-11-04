@@ -53,6 +53,7 @@ enum class ThemeMode {
     CYBERPUNK,
     ROYAL_GOLD,
     CREAM_LIGHT,
+    MORPHE,
     MATERIAL_YOU,
     CUSTOM,
     LIGHT,
