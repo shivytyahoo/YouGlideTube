@@ -1,5 +1,7 @@
 package io.github.aedev.flow.ui.components.shared
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -74,7 +76,7 @@ fun FlowSelectionRow(
         selected = selected,
         onClick = onClick,
         shapes = ListItemDefaults.shapes(shape = shape),
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().groupedCardBorder(shape, MaterialTheme.colorScheme.outline),
         enabled = enabled,
         supportingContent = rowSupportingContent(supportingText),
         leadingContent = rowLeadingContent(leadingIcon, null),
@@ -151,6 +153,7 @@ fun FlowNavRow(
         modifier =
             modifier
                 .fillMaxWidth()
+                .groupedCardBorder(shape, MaterialTheme.colorScheme.outline)
                 .then(if (stateDescription != null) Modifier.semantics { this.stateDescription = stateDescription } else Modifier),
         enabled = enabled,
         supportingContent = rowSupportingContent(supportingText),
@@ -188,6 +191,7 @@ fun FlowSwitchRow(
         modifier =
             modifier
                 .fillMaxWidth()
+                .groupedCardBorder(shape, MaterialTheme.colorScheme.outline)
                 .semantics {
                     role = Role.Switch
                     toggleableState = ToggleableState(checked)
@@ -314,8 +318,20 @@ private fun rowColors(
 }
 
 @Composable
-private fun groupedContainerColor(shape: Shape): Color =
-    if (shape == RectangleShape) Color.Transparent else MaterialTheme.colorScheme.surfaceContainerHigh
+private fun groupedContainerColor(shape: Shape): Color {
+    if (shape == RectangleShape) return Color.Transparent
+    // Morphe's settings rows are flat neutrals, not tinted gradients: the grouped
+    // container is the theme's container, thinned so the page animation reads
+    // through the card instead of the card sitting solid on it.
+    return MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.55f)
+}
+
+/**
+ * A grouped row is a card, so it carries the card's edge; an ungrouped row stays
+ * borderless on whatever sheet or page holds it.
+ */
+private fun Modifier.groupedCardBorder(shape: Shape, outline: Color): Modifier =
+    then(if (shape == RectangleShape) Modifier else Modifier.border(1.dp, outline.copy(alpha = 0.4f), shape))
 
 private fun rowHorizontalPadding(shape: Shape): Dp = if (shape == RectangleShape) RowHorizontalPadding else GroupedRowHorizontalPadding
 
