@@ -64,7 +64,7 @@ fun OnboardingScreen(
         backdrop.animateTo(1f, backdropSpec)
     }
 
-    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+    Box(Modifier.fillMaxSize().background(Color.Transparent)) {
         Spacer(
             Modifier
                 .fillMaxSize()
