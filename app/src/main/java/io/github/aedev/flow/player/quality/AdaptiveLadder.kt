@@ -36,25 +36,39 @@ internal object AdaptiveLadder {
 
     /**
      * The ladder a preloaded video plays on: none when a quality is pinned ([pinned] set), else one
-     * around [anchorFor]. Promotion recomputes it from the same inputs to learn what is playing.
+     * around the bandwidth-fitting anchor when an estimate is known. Promotion recomputes it from
+     * the same inputs to learn what is playing.
      */
     fun forPreload(
         pinned: VideoStream?,
         streams: List<VideoStream>,
         preferredCodec: String?,
-    ): List<VideoStream> = if (pinned != null) emptyList() else rungs(anchorFor(streams, preferredCodec), streams)
+        bandwidthEstimateBps: Long? = null,
+    ): List<VideoStream> =
+        if (pinned != null) {
+            emptyList()
+        } else {
+            rungs(anchorFor(streams, preferredCodec, bandwidthEstimateBps), streams)
+        }
 
-    /** The anchor of a ladder built before the video has had any bandwidth to judge by. */
+    /**
+     * The anchor of a ladder built before the video has had any bandwidth to judge by. With an
+     * estimate, the anchor is the tallest stream that fits the budget — the old highest-height
+     * anchor started slow networks on 1080p and stalled the first seconds. Without one, the
+     * highest height stays, as before.
+     */
     private fun anchorFor(
         streams: List<VideoStream>,
         preferredCodec: String?,
+        bandwidthEstimateBps: Long? = null,
     ): VideoStream? =
-        streams
-            .filter(AdaptiveDashManifest::canDescribe)
-            .minWithOrNull(
-                compareBy<VideoStream> { VideoCodecUtils.codecRankWithPreference(it, preferredCodec) }
-                    .thenByDescending(VideoCodecUtils::qualityHeightFromStream),
-            )
+        bandwidthEstimateBps?.let { AutoQualityPolicy.initialPick(streams, it, preferredCodec) }
+            ?: streams
+                .filter(AdaptiveDashManifest::canDescribe)
+                .minWithOrNull(
+                    compareBy<VideoStream> { VideoCodecUtils.codecRankWithPreference(it, preferredCodec) }
+                        .thenByDescending(VideoCodecUtils::qualityHeightFromStream),
+                )
 
     /** HDR and 10-bit SDR: VP9 profile 2, AV1 at 10 bits, HEVC Main 10. */
     internal fun isHighBitDepth(stream: VideoStream): Boolean {
