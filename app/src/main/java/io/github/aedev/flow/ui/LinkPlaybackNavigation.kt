@@ -91,10 +91,15 @@ internal fun NavGraphBuilder.linkPlaybackRoutes(
     }
 
     composable(
-        route = "player/{videoId}",
-        arguments = listOf(navArgument("videoId") { type = NavType.StringType }),
+        route = "player/{videoId}?startMs={startMs}",
+        arguments =
+            listOf(
+                navArgument("videoId") { type = NavType.StringType },
+                navArgument("startMs") { type = NavType.LongType; defaultValue = 0L },
+            ),
     ) { backStackEntry ->
         val videoId = backStackEntry.arguments?.getString("videoId")
+        val startMs = backStackEntry.arguments?.getLong("startMs") ?: 0L
         val effectiveVideoId =
             when {
                 !videoId.isNullOrEmpty() && videoId != "sample" -> videoId
@@ -108,7 +113,7 @@ internal fun NavGraphBuilder.linkPlaybackRoutes(
                 val video =
                     playerUiState.cachedVideo?.takeIf { it.id == effectiveVideoId }
                         ?: linkedVideo(effectiveVideoId)
-                playerViewModel.playVideo(video)
+                playerViewModel.playVideo(video, startPositionMs = startMs.takeIf { it > 0L })
                 GlobalPlayerState.setCurrentVideo(video)
             } else {
                 playerViewModel.showVideoPlayer()
