@@ -23,6 +23,7 @@ room = "2.8.4"
 datastore = "1.1.7"  # 1.2.1 breaks DataStore unit tests on Windows (renameTo on repeat edits)
 glance = "1.2.0"
 graphicsShapes = "1.1.0"
+haze = "2.0.1"
 coroutines = "1.11.0"
 paging = "3.5.1"
 work = "2.11.2"
@@ -139,6 +140,8 @@ androidx-camera-camera2 = { group = "androidx.camera", name = "camera-camera2", 
 androidx-camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "camerax" }
 androidx-camera-view = { group = "androidx.camera", name = "camera-view", version.ref = "camerax" }
 zxing-core = { group = "com.google.zxing", name = "core", version.ref = "zxingCore" }
+haze = { group = "dev.chrisbanes.haze", name = "haze", version.ref = "haze" }
+haze-blur = { group = "dev.chrisbanes.haze", name = "haze-blur", version.ref = "haze" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
