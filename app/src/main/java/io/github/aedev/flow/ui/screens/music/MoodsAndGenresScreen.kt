@@ -1,5 +1,6 @@
 package io.github.aedev.flow.ui.screens.music
 
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -50,7 +51,7 @@ fun MoodsAndGenresScreen(
                 onBack = onBackClick,
             )
         },
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = Color.Transparent,
         contentWindowInsets = WindowInsets(0.dp),
     ) { padding ->
         Box(
