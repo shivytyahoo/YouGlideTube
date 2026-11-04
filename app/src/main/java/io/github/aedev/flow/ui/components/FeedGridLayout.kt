@@ -32,11 +32,12 @@ private val LargeWindowSpacing = FeedGridSpacing(margin = 24.dp, rowSpacing = 16
  * The single layout decision behind every vertical video grid, so every screen sizes the same cards
  * the same way.
  *
- * A compact window is one column of edge-to-edge cards, as Material 3 asks of a single-pane layout.
- * Wider windows fill with as many cells of at least [FeedCardMinWidth] as fit, capped by
+ * A compact window is one column of boxed cards: every card keeps its inset, so
+ * there is a gap at each edge instead of a full-bleed strip. Wider windows fill
+ * with as many cells of at least [FeedCardMinWidth] as fit, capped by
  * `maxAutoColumns` until a cell would pass [FeedCardMaxWidth].
  *
- * Cells sit edge to edge and each card insets itself by [VideoCardDefaults.Inset], so the grid pads
+ * Each card insets itself by [VideoCardDefaults.Inset], so the grid pads
  * the window margin minus that inset: thumbnails land on the 16/24 dp margin, two cards' insets make
  * the gap between them, and a thumbnail-left row lines up with the column above it.
  */
@@ -60,10 +61,12 @@ data class FeedGridLayout(
     val rowWidth: Dp get() = cardWidth * columns
 
     /**
-     * Whether stacked cards run edge to edge. Only a single compact column does: a compact grid has no
-     * margin, so two or three pinned columns keep each card's inset to leave a gap between them.
+     * Whether stacked cards run edge to edge. Never: every card keeps its inset, so a
+     * single compact column reads as a box with a gap at each edge instead of a
+     * full-bleed strip — the Material 3 single-pane convention, deliberately not
+     * followed, because the cards are meant to look like Morphe's boxes everywhere.
      */
-    val cardsBleed: Boolean get() = isCompact && columns == 1
+    val cardsBleed: Boolean get() = false
 }
 
 /**
