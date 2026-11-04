@@ -17,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -86,6 +87,7 @@ fun LibraryScreen(
 
     Scaffold(
         contentWindowInsets = WindowInsets(0.dp),
+        containerColor = Color.Transparent,
         topBar = { FlowTopBar(title = stringResource(R.string.library)) },
     ) { padding ->
         LazyColumn(
@@ -94,7 +96,7 @@ fun LibraryScreen(
                 modifier
                     .fillMaxSize()
                     .padding(padding)
-                    .background(MaterialTheme.colorScheme.background),
+                    .background(Color.Transparent),
             contentPadding = PaddingValues(top = ListVerticalPadding, bottom = flowBottomContentPadding(ListVerticalPadding)),
             verticalArrangement = Arrangement.spacedBy(ShelfSpacing),
         ) {
