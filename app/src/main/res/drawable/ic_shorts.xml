@@ -4,10 +4,12 @@
     android:viewportWidth="144"
     android:viewportHeight="144">
 
-    <!-- Group creates padding so the stroke doesn't get cut off -->
+    <!-- Group creates padding so the stroke doesn't get cut off. Translated so the glyph's
+         bounding box sits centred in the viewport (measured, not eyeballed): without it the
+         pill indicator looks shifted off the icon. -->
     <group
-        android:translateX="8"
-        android:translateY="8">
+        android:translateX="22.53"
+        android:translateY="10.56">
         
         <path
             android:fillColor="#00000000"
