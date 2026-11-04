@@ -1,5 +1,6 @@
 package io.github.aedev.flow.ui.screens.music
 
+import androidx.compose.ui.graphics.Color
 import android.widget.Toast
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
@@ -81,7 +82,7 @@ fun ArtistPageError(
 ) {
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = Color.Transparent,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = { FlowTopBar(title = "", onBack = onBackClick) },
     ) { padding ->
@@ -173,7 +174,7 @@ fun ArtistPage(
                 modifier
                     .fillMaxSize()
                     .reachUnderStatusBar(statusBarTopPx),
-            containerColor = MaterialTheme.colorScheme.background,
+            containerColor = Color.Transparent,
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
             topBar = {
                 MusicHeroTopBar(
