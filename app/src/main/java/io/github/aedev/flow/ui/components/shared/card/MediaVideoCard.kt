@@ -1,5 +1,6 @@
 package io.github.aedev.flow.ui.components.shared.card
 
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
@@ -47,6 +48,7 @@ fun MediaVideoCard(
     thumbnailWidth: Dp = VideoCardDefaults.RowThumbnailWidth,
     reason: String? = null,
     whyShown: String? = null,
+    previewContent: (@Composable BoxScope.() -> Unit)? = null,
 ) {
     when (layout) {
         VideoCardLayout.Stacked -> {
@@ -58,6 +60,7 @@ fun MediaVideoCard(
                 reason = reason,
                 whyShown = whyShown,
                 modifier = modifier,
+                previewContent = previewContent,
             )
         }
 
