@@ -7,8 +7,8 @@ receive backported patches.
 
 | Version | Supported |
 | ------- | --------- |
-| 2.2.x   | ✅ |
-| < 2.2.0 | ❌ |
+| 1.0.x   | ✅ |
+| < 1.0.2 | ❌ |
 
 Always update to the newest release before reporting a security issue.
 
@@ -17,8 +17,7 @@ Always update to the newest release before reporting a security issue.
 **Do not report security vulnerabilities through public GitHub issues.**
 
 Report privately through
-[GitHub Security Advisories](https://github.com/Flow-Tube/Flow/security/advisories/new).
-If you cannot use that form, email <contact@flow-tube.org>.
+[GitHub Security Advisories](https://github.com/shivytyahoo/YouGlideTube/security/advisories/new).
 
 Please include:
 
@@ -35,24 +34,23 @@ Please do not disclose the issue publicly until a fix has shipped.
 
 ## Verifying release APKs
 
-Official Flow builds are signed with a single release key. Any APK that does
+Official YouGlideTube builds are signed with a single release key. Any APK that does
 not match the fingerprint below is not an official build, regardless of where
 it was downloaded.
 
 ```
-SHA-256: 43:22:29:4E:D4:CA:A2:D4:29:41:40:09:58:18:08:0F:FE:8A:CC:1F:BE:3C:DC:76:10:7D:F4:5C:52:86:BE:40
+SHA-256: BA:65:7A:2B:F0:6C:A5:70:03:F3:23:A1:4E:6B:BA:11:DC:EA:69:BD:A4:36:09:8F:4C:D7:7C:E5:19:92:A0:48
 ```
 
 Verify a downloaded APK with the Android SDK build tools:
 
 ```bash
-apksigner verify --print-certs flow-foss.apk
+apksigner verify --print-certs YouGlideTube-1.0.2.apk
 ```
 
 The reported `Signer #1 certificate SHA-256 digest` must equal the fingerprint
 above (lower case, without colons).
 
-Official distribution channels are the
-[GitHub Releases page](https://github.com/Flow-Tube/Flow/releases) and
-[IzzyOnDroid](https://apt.izzysoft.de/packages/io.github.aedev.flow). Builds
-obtained anywhere else are unverified.
+The official distribution channel is the
+[GitHub Releases page](https://github.com/shivytyahoo/YouGlideTube/releases).
+Builds obtained anywhere else are unverified.
