@@ -17,16 +17,16 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0-blue?style=flat-square" alt="GPL-3.0"></a>
 </p>
 
+<p align="center">
+  <a href="https://github.com/shivytyahoo/YouGlideTube/releases/tag/v1.0.2"><b>⬇️ Download YouGlideTube 1.0.2</b></a><br>
+  <sub><code>YouGlideTube-1.0.2.apk</code> · 27,599,579 bytes · installs over 1.0.1 · Android 8.0 (API 26) or newer</sub>
+</p>
+
 ## About
 
 **YouGlideTube** is a fast, buttery-smooth YouTube client for Android by
 [Shivyt](https://github.com/shivytyahoo) — built for instant playback,
 background play, downloads and a clean, distraction-free interface.
-
-The current look is fresh and Morphe-inspired: a dark-first theme with a
-blue-to-teal brand, a floating glass navigation pill, a soft drifting
-circles background on every screen, and video cards coloured from their
-own thumbnails, with proper gaps between them.
 
 It is a fork of [Flow 3.0.0](https://github.com/A-EDev/Flow), rebranded
 and extended end to end: the player foundation builds on open-source work
@@ -41,9 +41,61 @@ text.
 | **Requires** | Android 8.0 (API 26) or newer |
 | **License** | GPL-3.0 |
 
+## 🎨 Look and feel
+
+Open YouGlideTube and the first thing you notice is that it does not
+look like a clone of anything. The interface is dark-first and calm: a
+deep `#1A1C1E` canvas, a blue-to-teal brand (`#1E5AA8` → `#00AFAE`), and
+warm saffron and coral accents on the mark and the player.
+
+- **Floating glass navigation pill** — the bottom bar is a compact,
+  centred glass pill with a sliding indicator that glides between tabs,
+  instead of a flat strip eating the bottom of the screen.
+- **Drifting circles background** — small, soft circles drift slowly
+  behind every screen, so the app feels alive without ever shouting.
+- **Cards coloured from their own thumbnails** — every video card picks
+  its colours from its thumbnail, so the feed feels hand-made for what
+  you are looking at, not stamped from a template.
+- **Boxy cards with real gaps** — cards sit in their own space with
+  proper 12dp gaps on every screen, Home, Search, Categories, Channel
+  search, everywhere. Nothing ever looks stuck together.
+- **Smooth by design** — a scratch launch animation, Glide-style loading
+  and pull-to-refresh, and transitions that stay out of your way.
+
+The result is an app that feels considered rather than assembled: quiet
+where it should be quiet, colourful exactly where your videos are, and
+fast everywhere. It is the kind of interface you enjoy opening, not just
+tolerating.
+
+## ⚡ What's new in 1.0.2
+
+This release folds in everything since 1.0.1 — five rounds of fixes and
+features, in one APK.
+
+- **🔔 Notifications, inside the app** — a bell with an unread badge on
+  every screen, an inbox grouped as New / Last 7 days / Earlier, pull to
+  refresh, clear all and dismiss. The check interval you pick in
+  Settings now actually reschedules the check (15 minutes to 24 hours,
+  6 hours by default).
+- **⚙️ Settings that were listed but did nothing now work** — Pause
+  watch history freezes what the server shows, Downloads and General
+  notification switches, search history survives restarts, bedtime
+  reminders repeat every night and survive a reboot, and watch time is
+  counted from a real ledger.
+- **🎬 Preview audio fixed** — unmuting a preview no longer leaves its
+  audio playing over the video you open from it.
+- **🃏 Cards never touch each other now** — proper gaps on Search,
+  Categories and Channel search, like Home.
+- **🔍 Shorts search fixed** — the Shorts filter in search now shows
+  Shorts. They were arriving in shelves the tab used to drop.
+- **🔄 Honest update checks** — Check for update now tells you when the
+  check itself fails, instead of claiming you are up to date.
+
+See [CHANGELOG.md](CHANGELOG.md) for the full list.
+
 ## Features
 
-### Playback
+### ⚡ Playback
 
 - **Instant, buttery playback** — fast direct streams with adjacent
   preloading, so the next video is ready before you tap it
@@ -55,14 +107,22 @@ text.
 - **Shorts** with the same smooth player — neighbours pre-buffer ahead,
   so scrolling never shows a loading pause
 
-### Feed previews
+### 🎬 Feed previews
 
 - **Videos preview as you scroll** the home feed and other lists
 - **Tapping a preview continues from the preview position**, with an
   unmute button right on the preview
 - Shorts shelves preview too
 
-### Your account, done right
+### 🔔 Notifications
+
+- **In-app inbox** for new uploads from your subscriptions, with an
+  unread badge on the bell
+- **System notifications** for new videos, on a check interval you
+  choose — 15 minutes to 24 hours
+- Pull to refresh the inbox any time; dismiss one video or clear them all
+
+### 👤 Your account, done right
 
 - **Sign in with your Google account** right in the app, with
   **multiple accounts**
@@ -74,21 +134,27 @@ text.
   way round
 - **Library and History keep your latest watches and likes on top**,
   across restarts
-- **Subscription notifications** — the app checks your subscriptions
-  every 6 hours and tells you about new uploads
 
-### Comments and live chat
+### 💬 Comments and live chat
 
 - **Comments that work** — post, reply, edit, delete and like, including
   replies inside threads
 - **Live chat** — send messages and remove your own
 
-### Downloads
+### 🔍 Search that finds things
+
+- Search across videos, Shorts, live streams, channels and playlists,
+  with filters for type, duration, upload date and sort order
+- **The Shorts filter shows Shorts**, the Videos filter shows videos —
+  each filter returns what it promises
+- Search history is saved on the device and survives restarts
+
+### 📥 Downloads
 
 - **Offline downloads** with quality and format choice
 - Download location and cache controls in Settings
 
-### Discovery and music
+### 🎵 Discovery and music
 
 - Home feed, subscriptions, search, categories, channels and playlists
 - **Music mode with lyrics** — synced lyrics, source choice and
@@ -96,7 +162,7 @@ text.
 - **ListenBrainz scrobbling**
 - **Discord rich presence**
 
-### Doubles as a media player
+### 📱 Doubles as a media player
 
 YouGlideTube is not only a YouTube client — it works as a media player
 for what is already on your phone:
@@ -114,36 +180,52 @@ with background play, PiP and the equalizer. Downloads are stored on the
 phone itself, so they play offline too. Rescan anytime from Settings to
 pick up new files.
 
-### Community enhancements
+### 🧩 Community enhancements
 
 - **SponsorBlock** — skip sponsored segments and more
 - **DeArrow** — crowdsourced titles and thumbnails
 - **Return YouTube Dislike** — dislike counts, back where they belong
 
-### Make it yours
+### 🎨 Make it yours
 
 - Themes, fonts, app icon choices and navigation-bar order
 - Date and time formats, home layout and widgets
 - Local media, wellbeing tools and in-app diagnostics
 - **In-app update checks** — the app fetches a new APK from the release
-  page when one exists
+  page when one exists, and tells you honestly when the check fails
 
-### TV layout
+### 📺 TV layout
 
 - A big-screen layout for Android TV, with the same account feed,
   subscriptions and music
 
-### Privacy
+### 🔒 Privacy
 
 - **Local recommendations** — a real home feed with no account needed
 - Only downloads are stored on the phone; everything else comes from
   your account
 
+## Why you will enjoy it
+
+YouGlideTube is built around one idea: **you should never wait for the
+app**. Videos start before you press play. Shorts glide past without a
+single loading pause. Previews let you peek at a video without committing
+to it, and tapping one picks up exactly where the preview left off. Your
+subscriptions tell you when something new is up, your history follows you
+across devices, and the whole thing looks and feels like it was designed
+— because it was, screen by screen, gap by gap, right down to the Shorts
+tab icon sitting centred on its mark.
+
+It is a serious project, built with care over many late nights, and it
+shows in the small things: the pill that slides instead of jumping, the
+cards that never touch, the update check that would rather admit a failure
+than pretend everything is fine.
+
 ## Differences from Flow
 
 YouGlideTube is a fork of Flow 3.0.0, modified in 2026. The player
 foundation, Media3 playback engine and InnerTube client come from Flow
-(under GPL-3.0, with credit above); everything below was changed,
+(under GPL-3.0, with credit below); everything below was changed,
 added or removed in this fork:
 
 **Rebrand**
@@ -174,7 +256,8 @@ added or removed in this fork:
 - Library and History that keep your latest watches and likes on top,
   across restarts
 - Settings order with Google Account at the top
-- Subscription notifications (checks every 6 hours)
+- Subscription notifications — in-app inbox plus system notifications
+  on a schedule you choose
 - Feed previews with tap-to-continue and an unmute button
 - Shorts pre-buffering for pause-free scrolling
 - Slow-network playback tuning — videos buffer before play, quality
@@ -188,6 +271,38 @@ added or removed in this fork:
 - The buttery-smooth playback engine and workflow
 - SponsorBlock, DeArrow and Return YouTube Dislike
 - Local media playback, lyrics, downloads and Material 3 interface
+
+## 🙏 Credits and thanks
+
+YouGlideTube stands on the shoulders of open source. None of this exists
+without the projects and people below, and this project is grateful to
+every one of them.
+
+- **[Flow](https://github.com/A-EDev/Flow)** — the project this is
+  forked from. The playback engine, the native InnerTube client, the
+  Material 3 foundation and the whole workflow come from Flow and its
+  maintainers. Thank you for building it in the open under GPL-3.0.
+- **[NewPipe](https://github.com/TeamNewPipe/NewPipe)** — the pioneering
+  open-source YouTube client. Flow's early versions ran on NewPipe's
+  extractor, and the whole independent-client ecosystem owes NewPipe and
+  its contributors a debt for proving this could be done, in the open.
+- **[Morphe Manager](https://github.com/MorpheApp/morphe-manager)** —
+  design inspiration for this interface. The dark-first surfaces,
+  blue-to-teal brand and glass cards take cues from Morphe Manager's
+  look; its name and logo are not used here.
+- **The InnerTube open-source community** — the researchers and
+  developers behind YouTube.js, yt-dlp and the many independent clients
+  whose protocol work makes projects like this possible at all.
+- **The libraries that carry the app** — Media3 (ExoPlayer), Jetpack
+  Compose and Material 3, Hilt, Room, DataStore, WorkManager, Paging 3,
+  Coil, OkHttp, Ktor and kotlinx.serialization.
+- **SponsorBlock, DeArrow and Return YouTube Dislike** — community
+  projects that make YouTube better for everyone, kept working here.
+- **Shivyt ([shivytyahoo](https://github.com/shivytyahoo))** — design,
+  development and every late night in between.
+
+If this project makes your day a little better, the credit belongs to all
+of the above.
 
 ## Screenshots
 
