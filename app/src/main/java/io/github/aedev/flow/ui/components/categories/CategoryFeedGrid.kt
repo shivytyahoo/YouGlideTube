@@ -54,7 +54,12 @@ internal fun CategoryPagedGrid(
     if (pagingItems.itemCount == 0) {
         when {
             refresh is LoadState.Loading -> {
-                FeedGridSkeleton(layout = feedLayout, listMode = isListView, modifier = modifier)
+                FeedGridSkeleton(
+                    layout = feedLayout,
+                    listMode = isListView,
+                    compactRowSpacing = if (isListView) 0.dp else feedLayout.cardSpacing,
+                    modifier = modifier,
+                )
             }
 
             refresh is LoadState.Error -> {
@@ -83,6 +88,7 @@ internal fun CategoryPagedGrid(
             spansOwnRow = { false },
             includeLastRun = pagingItems.loadState.append.endOfPaginationReached,
             itemsKey = pagingItems.itemSnapshotList,
+            compactRowSpacing = if (isListView) 0.dp else feedLayout.cardSpacing,
         )
 
     LazyVerticalGrid(
@@ -153,6 +159,7 @@ internal fun CategoryChartGrid(
             spansOwnRow = { false },
             includeLastRun = true,
             itemsKey = entries,
+            compactRowSpacing = if (isListView) 0.dp else feedLayout.cardSpacing,
         )
 
     LazyVerticalGrid(
