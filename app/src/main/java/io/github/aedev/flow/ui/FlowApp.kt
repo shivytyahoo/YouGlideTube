@@ -477,6 +477,7 @@ fun FlowApp(
 
                             ProvideFlowGlobalActions(
                                 onOpenSettings = { navController.navigate("settings") },
+                                onOpenNotifications = { navController.navigate("notifications") },
                             ) {
                                 CompositionLocalProvider(
                                     *mediaNavigationLocals(mediaNavigator),
