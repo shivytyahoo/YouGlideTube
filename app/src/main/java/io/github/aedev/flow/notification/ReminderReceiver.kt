@@ -3,6 +3,9 @@ package io.github.aedev.flow.notification
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import io.github.aedev.flow.data.local.LocalDataManager
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 
 class ReminderReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -15,6 +18,19 @@ class ReminderReceiver : BroadcastReceiver() {
                     "It's bedtime! 😴",
                     "Time to wind down based on your schedule."
                 )
+                // One-shot by construction: re-arm tomorrow's alarm while still enabled.
+                runCatching {
+                    runBlocking {
+                        val data = LocalDataManager(context.applicationContext)
+                        if (data.bedtimeReminder.first()) {
+                            ReminderManager.scheduleBedtimeReminder(
+                                context,
+                                data.bedtimeStartHour.first(),
+                                data.bedtimeStartMinute.first(),
+                            )
+                        }
+                    }
+                }
             }
             "break" -> {
                  NotificationHelper.showReminderNotification(
