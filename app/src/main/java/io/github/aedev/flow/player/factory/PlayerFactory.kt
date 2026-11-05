@@ -51,12 +51,13 @@ class PlayerFactory {
         val prefs = PlayerPreferences(context)
         val result =
             runBlocking {
+                val buffers = prefs.effectiveBufferDurations.first()
                 CachedPrefs(
                     audioLanguage = prefs.preferredAudioLanguage.first(),
-                    minBufferMs = prefs.minBufferMs.first(),
-                    maxBufferMs = prefs.maxBufferMs.first(),
-                    bufferForPlaybackMs = prefs.bufferForPlaybackMs.first(),
-                    bufferRebufferMs = prefs.bufferForPlaybackAfterRebufferMs.first(),
+                    minBufferMs = buffers.minMs,
+                    maxBufferMs = buffers.maxMs,
+                    bufferForPlaybackMs = buffers.playbackMs,
+                    bufferRebufferMs = buffers.rebufferMs,
                     playDuringCalls = prefs.playDuringCalls.first(),
                 )
             }
@@ -67,13 +68,14 @@ class PlayerFactory {
     suspend fun preloadPreferences(context: Context) {
         if (cachedPrefs != null) return
         val prefs = PlayerPreferences(context)
+        val buffers = prefs.effectiveBufferDurations.first()
         cachedPrefs =
             CachedPrefs(
                 audioLanguage = prefs.preferredAudioLanguage.first(),
-                minBufferMs = prefs.minBufferMs.first(),
-                maxBufferMs = prefs.maxBufferMs.first(),
-                bufferForPlaybackMs = prefs.bufferForPlaybackMs.first(),
-                bufferRebufferMs = prefs.bufferForPlaybackAfterRebufferMs.first(),
+                minBufferMs = buffers.minMs,
+                maxBufferMs = buffers.maxMs,
+                bufferForPlaybackMs = buffers.playbackMs,
+                bufferRebufferMs = buffers.rebufferMs,
                 playDuringCalls = prefs.playDuringCalls.first(),
             )
     }
