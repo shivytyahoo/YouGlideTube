@@ -1,0 +1,6 @@
+- Initial release
+- Watch history syncs with your YouTube account
+- Buttery-smooth playback with background play and downloads
+- Comments that work: post, reply, edit, delete and like
+- Live chat, Library and History that keep your latest on top
+- Google sign-in with multiple accounts
