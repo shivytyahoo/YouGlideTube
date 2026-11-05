@@ -1,8 +1,11 @@
 package io.github.aedev.flow.ui.screens.history
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import io.github.aedev.flow.data.local.PlayerPreferences
 import io.github.aedev.flow.data.local.VideoHistoryEntry
 import io.github.aedev.flow.innertube.YouTube
 import io.github.aedev.flow.data.local.AccountHistoryCapture
@@ -23,6 +26,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -64,12 +68,15 @@ enum class HistorySort {
 class HistoryViewModel
     @Inject
     constructor(
+        @ApplicationContext private val context: Context,
         private val viewHistory: SessionHistory,
         private val accountHistoryCapture: AccountHistoryCapture,
         private val youTubeRepository: YouTubeRepository,
         private val shortsContentFilter: ShortsContentFilter,
         private val shortsQueueHandoff: ShortsQueueHandoff,
     ) : ViewModel() {
+        private val playerPreferences = PlayerPreferences(context)
+
         private val isEnriching = AtomicBoolean(false)
         private val attemptedEnrichment = HashSet<String>()
         private val sharing = SharingStarted.WhileSubscribed(stopTimeoutMillis = 5_000L)
@@ -147,7 +154,19 @@ class HistoryViewModel
                 // plays head it: the server never learns of a watch made in this
                 // app, so without the merge the newest plays never show.
                 if (YouTube.isSignedIn()) {
-                    viewModelScope.launch { loadServerHistory() }
+                    viewModelScope.launch {
+                        if (playerPreferences.watchHistoryPaused.first()) {
+                            // Paused: freeze the server list at the last snapshot
+                            // instead of refreshing it, so watches made while paused
+                            // never surface here until the user unpauses and reopens
+                            // History. Local writes are already blocked by
+                            // SessionHistory's own pause gate.
+                            _serverEntries.value = accountHistoryCapture.entriesFlow.first()
+                            _uiState.update { it.copy(isLoading = false) }
+                        } else {
+                            loadServerHistory()
+                        }
+                    }
                     combine(
                         _serverEntries,
                         _serverShorts,
