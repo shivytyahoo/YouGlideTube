@@ -1,4 +1,4 @@
-# Categories for GitHub's auto-generated release notes. Flow currently ships
+# Categories for GitHub's auto-generated release notes. YouGlideTube currently ships
 # curated notes from release-notes.md, so this only takes effect if a release
 # is generated with "Generate release notes". Labels listed here must exist in
 # the repository and are applied by .github/labeler.yml.
