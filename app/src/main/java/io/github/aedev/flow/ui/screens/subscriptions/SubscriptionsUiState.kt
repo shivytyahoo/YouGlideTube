@@ -69,6 +69,7 @@ data class SubscriptionsUiState(
     val showSubscriptionVideos: Boolean = true,
     val showSubscriptionShorts: Boolean = true,
     val showSubscriptionLive: Boolean = true,
+    val showCollaborations: Boolean = true,
     val excludedShortsChannelIds: Set<String> = emptySet(),
     /** Channels the last refresh could not reach at all; surfaced instead of silently showing less. */
     val failedChannelIds: Set<String> = emptySet(),
