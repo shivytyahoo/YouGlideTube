@@ -1,8 +1,10 @@
 package io.github.aedev.flow.ui.components.shared.quickactions
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.aedev.flow.R
 import io.github.aedev.flow.data.engagement.LikedMediaUseCase
 import io.github.aedev.flow.innertube.YouTube
@@ -17,8 +19,10 @@ import io.github.aedev.flow.data.video.VideoDownloadOptionsLoader
 import io.github.aedev.flow.data.music.model.MusicTrack
 import io.github.aedev.flow.data.music.video.MusicVideoVersions
 import io.github.aedev.flow.data.repository.YouTubeRepository
+import io.github.aedev.flow.notification.WatchLaterReminderWorker
 import io.github.aedev.flow.player.EnhancedMusicPlayerManager
 import io.github.aedev.flow.player.EnhancedPlayerManager
+import io.github.aedev.flow.ui.screens.player.state.UpcomingPremierePolicy
 import io.github.aedev.flow.utils.ThumbnailUrlResolver
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -53,6 +57,7 @@ private const val MAX_AVATARS = 3
 class QuickActionsViewModel
     @Inject
     constructor(
+        @ApplicationContext private val context: Context,
         private val repository: YouTubeRepository,
         private val youTubePlaylists: io.github.aedev.flow.data.repository.YouTubePlaylistRepository,
         videoDownloadManager: VideoDownloadManager,
@@ -195,6 +200,7 @@ class QuickActionsViewModel
             viewModelScope.launch {
                 runAction {
                     val saved = feedback.toggleWatchLater(video)
+                    syncWatchLaterReminder(video, saved)
                     refreshWatchLaterIds()
                     emit(
                         text = if (saved) R.string.toast_added_to_watch_later else R.string.toast_removed_from_watch_later,
@@ -202,6 +208,26 @@ class QuickActionsViewModel
                     )
                 }
             }
+        }
+
+        /**
+         * A video saved to Watch Later while still upcoming gets one reminder at
+         * premiere time; removing it cancels that reminder. The post itself is
+         * gated by the General Notifications setting at fire time.
+         */
+        private fun syncWatchLaterReminder(video: Video, saved: Boolean) {
+            if (!saved) {
+                WatchLaterReminderWorker.cancelReminder(context, video.id)
+                return
+            }
+            val releaseMs = UpcomingPremierePolicy.releaseTimeFor(video) ?: return
+            WatchLaterReminderWorker.scheduleReminder(
+                context,
+                video.id,
+                releaseMs,
+                video.title,
+                video.thumbnailUrl,
+            )
         }
 
         fun blockChannel(video: Video) {
@@ -285,6 +311,7 @@ class QuickActionsViewModel
                     when (undo) {
                         is QuickActionUndo.WatchLater -> {
                             feedback.setWatchLater(undo.video, undo.saved)
+                            syncWatchLaterReminder(undo.video, undo.saved)
                         }
 
                         is QuickActionUndo.ChannelBlock -> {
