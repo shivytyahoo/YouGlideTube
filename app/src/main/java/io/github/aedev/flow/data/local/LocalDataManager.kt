@@ -16,6 +16,9 @@ import io.github.aedev.flow.ui.theme.defaultVariant
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import java.time.LocalDate
 import javax.inject.Inject
 
 val Context.dataStore: DataStore<Preferences> by safePreferencesDataStore(name = "flow_preferences")
@@ -58,11 +61,19 @@ class LocalDataManager
             private val BREAK_FREQUENCY =
                 androidx.datastore.preferences.core
                     .intPreferencesKey("break_frequency") // Minutes
+            private val WATCH_LEDGER_JSON =
+                androidx.datastore.preferences.core
+                    .stringPreferencesKey("watch_ledger_json")
+            private val WATCH_LEDGER_START =
+                androidx.datastore.preferences.core
+                    .stringPreferencesKey("watch_ledger_start")
 
             private val CUSTOM_THEME_COLORS = stringPreferencesKey("custom_theme_colors")
             private val CUSTOM_THEME_PALETTES = stringPreferencesKey("custom_theme_palettes_v2")
             private val CUSTOM_THEMES = stringPreferencesKey("custom_themes")
             private val ACTIVE_CUSTOM_THEME = stringPreferencesKey("custom_theme_id")
+            private val ACTIVE_CUSTOM_THEME_LIGHT = stringPreferencesKey("custom_theme_id_light")
+            private val ACTIVE_CUSTOM_THEME_DARK = stringPreferencesKey("custom_theme_id_dark")
             private const val LEGACY_CUSTOM_THEME_ID = "custom-android-legacy"
             private val THEME_VARIANT = stringPreferencesKey("theme_variant")
             // v2-only keys: this project is a fresh-look rebuild, so the v1-saved system themes
@@ -194,6 +205,26 @@ class LocalDataManager
                 themes.firstOrNull { it.id == prefs[ACTIVE_CUSTOM_THEME] } ?: themes.firstOrNull()
             }
 
+        /**
+         * The custom theme one Follow-system slot shows. A slot with no own pick falls
+         * back to the shared id, so existing users keep their pick in both slots.
+         */
+        val activeLightCustomTheme: Flow<CustomTheme?> =
+            context.dataStore.data.map { prefs ->
+                val themes = readCustomThemes(prefs)
+                themes.firstOrNull { it.id == prefs[ACTIVE_CUSTOM_THEME_LIGHT] }
+                    ?: themes.firstOrNull { it.id == prefs[ACTIVE_CUSTOM_THEME] }
+                    ?: themes.firstOrNull()
+            }
+
+        val activeDarkCustomTheme: Flow<CustomTheme?> =
+            context.dataStore.data.map { prefs ->
+                val themes = readCustomThemes(prefs)
+                themes.firstOrNull { it.id == prefs[ACTIVE_CUSTOM_THEME_DARK] }
+                    ?: themes.firstOrNull { it.id == prefs[ACTIVE_CUSTOM_THEME] }
+                    ?: themes.firstOrNull()
+            }
+
         /** Adds [theme], or replaces the one with its id. */
         suspend fun saveCustomTheme(theme: CustomTheme) {
             context.dataStore.edit { prefs ->
@@ -213,12 +244,21 @@ class LocalDataManager
                 val remaining = readCustomThemes(prefs).filterNot { it.id == id }
                 prefs[CUSTOM_THEMES] = CustomThemeCodec.encodeList(remaining)
                 if (prefs[ACTIVE_CUSTOM_THEME] == id) prefs.remove(ACTIVE_CUSTOM_THEME)
+                if (prefs[ACTIVE_CUSTOM_THEME_LIGHT] == id) prefs.remove(ACTIVE_CUSTOM_THEME_LIGHT)
+                if (prefs[ACTIVE_CUSTOM_THEME_DARK] == id) prefs.remove(ACTIVE_CUSTOM_THEME_DARK)
                 if (remaining.isEmpty() && prefs[THEME_MODE] == ThemeMode.CUSTOM.name) prefs[THEME_MODE] = ThemeMode.DARK.name
             }
         }
 
         suspend fun setActiveCustomTheme(id: String) {
             context.dataStore.edit { prefs -> prefs[ACTIVE_CUSTOM_THEME] = id }
+        }
+
+        /** Puts custom theme [id] in one Follow-system slot, leaving the other slot alone. */
+        suspend fun setSystemSlotCustomTheme(lightSlot: Boolean, id: String) {
+            context.dataStore.edit { prefs ->
+                prefs[if (lightSlot) ACTIVE_CUSTOM_THEME_LIGHT else ACTIVE_CUSTOM_THEME_DARK] = id
+            }
         }
 
         /** Selects [id] and switches the app to it in [variant]. */
@@ -281,6 +321,46 @@ class LocalDataManager
             context.dataStore.data.map { prefs ->
                 prefs[BREAK_REMINDER] ?: false
             }
+
+        private val ledgerJson = Json { ignoreUnknownKeys = true }
+
+        /** Real per-day watch time, keyed by ISO date; empty until the first session lands. */
+        val watchLedger: Flow<Map<LocalDate, Long>> =
+            context.dataStore.data.map { prefs ->
+                val raw = prefs[WATCH_LEDGER_JSON] ?: return@map emptyMap()
+                runCatching {
+                    ledgerJson.decodeFromString<Map<String, Long>>(raw)
+                        .mapNotNull { (day, ms) ->
+                            runCatching { LocalDate.parse(day) }.getOrNull()?.let { it to ms }
+                        }.toMap()
+                }.getOrDefault(emptyMap())
+            }
+
+        /** First day the ledger covers; null until any session is recorded. */
+        val watchLedgerStart: Flow<LocalDate?> =
+            context.dataStore.data.map { prefs ->
+                prefs[WATCH_LEDGER_START]?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+            }
+
+        /** Adds [ms] of real watch time to [day]'s ledger entry, keeping the last 30 days. */
+        suspend fun addWatchLedgerMs(day: LocalDate, ms: Long) {
+            if (ms <= 0) return
+            context.dataStore.edit { prefs ->
+                val current =
+                    runCatching {
+                        prefs[WATCH_LEDGER_JSON]?.let {
+                            ledgerJson.decodeFromString<Map<String, Long>>(it)
+                        }.orEmpty()
+                    }.getOrDefault(emptyMap())
+                val cutoff = day.minusDays(30)
+                val updated =
+                    current.filterKeys { key ->
+                        runCatching { LocalDate.parse(key) }.getOrNull()?.let { it >= cutoff } ?: false
+                    } + (day.toString() to ((current[day.toString()] ?: 0L) + ms))
+                prefs[WATCH_LEDGER_JSON] = ledgerJson.encodeToString(updated)
+                if (prefs[WATCH_LEDGER_START] == null) prefs[WATCH_LEDGER_START] = day.toString()
+            }
+        }
 
         suspend fun setBedtimeReminder(enabled: Boolean) {
             context.dataStore.edit { prefs ->
