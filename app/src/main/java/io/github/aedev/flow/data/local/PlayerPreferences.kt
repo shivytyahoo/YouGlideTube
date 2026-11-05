@@ -11,6 +11,7 @@ import io.github.aedev.flow.data.video.downloader.work.RetagResult
 import io.github.aedev.flow.data.video.storage.DownloadLocation
 import io.github.aedev.flow.network.AppProxyConfig
 import io.github.aedev.flow.network.AppProxyType
+import io.github.aedev.flow.notification.InboxNotification
 import io.github.aedev.flow.player.stream.CaptionTrackResolver
 import io.github.aedev.flow.ui.components.videoplayer.subtitle.SubtitleEdgeType
 import io.github.aedev.flow.ui.components.videoplayer.subtitle.SubtitleStyle
@@ -27,6 +28,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 internal fun resolveMigratedHideWatchedPreference(
     splitValue: Boolean?,
@@ -52,6 +56,10 @@ const val DEFAULT_BACKGROUND_PLAY_ENABLED = true
 val DEFAULT_NAV_TAB_ORDER = listOf(0, 1, 2, 3, 4, 5, 6)
 
 private const val MAX_UNPLAYABLE_VIDEO_IDS = 300
+
+private const val MAX_INBOX_ENTRIES = 100
+
+private val InboxJson = Json { ignoreUnknownKeys = true }
 
 private fun String?.decodeUnplayableIds(): Set<String> =
     if (isNullOrBlank()) emptySet() else splitToSequence('\n').filter { it.isNotBlank() }.toCollection(LinkedHashSet())
@@ -175,17 +183,22 @@ class PlayerPreferences(
         val PLAYLISTS_SHOW_MUSIC = booleanPreferencesKey("playlists_show_music")
         val HOME_SHORTS_SHELF_ENABLED = booleanPreferencesKey("home_shorts_shelf_enabled")
         val HOME_SUBSCRIPTIONS_ENABLED = booleanPreferencesKey("home_subscriptions_enabled")
-        val HOME_SNAPSHOT_RECORDING = booleanPreferencesKey("home_snapshot_recording")
         val ONBOARDING_DONE = booleanPreferencesKey("onboarding_done")
         val SUBSCRIPTION_COLLABORATIONS_ENABLED = booleanPreferencesKey("subscription_collaborations_enabled")
         val SHOW_WATCH_PROGRESS = booleanPreferencesKey("show_watch_progress")
         val WATCH_HISTORY_PAUSED = booleanPreferencesKey("watch_history_paused")
+        val SEARCH_HISTORY_ENABLED = booleanPreferencesKey("search_history_enabled")
+        val SEARCH_SUGGESTIONS_ENABLED = booleanPreferencesKey("search_suggestions_enabled")
+        val SEARCH_HISTORY_MAX_SIZE = intPreferencesKey("search_history_max_size")
+        val SEARCH_HISTORY_AUTO_DELETE = booleanPreferencesKey("search_history_auto_delete")
+        val SEARCH_HISTORY_RETENTION_DAYS = intPreferencesKey("search_history_retention_days")
+        val SEARCH_HISTORY_VIDEO_JSON = stringPreferencesKey("search_history_video_json")
+        val SEARCH_HISTORY_MUSIC_JSON = stringPreferencesKey("search_history_music_json")
         val HOME_NAVIGATION_ENABLED = booleanPreferencesKey("home_navigation_enabled")
         val SHORTS_NAVIGATION_ENABLED = booleanPreferencesKey("shorts_navigation_enabled")
         val BOTTOM_NAV_HIDE_ON_SCROLL = booleanPreferencesKey("bottom_nav_hide_on_scroll")
         val MUSIC_NAVIGATION_ENABLED = booleanPreferencesKey("music_navigation_enabled")
         val SEARCH_NAV_TAB_ENABLED = booleanPreferencesKey("search_nav_tab_enabled")
-        val CATEGORIES_NAV_TAB_ENABLED = booleanPreferencesKey("categories_nav_tab_enabled")
         val PREFERRED_LYRICS_PROVIDER = stringPreferencesKey("preferred_lyrics_provider")
         val LYRICS_PROVIDER_ORDER = stringPreferencesKey("lyrics_provider_order")
         val LYRICS_TEXT_ALIGN = stringPreferencesKey("lyrics_text_align")
@@ -255,6 +268,7 @@ class PlayerPreferences(
         val NOTIF_NEW_VIDEOS_ENABLED = booleanPreferencesKey("notif_new_videos_enabled")
         val SUBSCRIPTION_SEEN_VIDEO_IDS = stringSetPreferencesKey("subscription_seen_video_ids")
         val SUBSCRIPTION_CHECK_SEEDED = booleanPreferencesKey("subscription_check_seeded")
+        val NOTIFICATION_INBOX = stringPreferencesKey("notification_inbox")
         val NOTIF_SHORTS_ENABLED = booleanPreferencesKey("notif_shorts_enabled")
         val NOTIF_DOWNLOADS_ENABLED = booleanPreferencesKey("notif_downloads_enabled")
         val NOTIF_REMINDERS_ENABLED = booleanPreferencesKey("notif_reminders_enabled")
@@ -1064,16 +1078,6 @@ class PlayerPreferences(
         }
     }
 
-    /** Keeps a copy of each Home load on the device so it can be exported for a recommendation report. */
-    val homeSnapshotRecording: Flow<Boolean> =
-        context.playerPreferencesDataStore.data
-            .map { preferences -> preferences[Keys.HOME_SNAPSHOT_RECORDING] ?: false }
-
-    suspend fun setHomeSnapshotRecording(enabled: Boolean) {
-        context.playerPreferencesDataStore.edit { preferences ->
-            preferences[Keys.HOME_SNAPSHOT_RECORDING] = enabled
-        }
-    }
 
     /** Collaborations of followed channels that someone else uploaded, in Subscriptions (#840). */
     val subscriptionCollaborationsEnabled: Flow<Boolean> =
@@ -1172,18 +1176,6 @@ class PlayerPreferences(
         }
     }
 
-    // Categories nav tab enabled preference
-    val categoriesNavigationEnabled: Flow<Boolean> =
-        context.playerPreferencesDataStore.data
-            .map { preferences ->
-                preferences[Keys.CATEGORIES_NAV_TAB_ENABLED] ?: false
-            }
-
-    suspend fun setCategoriesNavigationEnabled(enabled: Boolean) {
-        context.playerPreferencesDataStore.edit { preferences ->
-            preferences[Keys.CATEGORIES_NAV_TAB_ENABLED] = enabled
-        }
-    }
 
     // Continue Watching shelf enabled preference
     val continueWatchingEnabled: Flow<Boolean> =
@@ -1732,6 +1724,62 @@ class PlayerPreferences(
         context.playerPreferencesDataStore.edit { preferences ->
             preferences[Keys.SUBSCRIPTION_SEEN_VIDEO_IDS] = seenVideoIds
             preferences[Keys.SUBSCRIPTION_CHECK_SEEDED] = seeded
+        }
+    }
+
+    private fun Preferences.inboxEntries(): List<InboxNotification> {
+        val raw = this[Keys.NOTIFICATION_INBOX].orEmpty()
+        if (raw.isBlank()) return emptyList()
+        return runCatching { InboxJson.decodeFromString<List<InboxNotification>>(raw) }.getOrDefault(emptyList())
+    }
+
+    /** Arrived subscription notifications, newest first; the in-app section reads this, not the feed. */
+    val inboxNotifications: Flow<List<InboxNotification>> =
+        context.playerPreferencesDataStore.data
+            .map { preferences -> preferences.inboxEntries() }
+
+    /** Unread arrived notifications; the bell badge reads this. */
+    val inboxUnreadCount: Flow<Int> =
+        inboxNotifications.map { entries -> entries.count { !it.read } }
+
+    /**
+     * Appends [entries], newest first, dropping videos already in the inbox and
+     * trimming to [MAX_INBOX_ENTRIES] so the list cannot grow without bound.
+     */
+    suspend fun addInboxNotifications(entries: List<InboxNotification>) {
+        if (entries.isEmpty()) return
+        context.playerPreferencesDataStore.edit { preferences ->
+            val current = preferences.inboxEntries()
+            val known = current.map { it.videoId }.toSet()
+            val merged = (entries.filter { it.videoId !in known } + current).take(MAX_INBOX_ENTRIES)
+            preferences[Keys.NOTIFICATION_INBOX] = InboxJson.encodeToString(merged)
+        }
+    }
+
+    /** Marks every arrived notification read; opening the section clears the bell badge. */
+    suspend fun markInboxAllRead() {
+        context.playerPreferencesDataStore.edit { preferences ->
+            val current = preferences.inboxEntries()
+            if (current.any { !it.read }) {
+                preferences[Keys.NOTIFICATION_INBOX] =
+                    InboxJson.encodeToString(current.map { it.copy(read = true) })
+            }
+        }
+    }
+
+    suspend fun removeInboxNotification(videoId: String) {
+        context.playerPreferencesDataStore.edit { preferences ->
+            val current = preferences.inboxEntries()
+            val removed = current.filter { it.videoId != videoId }
+            if (removed.size != current.size) {
+                preferences[Keys.NOTIFICATION_INBOX] = InboxJson.encodeToString(removed)
+            }
+        }
+    }
+
+    suspend fun clearInboxNotifications() {
+        context.playerPreferencesDataStore.edit { preferences ->
+            preferences.remove(Keys.NOTIFICATION_INBOX)
         }
     }
 
@@ -3043,6 +3091,103 @@ class PlayerPreferences(
                 preferences[Keys.BUFFER_FOR_PLAYBACK_MS] = profile.playbackBuffer
                 preferences[Keys.BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS] = profile.rebufferBuffer
             }
+        }
+    }
+
+    /** The four durations playback actually uses, resolved from the profile itself. */
+    data class BufferDurations(
+        val minMs: Int,
+        val maxMs: Int,
+        val playbackMs: Int,
+        val rebufferMs: Int,
+    )
+
+    val effectiveBufferDurations: Flow<BufferDurations> =
+        context.playerPreferencesDataStore.data
+            .map { preferences ->
+                val profile = BufferProfile.fromString(preferences[Keys.BUFFER_PROFILE] ?: "STABLE")
+                if (profile != BufferProfile.CUSTOM) {
+                    BufferDurations(profile.minBuffer, profile.maxBuffer, profile.playbackBuffer, profile.rebufferBuffer)
+                } else {
+                    BufferDurations(
+                        minMs = preferences[Keys.MIN_BUFFER_MS]
+                            ?: if (isTvDevice) TV_MIN_BUFFER_MS else BufferProfile.STABLE.minBuffer,
+                        maxMs = preferences[Keys.MAX_BUFFER_MS]
+                            ?: if (isTvDevice) TV_MAX_BUFFER_MS else BufferProfile.STABLE.maxBuffer,
+                        playbackMs = preferences[Keys.BUFFER_FOR_PLAYBACK_MS] ?: BufferProfile.STABLE.playbackBuffer,
+                        rebufferMs = preferences[Keys.BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS] ?: BufferProfile.STABLE.rebufferBuffer,
+                    )
+                }
+            }
+
+    /** Search history, persisted: the repository writes through here on every change. */
+    val searchHistoryEnabled: Flow<Boolean> =
+        context.playerPreferencesDataStore.data
+            .map { preferences -> preferences[Keys.SEARCH_HISTORY_ENABLED] ?: true }
+
+    suspend fun setSearchHistoryEnabled(enabled: Boolean) {
+        context.playerPreferencesDataStore.edit { preferences ->
+            preferences[Keys.SEARCH_HISTORY_ENABLED] = enabled
+        }
+    }
+
+    val searchSuggestionsEnabled: Flow<Boolean> =
+        context.playerPreferencesDataStore.data
+            .map { preferences -> preferences[Keys.SEARCH_SUGGESTIONS_ENABLED] ?: true }
+
+    suspend fun setSearchSuggestionsEnabled(enabled: Boolean) {
+        context.playerPreferencesDataStore.edit { preferences ->
+            preferences[Keys.SEARCH_SUGGESTIONS_ENABLED] = enabled
+        }
+    }
+
+    val searchHistoryMaxSize: Flow<Int> =
+        context.playerPreferencesDataStore.data
+            .map { preferences -> preferences[Keys.SEARCH_HISTORY_MAX_SIZE] ?: 50 }
+
+    suspend fun setSearchHistoryMaxSize(size: Int) {
+        context.playerPreferencesDataStore.edit { preferences ->
+            preferences[Keys.SEARCH_HISTORY_MAX_SIZE] = size
+        }
+    }
+
+    val searchHistoryAutoDelete: Flow<Boolean> =
+        context.playerPreferencesDataStore.data
+            .map { preferences -> preferences[Keys.SEARCH_HISTORY_AUTO_DELETE] ?: false }
+
+    suspend fun setSearchHistoryAutoDelete(enabled: Boolean) {
+        context.playerPreferencesDataStore.edit { preferences ->
+            preferences[Keys.SEARCH_HISTORY_AUTO_DELETE] = enabled
+        }
+    }
+
+    val searchHistoryRetentionDays: Flow<Int> =
+        context.playerPreferencesDataStore.data
+            .map { preferences -> preferences[Keys.SEARCH_HISTORY_RETENTION_DAYS] ?: 90 }
+
+    suspend fun setSearchHistoryRetentionDays(days: Int) {
+        context.playerPreferencesDataStore.edit { preferences ->
+            preferences[Keys.SEARCH_HISTORY_RETENTION_DAYS] = days
+        }
+    }
+
+    val searchHistoryVideoJson: Flow<String?> =
+        context.playerPreferencesDataStore.data
+            .map { preferences -> preferences[Keys.SEARCH_HISTORY_VIDEO_JSON] }
+
+    suspend fun setSearchHistoryVideoJson(json: String) {
+        context.playerPreferencesDataStore.edit { preferences ->
+            preferences[Keys.SEARCH_HISTORY_VIDEO_JSON] = json
+        }
+    }
+
+    val searchHistoryMusicJson: Flow<String?> =
+        context.playerPreferencesDataStore.data
+            .map { preferences -> preferences[Keys.SEARCH_HISTORY_MUSIC_JSON] }
+
+    suspend fun setSearchHistoryMusicJson(json: String) {
+        context.playerPreferencesDataStore.edit { preferences ->
+            preferences[Keys.SEARCH_HISTORY_MUSIC_JSON] = json
         }
     }
 
