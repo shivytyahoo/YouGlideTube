@@ -113,7 +113,8 @@ internal fun ChannelContent(
                 .PlayerPreferences(context)
         }
     val isGridView by preferences.channelIsGridView.collectAsState(initial = false)
-    val columnPreference by preferences.homeFeedColumns.collectAsState(initial = HomeFeedColumns.AUTO)
+    // Cards per row is the Home grid's setting; channel grids stay responsive.
+    val columnPreference = HomeFeedColumns.AUTO
     val coroutineScope = rememberCoroutineScope()
 
     val aboutTitle = stringResource(R.string.tab_about)
