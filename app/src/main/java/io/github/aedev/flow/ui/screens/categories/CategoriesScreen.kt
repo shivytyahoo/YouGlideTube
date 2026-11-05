@@ -65,9 +65,8 @@ fun CategoriesScreen(
     val pagingItems = viewModel.gridItems.collectAsLazyPagingItems()
     var showRegionDialog by rememberSaveable { mutableStateOf(false) }
 
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val preferences = remember(context) { PlayerPreferences(context) }
-    val columnPreference by preferences.homeFeedColumns.collectAsStateWithLifecycle(HomeFeedColumns.AUTO)
+    // Cards per row is the Home grid's setting; other feeds stay responsive.
+    val columnPreference = HomeFeedColumns.AUTO
 
     val shelfState = rememberLazyGridState()
     val gridState = rememberLazyGridState()
@@ -128,7 +127,11 @@ fun CategoriesScreen(
                 val feedLayout = rememberFeedGridLayout(maxWidth, columnPreference)
                 when {
                     uiState.isLoading -> {
-                        FeedGridSkeleton(layout = feedLayout, listMode = uiState.isListView)
+                        FeedGridSkeleton(
+                            layout = feedLayout,
+                            listMode = uiState.isListView,
+                            compactRowSpacing = if (uiState.isListView) 0.dp else feedLayout.cardSpacing,
+                        )
                     }
 
                     uiState.error != null -> {
