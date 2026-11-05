@@ -10,6 +10,9 @@ import android.text.format.Formatter
 import androidx.core.app.NotificationCompat
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.aedev.flow.MainActivity
+import io.github.aedev.flow.data.local.PlayerPreferences
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import io.github.aedev.flow.R
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
@@ -89,6 +92,14 @@ class DownloadNotifier
             title: String,
             phase: DownloadPhase,
         ) {
+            // Download Notifications covers only the terminal states: progress
+            // is the queue's live state and the summary is the foreground
+            // notification, so neither is gated here.
+            if ((phase is DownloadPhase.Complete || phase is DownloadPhase.Failed) &&
+                !runBlocking { PlayerPreferences(context).notifDownloadsEnabled.first() }
+            ) {
+                return
+            }
             val signature = "$title|${signatureOf(phase)}"
             if (lastPosted.put(videoId, signature) == signature) return
             manager.notify(notificationId(videoId), build(videoId, title, phase))
