@@ -1,0 +1,4 @@
+- Notifications, in the app: bell with unread badge, inbox, and a check interval that works
+- Settings that did nothing now work: Pause watch history, notification switches, search history, bedtime reminders, watch time
+- Preview audio fix, card gaps everywhere, Shorts search fix
+- Honest update checks
