@@ -24,15 +24,26 @@ class SabrDataSource(
         private const val TAG = "SabrDataSource"
     }
 
+    @Volatile
     private var client: OkHttpClient? = null
+
+    @Volatile
+    private var clientProxySignature: String = ""
 
     @Volatile
     private var currentCall: Call? = null
     private var currentResponse: Response? = null
     private var currentStream: InputStream? = null
 
-    private fun getClient(): OkHttpClient =
-        client ?: AppProxyManager
+    /**
+     * A new SABR stream rebuilds the client when the proxy changed, mirroring
+     * YouTubeHttpDataSource: an already-open stream keeps its old route, which
+     * is inherent to an open connection, not a bug.
+     */
+    private fun getClient(): OkHttpClient {
+        val proxySignature = AppProxyManager.currentSignature()
+        client?.takeIf { clientProxySignature == proxySignature }?.let { return it }
+        return AppProxyManager
             .applyTo(OkHttpClient.Builder())
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
@@ -41,7 +52,8 @@ class SabrDataSource(
             .followSslRedirects(true)
             .retryOnConnectionFailure(true)
             .build()
-            .also { client = it }
+            .also { client = it; clientProxySignature = proxySignature }
+    }
 
     /**
      * Opens a streaming POST request to the SABR endpoint.
