@@ -33,7 +33,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import io.github.aedev.flow.data.local.SliderStyle
 import io.github.aedev.flow.data.model.SponsorBlockSegment
 import org.schabi.newpipe.extractor.stream.StreamSegment
 
@@ -84,7 +86,14 @@ fun MediaSeekBar(
     duration: Long = 0L,
     bufferedValue: Float = 0f,
     edgeAligned: Boolean = false,
+    /**
+     * Thickness preset from Player Appearance. Only the expanded bar follows it; the
+     * edge-aligned strip keeps its thin shape, and the wave styles keep the default
+     * thickness here because their drawings live in the music player only.
+     */
+    sliderStyle: SliderStyle = SliderStyle.DEFAULT,
 ) {
+    val seekSizes = videoSeekSizes(sliderStyle)
     val primaryColor = MaterialTheme.colorScheme.primary
     val thumbFillColor = MaterialTheme.colorScheme.surface
     val trackColors =
@@ -208,7 +217,7 @@ fun MediaSeekBar(
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
-                                    .height(ActiveTrackHeight),
+                                    .height(seekSizes.canvasHeight),
                         ) {
                             drawSeekTrack(
                                 fraction = state.coercedValueAsFraction,
@@ -220,6 +229,8 @@ fun MediaSeekBar(
                                 bufferedValue = bufferedValue,
                                 colors = trackColors,
                                 bottomAligned = false,
+                                restTrackHeight = seekSizes.restHeight,
+                                activeTrackHeight = seekSizes.activeHeight,
                             )
                         }
                     },
@@ -227,7 +238,7 @@ fun MediaSeekBar(
                         Box(
                             modifier =
                                 Modifier
-                                    .size(16.dp)
+                                    .size(seekSizes.thumbSize)
                                     .graphicsLayer {
                                         val scale = thumbScale.value
                                         scaleX = scale
@@ -256,3 +267,20 @@ fun MediaSeekBar(
         }
     }
 }
+
+private data class VideoSeekSizes(
+    val canvasHeight: Dp,
+    val restHeight: Dp,
+    val activeHeight: Dp,
+    val thumbSize: Dp,
+)
+
+/** Thickness presets for the expanded video bar; the default row is today's exact shape. */
+private fun videoSeekSizes(style: SliderStyle): VideoSeekSizes =
+    when (style) {
+        SliderStyle.THICK -> VideoSeekSizes(14.dp, 8.dp, 14.dp, 20.dp)
+        SliderStyle.COMPACT -> VideoSeekSizes(8.dp, 4.dp, 8.dp, 12.dp)
+        SliderStyle.SLIM -> VideoSeekSizes(6.dp, 3.dp, 6.dp, 10.dp)
+        SliderStyle.DEFAULT, SliderStyle.SQUIGGLY, SliderStyle.EXPRESSIVE_WAVY ->
+            VideoSeekSizes(ActiveTrackHeight, RestTrackHeight, ActiveTrackHeight, 16.dp)
+    }
