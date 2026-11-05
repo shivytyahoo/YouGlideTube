@@ -24,7 +24,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.aedev.flow.data.local.PlayerPreferences
+import io.github.aedev.flow.data.local.SliderStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
@@ -235,6 +239,9 @@ private fun SeekBar(
     onScrubFinished: () -> Unit,
     onTrackWidth: (Int) -> Unit,
 ) {
+    val seekbarContext = LocalContext.current
+    val sliderStyle by remember(seekbarContext) { PlayerPreferences(seekbarContext).sliderStyle }
+        .collectAsStateWithLifecycle(initialValue = SliderStyle.DEFAULT)
     MediaSeekBar(
         value = {
             if (seekDuration > 0) {
@@ -251,6 +258,7 @@ private fun SeekBar(
         duration = seekDuration,
         bufferedValue = content.bufferedPercentage,
         edgeAligned = edgeAligned,
+        sliderStyle = sliderStyle,
         modifier =
             Modifier
                 .fillMaxWidth()
