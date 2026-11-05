@@ -118,6 +118,23 @@ class SubscriptionsViewModel
             }
 
             viewModelScope.launch(PerformanceDispatcher.diskIO) {
+                playerPreferences.subscriptionCollaborationsEnabled
+                    .distinctUntilChanged()
+                    .collect { showCollaborations ->
+                        _uiState.update { it.copy(showCollaborations = showCollaborations) }
+                        refreshVisibleFeed()
+                    }
+            }
+
+            viewModelScope.launch(PerformanceDispatcher.diskIO) {
+                playerPreferences.subscriptionShowCheckedVideoCount
+                    .distinctUntilChanged()
+                    .collect { showCount ->
+                        _uiState.update { it.copy(showLastRefreshVideoCount = showCount) }
+                    }
+            }
+
+            viewModelScope.launch(PerformanceDispatcher.diskIO) {
                 playerPreferences.subscriptionShortsExcludedChannels
                     .distinctUntilChanged()
                     .collect { ids ->
@@ -345,6 +362,7 @@ class SubscriptionsViewModel
                             showVideos = state.showSubscriptionVideos,
                             showShorts = state.showSubscriptionShorts,
                             showLive = state.showSubscriptionLive,
+                            showCollaborations = state.showCollaborations,
                             watchedVideoIds = watchedVideoIds,
                             watchedShortIds = watchedShortIds,
                             unplayableVideoIds = unplayableVideoIds,
