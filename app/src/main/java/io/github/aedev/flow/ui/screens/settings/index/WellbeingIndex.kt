@@ -24,7 +24,7 @@ internal object WellbeingIndex {
 
     val bedtime = entry("bedtime", R.string.bedtime_reminder_title, R.string.bedtime_reminder_subtitle)
     val bedtimeStart = entry("bedtime_start", R.string.bedtime_start_title, revealVia = "wellbeing.bedtime")
-    val bedtimeEnd = entry("bedtime_end", R.string.bedtime_end_title, revealVia = "wellbeing.bedtime")
+    val bedtimeEnd = entry("bedtime_end", R.string.bedtime_end_title, R.string.bedtime_end_subtitle, revealVia = "wellbeing.bedtime")
     val breaks = entry("break", R.string.break_reminder_title, R.string.break_reminder_subtitle)
     val breakFrequency =
         entry("break_frequency", R.string.reminder_frequency, R.string.frequency_description, revealVia = "wellbeing.break")
