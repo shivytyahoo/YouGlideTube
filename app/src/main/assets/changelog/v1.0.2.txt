@@ -1,0 +1,8 @@
+VERSION: 1.0.2
+DATE: 2026-11-05
+• Notifications, in the app: a bell with an unread badge on every screen, New / Last 7 days / Earlier groups, pull to refresh, clear all, and dismiss — and the check interval you pick in Settings now actually reschedules the check
+• Settings that were listed but did nothing now work: Pause watch history freezes what the server shows, Downloads and General notification switches, search history survives restarts, bedtime reminders repeat every night and survive a reboot, and watch time is counted from a real ledger
+• Preview audio no longer keeps playing over the video you open from it
+• Cards never touch each other now: proper gaps on Search, Categories, and Channel search, like Home
+• The Shorts filter in search now shows Shorts — they were arriving in shelves the tab used to drop
+• Check for update now tells you when the check itself fails, instead of claiming you are up to date
