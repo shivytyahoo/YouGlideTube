@@ -1,11 +1,8 @@
-# Contributing to Flow
+# Contributing to YouGlideTube
 
-Thank you for your interest in contributing to Flow! We welcome contributions from the community.
+Thank you for your interest in contributing to YouGlideTube! We welcome contributions from the community.
 
-Flow (`io.github.aedev.flow`) is an Android music/video app written in Kotlin with Jetpack Compose,
-Hilt, and Media3/ExoPlayer. It plays YouTube content via a native InnerTube client with a
-NewPipe-based fallback extraction path, and supports local media playback, offline downloads,
-casting, lyrics, device-to-device sync, and an on-device recommendation engine (FlowNeuroEngine).
+YouGlideTube (`shivyt.android.glidetube`) is a fork of [Flow 3.0.0](https://github.com/A-EDev/Flow) — an Android music/video app written in Kotlin with Jetpack Compose, Hilt, and Media3/ExoPlayer. It plays YouTube content via a native InnerTube client with a NewPipe-based fallback extraction path, and supports local media playback, offline downloads, casting, lyrics, device-to-device sync, and an on-device recommendation engine. On top of that foundation, YouGlideTube adds Google sign-in, watch-history sync, full comment actions, live chat, feed previews, subscription notifications and an Android TV layout.
 
 **Read this file before opening a pull request.** Most review round-trips on this project come from
 one of the rules below, not from the feature itself. `AGENTS.md` in the repository root carries the
@@ -14,7 +11,7 @@ AI assistant, point it at `AGENTS.md`.
 
 ## ❓ Asking Questions About the Codebase
 
-**Use [GitHub Discussions](https://github.com/Flow-Tube/Flow/discussions) — that is the right place, and
+**Use [GitHub Issues](https://github.com/shivytyahoo/YouGlideTube/issues) — that is the right place, and
 questions are welcome.** The codebase is deliberately light on comments (see "Comments" below), so
 asking is expected rather than a sign you missed something.
 
@@ -55,11 +52,11 @@ Feature suggestions are welcome! Please:
 
 ```bash
 # Clone your fork
-git clone https://github.com/YOUR_USERNAME/Flow.git
-cd Flow
+git clone https://github.com/YOUR_USERNAME/YouGlideTube.git
+cd YouGlideTube
 
 # Add upstream remote
-git remote add upstream https://github.com/Flow-Tube/Flow.git
+git remote add upstream https://github.com/shivytyahoo/YouGlideTube.git
 
 # Create a feature branch
 git checkout -b feature/your-feature-name
@@ -69,7 +66,7 @@ Always pull the latest `main` before starting work, to minimize merge conflicts.
 
 ### Product Flavors
 
-Flow builds two flavors: `github` (default, in-app updater enabled) and `foss` (no updater).
+YouGlideTube builds two flavors: `github` (default, in-app updater enabled) and `foss` (no updater).
 **Always use flavor-prefixed Gradle tasks** — `assembleGithubDebug`, `compileFossDebugKotlin` —
 never bare `assembleDebug` or `compileDebugKotlin`.
 
@@ -109,6 +106,8 @@ will be asked to remove them before review continues:
 
 If you find yourself reaching for any of the above because "it looks nice", stop — it is not the
 app's design language and it will be reverted.
+
+One deliberate exception: the app's theme layer follows a Morphe-inspired look (blue-to-teal brand, glass navigation pill, drifting circles) by the project owner's direction — gradients and glass there are the design, not slop. Everywhere else the rules above stand.
 
 ## 🧩 Use the Platform — Never Hand-Roll an API a Dependency Already Provides
 
@@ -195,7 +194,7 @@ than one feature uses it, and duplicate no behaviour the library already provide
 
 ## ⚡ Performance, Battery, and Thermals — Non-Negotiable
 
-Flow is a media player that runs for hours at a time. Jank, dropped frames, playback stutter, device
+YouGlideTube is a media player that runs for hours at a time. Jank, dropped frames, playback stutter, device
 heat, and battery drain are **critical bugs, not cosmetic issues**. Every rule below is anchored in a
 real shipped regression that had to be found and fixed on-device.
 
@@ -407,7 +406,7 @@ empty/error states, badges, formatters, or a second copy of a `shared/` componen
 
 ### Dependency injection
 
-Flow uses Hilt, but some legacy app-owned classes are still reached through static `getInstance()`
+YouGlideTube uses Hilt, but some legacy app-owned classes are still reached through static `getInstance()`
 calls. Treat those as migration debt, not as a pattern to copy.
 
 1. **Use constructor injection by default** for new ViewModels, repositories, use cases, workers,
@@ -447,7 +446,7 @@ All user-facing strings **must** be declared in `app/src/main/res/values/strings
 via `stringResource(R.string.xxx)` (or `context.getString(...)` outside Compose) — never inline
 string literals in UI code. Add the string to `strings.xml` first, then reference it.
 
-**Do not touch other locales' `strings.xml` files.** Translations are managed through Weblate; edit
+**Do not touch other locales' `strings.xml` files.** There is no Weblate project for this fork; edit
 only the default (English) resource file.
 
 ## 🚫 Hard Don'ts
@@ -564,31 +563,24 @@ bump takes three times as long to review and is three times as likely to be reve
 
 ## 🔐 Release and Signing Invariants
 
-Flow is distributed through GitHub Releases and
-[IzzyOnDroid](https://apt.izzysoft.de/packages/io.github.aedev.flow). Both pin properties of the
-published artifacts, so the following are hard constraints. Breaking one of them cannot be fixed by a
-follow-up release — it forces every installed user to uninstall and reinstall, losing their local
-data.
+YouGlideTube is distributed through [GitHub Releases](https://github.com/shivytyahoo/YouGlideTube/releases) only. The release page and the in-app updater both pin properties of the published artifacts, so the following are hard constraints. Breaking one of them cannot be fixed by a follow-up release — it forces every installed user to uninstall and reinstall, losing their local data.
 
 **The signing key never changes.** Every release APK must be signed with the official key,
-certificate SHA-256 `4322294ed4caa2d4294140095818080ffe8acc1fbe3cdc76107df45c5286be40`. Android
-refuses to install an update signed by a different key. CI enforces this in the
-`Verify release signing certificate` step, which fails the build on a mismatch. Never regenerate
-`release.keystore`, and never rotate the `RELEASE_KEYSTORE_BASE64`, `STORE_PASSWORD`, `KEY_ALIAS`, or
-`KEY_PASSWORD` repository secrets.
+certificate SHA-256 `ba657a2bf06ca57003f323a14e6bba11dcea69bda436098f4cd77ce51992a048`. Android
+refuses to install an update signed by a different key. Never regenerate `release.keystore`, and
+never rotate the keystore passwords.
 
-**Release asset file names are a public contract.** IzzyOnDroid matches release assets by file name.
-`flow.apk` and `flow-foss.apk` are the universal builds and must keep those exact names. The per-ABI
-APKs are published alongside them as extras. Renaming or removing either universal APK silently
-breaks the IzzyOnDroid update feed, so coordinate with IzzyOnDroid before changing them.
+**Release asset file names are a public contract.** The universal build is published as
+`YouGlideTube-<version>.apk` (for example `YouGlideTube-1.0.2.apk`) and must keep that exact name —
+the in-app updater picks the release asset by it. Renaming it silently breaks updates for every
+installed user.
 
-**`versionCode` must increase on every release.** F-Droid-format repositories use it to detect
-updates. The ABI splits all share one `versionCode`, so the universal APK is the only artifact
-IzzyOnDroid should consume.
+**`versionCode` must increase on every release.** The updater and the release page use it to detect
+updates.
 
 **A tag build must never publish unsigned APKs.** `app/build.gradle.kts` falls back to
-`signingConfig = null` when no keystore is present, which produces uninstallable APKs. CI hard-fails
-a `v*` tag build when the keystore secret is missing rather than publishing them.
+`signingConfig = null` when no keystore is present, which produces uninstallable APKs. Never publish
+an unsigned build.
 
 ## 🎯 Areas We Need Help
 
@@ -597,8 +589,7 @@ a `v*` tag build when the keystore secret is missing rather than publishing them
 - [ ] Performance optimization
 - [ ] Bug fixes
 - [ ] Accessibility features
-- [ ] Translations (via [Weblate](https://hosted.weblate.org/engage/flow/), not by editing
-      locale files directly)
+- [ ] Translations
 
 ## 📜 Code of Conduct
 
@@ -610,14 +601,14 @@ a `v*` tag build when the keystore secret is missing rather than publishing them
 
 ## ❓ Questions?
 
-- Open a [discussion](https://github.com/Flow-Tube/Flow/discussions) — including questions about how the
+- Open an [issue](https://github.com/shivytyahoo/YouGlideTube/issues) — including questions about how the
   codebase works
 - Comment on existing issues
 - Reach out to maintainers
 
 ## 🙏 Thank You!
 
-Every contribution helps make Flow better. Thank you for being part of the community!
+Every contribution helps make YouGlideTube better. Thank you for being part of the community!
 
 ---
 
