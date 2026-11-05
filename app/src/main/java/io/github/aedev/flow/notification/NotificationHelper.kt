@@ -49,8 +49,6 @@ object NotificationHelper {
 
     // Notification IDs
     const val NOTIFICATION_DOWNLOAD_PROGRESS = 1001
-    const val NOTIFICATION_DOWNLOAD_COMPLETE = 1002
-    const val NOTIFICATION_DOWNLOAD_FAILED = 1003
     const val NOTIFICATION_NEW_VIDEO = 2000 // Base ID, per-video IDs are this + (videoId hash & 0xFFFF)
     const val NOTIFICATION_NEW_VIDEO_SUMMARY = 1999 // Group summary; kept below the per-video range
     private const val GROUP_NEW_VIDEOS = "new_videos"
@@ -324,107 +322,7 @@ object NotificationHelper {
         NotificationManagerCompat.from(context).notify(notificationId, builder.build())
     }
 
-    /**
-     * Show download complete notification
-     */
-    suspend fun showDownloadComplete(
-        context: Context,
-        videoTitle: String,
-        filePath: String? = null,
-        thumbnailUrl: String? = null,
-        notificationId: Int = NOTIFICATION_DOWNLOAD_COMPLETE,
-    ) {
-        if (!hasNotificationPermission(context)) return
-        if (!PlayerPreferences(context).notifDownloadsEnabled.first()) return
 
-        // Intent to open the downloaded file or app
-        val openIntent =
-            Intent(context, MainActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                putExtra("open_downloads", true)
-            }
-        val openPendingIntent =
-            PendingIntent.getActivity(
-                context,
-                notificationId,
-                openIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-            )
-
-        val builder =
-            NotificationCompat
-                .Builder(context, CHANNEL_DOWNLOADS)
-                .setSmallIcon(R.drawable.ic_launcher_dynamic_foreground)
-                .setContentTitle(context.getString(R.string.notification_download_complete))
-                .setContentText(videoTitle)
-                .setContentIntent(openPendingIntent)
-                .setAutoCancel(true)
-                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-                .setCategory(NotificationCompat.CATEGORY_STATUS)
-
-        // Cancel progress notification
-        NotificationManagerCompat.from(context).cancel(NOTIFICATION_DOWNLOAD_PROGRESS)
-
-        // Load thumbnail if provided
-        if (!thumbnailUrl.isNullOrEmpty()) {
-            val bitmap = getBitmapFromUrl(context, thumbnailUrl)
-            if (bitmap != null) {
-                builder.setLargeIcon(bitmap)
-            }
-        }
-
-        NotificationManagerCompat.from(context).notify(notificationId, builder.build())
-    }
-
-    /**
-     * Show download failed notification
-     */
-    fun showDownloadFailed(
-        context: Context,
-        videoTitle: String,
-        errorMessage: String? = null,
-        notificationId: Int = NOTIFICATION_DOWNLOAD_FAILED,
-    ) {
-        if (!hasNotificationPermission(context)) return
-        if (!runBlocking { PlayerPreferences(context).notifDownloadsEnabled.first() }) return
-
-        // Intent to retry download
-        val retryIntent =
-            Intent(context, NotificationActionReceiver::class.java).apply {
-                action = NotificationActionReceiver.ACTION_RETRY_DOWNLOAD
-                putExtra(NotificationActionReceiver.EXTRA_VIDEO_TITLE, videoTitle)
-            }
-        val retryPendingIntent =
-            PendingIntent.getBroadcast(
-                context,
-                notificationId,
-                retryIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-            )
-
-        val notification =
-            NotificationCompat
-                .Builder(context, CHANNEL_DOWNLOADS)
-                .setSmallIcon(R.drawable.ic_launcher_dynamic_foreground)
-                .setContentTitle(context.getString(R.string.notification_download_failed))
-                .setContentText(videoTitle)
-                .setStyle(
-                    NotificationCompat
-                        .BigTextStyle()
-                        .bigText("$videoTitle\n${errorMessage ?: context.getString(R.string.error_generic_hint)}"),
-                ).addAction(
-                    android.R.drawable.ic_menu_rotate,
-                    context.getString(R.string.retry),
-                    retryPendingIntent,
-                ).setAutoCancel(true)
-                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-                .setCategory(NotificationCompat.CATEGORY_ERROR)
-                .build()
-
-        // Cancel progress notification
-        NotificationManagerCompat.from(context).cancel(NOTIFICATION_DOWNLOAD_PROGRESS)
-        NotificationManagerCompat.from(context).notify(notificationId, notification)
-    }
 
     // ========== SUBSCRIPTION NOTIFICATIONS ==========
 
