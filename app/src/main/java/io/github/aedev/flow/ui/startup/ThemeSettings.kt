@@ -19,6 +19,8 @@ data class ThemeSettings(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val themeVariant: ThemeVariant = ThemeVariant.DARK,
     val customTheme: CustomTheme? = null,
+    val customLightTheme: CustomTheme? = null,
+    val customDarkTheme: CustomTheme? = null,
     val systemLightThemeMode: ThemeMode = ThemeMode.DARK,
     val systemDarkThemeMode: ThemeMode = ThemeMode.DARK,
     val systemDarkThemeVariant: ThemeVariant = ThemeVariant.DARK,
@@ -26,9 +28,17 @@ data class ThemeSettings(
 )
 
 fun LocalDataManager.themeSettings(fonts: AppFontPreferences): Flow<ThemeSettings> =
-    combine(themeMode, themeVariant, activeCustomTheme, systemLightThemeMode, systemDarkThemeMode) { mode, variant, custom, light, dark ->
-        ThemeSettings(mode, variant, custom, light, dark)
-    }.combine(systemDarkThemeVariant) { settings, darkVariant -> settings.copy(systemDarkThemeVariant = darkVariant) }
+    combine(themeMode, themeVariant, activeCustomTheme, activeLightCustomTheme, activeDarkCustomTheme) { mode, variant, custom, customLight, customDark ->
+        ThemeSettings(
+            themeMode = mode,
+            themeVariant = variant,
+            customTheme = custom,
+            customLightTheme = customLight,
+            customDarkTheme = customDark,
+        )
+    }.combine(systemLightThemeMode) { settings, light -> settings.copy(systemLightThemeMode = light) }
+        .combine(systemDarkThemeMode) { settings, dark -> settings.copy(systemDarkThemeMode = dark) }
+        .combine(systemDarkThemeVariant) { settings, darkVariant -> settings.copy(systemDarkThemeVariant = darkVariant) }
         .combine(fonts.fontFamily) { settings, family -> settings.copy(fontFamily = family) }
 
 @Composable
@@ -39,6 +49,8 @@ fun FlowTheme(
     themeMode = settings.themeMode,
     themeVariant = settings.themeVariant,
     customTheme = settings.customTheme,
+    customLightTheme = settings.customLightTheme,
+    customDarkTheme = settings.customDarkTheme,
     systemLightThemeMode = settings.systemLightThemeMode,
     systemDarkThemeMode = settings.systemDarkThemeMode,
     systemDarkThemeVariant = settings.systemDarkThemeVariant,
