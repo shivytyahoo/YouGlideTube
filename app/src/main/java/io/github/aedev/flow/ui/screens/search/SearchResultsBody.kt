@@ -137,7 +137,11 @@ internal fun ColumnScope.SearchResultsBody(
 
         when {
             refreshState is LoadState.Loading -> {
-                FeedGridSkeleton(layout = feedLayout, listMode = isGridMode)
+                FeedGridSkeleton(
+                    layout = feedLayout,
+                    listMode = isGridMode,
+                    compactRowSpacing = if (isGridMode) 0.dp else feedLayout.cardSpacing,
+                )
             }
 
             refreshState is LoadState.Error && pagingItems.itemCount == 0 -> {
