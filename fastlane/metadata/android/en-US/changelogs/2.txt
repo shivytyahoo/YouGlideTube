@@ -1,0 +1,4 @@
+- Fresh Morphe-style look: blue-to-teal brand, dark-first theme, glass navigation pill
+- Video cards coloured from their thumbnails, with proper gaps everywhere
+- Faster on slow networks: videos buffer before play, Shorts pre-buffer while scrolling
+- Feed previews with tap-to-continue and an unmute button
