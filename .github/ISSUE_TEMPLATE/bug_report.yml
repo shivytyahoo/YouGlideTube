@@ -1,5 +1,5 @@
 name: Bug report
-description: Report a reproducible problem in Flow for Android.
+description: Report a reproducible problem in YouGlideTube for Android.
 title: "[Bug]: "
 labels:
   - bug
@@ -8,7 +8,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for helping improve Flow. Include enough detail for someone else to reproduce the problem. Remove tokens, cookies, and other private information from logs before submitting them.
+        Thanks for helping improve YouGlideTube. Include enough detail for someone else to reproduce the problem. Remove tokens, cookies, and other private information from logs before submitting them.
 
   - type: checkboxes
     id: checks
@@ -17,16 +17,16 @@ body:
       options:
         - label: I searched the open and closed issues for this problem.
           required: true
-        - label: I can reproduce this on the latest available Flow release or a current development build.
+        - label: I can reproduce this on the latest available YouGlideTube release or a current development build.
           required: true
 
 
   - type: input
     id: app-version
     attributes:
-      label: Flow version
+      label: YouGlideTube version
       description: Use the exact version from Settings > About or a commit SHA. Do not write only "latest."
-      placeholder: "2.2.0 or 1a2b3c4"
+      placeholder: "1.0.2 or 1a2b3c4"
     validations:
       required: true
 
@@ -54,8 +54,6 @@ body:
       label: Installation source
       options:
         - GitHub release APK
-        - F-Droid or another FOSS repository
-        - Nightly build
         - Development build from source
         - Other
     validations:
@@ -92,7 +90,7 @@ body:
       label: Reproduction steps
       description: Start from a fresh app launch and include the smallest reliable sequence.
       placeholder: |
-        1. Launch Flow.
+        1. Launch YouGlideTube.
         2. Open ...
         3. Select ...
         4. Observe ...
