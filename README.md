@@ -376,6 +376,11 @@ cd YouGlideTube
 See [CHANGELOG.md](CHANGELOG.md) and
 [Releases](https://github.com/shivytyahoo/YouGlideTube/releases).
 
+## Disclaimer
+
+YouGlideTube is not affiliated with, endorsed by, or sponsored by Google
+or YouTube. YouTube is a trademark of Google LLC.
+
 ## License
 
 YouGlideTube is distributed under the **GNU General Public License v3.0**.
