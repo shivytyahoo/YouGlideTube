@@ -10,9 +10,9 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
 /**
- * Keeps the periodic background checks in step with the notification switches, wherever they are
- * changed (settings, onboarding, a restored backup). A check whose notifications are off is
- * cancelled, so Flow is never woken for a result it would throw away.
+ * Keeps the periodic background checks in step with the notification switches and the check
+ * interval, wherever they are changed (settings, onboarding, a restored backup). A check whose
+ * notifications are off is cancelled, so Flow is never woken for a result it would throw away.
  */
 internal object BackgroundCheckScheduler {
     fun updateCheckWanted(
@@ -47,11 +47,21 @@ internal object BackgroundCheckScheduler {
             }
         }
         launch {
-            combine(preferences.notificationsEnabled, preferences.notifNewVideosEnabled, ::subscriptionCheckWanted)
+            combine(
+                preferences.notificationsEnabled,
+                preferences.notifNewVideosEnabled,
+                preferences.subscriptionCheckIntervalMinutes,
+            ) { enabled, newVideos, interval ->
+                subscriptionCheckWanted(enabled, newVideos) to interval
+            }
                 .distinctUntilChanged()
-                .collectIndexed { index, wanted ->
+                .collectIndexed { index, (wanted, interval) ->
                     if (wanted) {
-                        SubscriptionCheckWorker.schedulePeriodicCheck(context, reschedule = index > 0)
+                        SubscriptionCheckWorker.schedulePeriodicCheck(
+                            context,
+                            reschedule = index > 0,
+                            intervalMinutes = interval.toLong(),
+                        )
                     } else {
                         SubscriptionCheckWorker.cancelScheduledChecks(context)
                     }
