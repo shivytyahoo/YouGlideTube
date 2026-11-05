@@ -89,10 +89,9 @@ class SettingsHomeViewModel
                     runCatching { updates.fetch() }
                         .fold(
                             onSuccess = { info -> info?.let { UpdateCheckState.Available(it) } ?: UpdateCheckState.UpToDate },
-                            // The release page is unreachable while the repo is private: GitHub
-                            // answers 404 to an unauthenticated check, and that reads as up to
-                            // date until the repo goes public, not as a failure.
-                            onFailure = { UpdateCheckState.UpToDate },
+                            // A failed check is a failure, not "up to date": the
+                            // Failed state already has its own snackbar wired.
+                            onFailure = { UpdateCheckState.Failed },
                         )
                 _updateCheck.value = result
             }
