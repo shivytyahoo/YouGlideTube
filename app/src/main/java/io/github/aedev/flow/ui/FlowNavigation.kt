@@ -32,6 +32,7 @@ import io.github.aedev.flow.ui.screens.home.HomeScreen
 import io.github.aedev.flow.ui.screens.home.HomeViewModel
 import io.github.aedev.flow.ui.screens.library.LibraryScreen
 import io.github.aedev.flow.ui.screens.music.sharedMusicPlayerViewModel
+import io.github.aedev.flow.ui.screens.notifications.NotificationsScreen
 import io.github.aedev.flow.ui.screens.onboarding.OnboardingScreen
 import io.github.aedev.flow.ui.screens.player.VideoPlayerViewModel
 import io.github.aedev.flow.ui.screens.player.state.VideoPlayerUiState
@@ -266,6 +267,15 @@ fun NavGraphBuilder.flowAppGraph(
                     popUpTo("home") { inclusive = true }
                 }
             },
+        )
+    }
+
+    composable("notifications") {
+        currentRoute.value = "notifications"
+        NotificationsScreen(
+            onBack = { navController.popBackStack() },
+            onVideoClick = { videoId -> navController.navigateToPlayer(videoId) },
+            onOpenSettings = { navController.navigate("settings") },
         )
     }
 
