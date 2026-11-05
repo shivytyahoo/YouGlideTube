@@ -66,9 +66,8 @@ fun SubscriptionsScreen(
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val columnPreference by remember(context) { PlayerPreferences(context) }
-        .homeFeedColumns
-        .collectAsStateWithLifecycle(HomeFeedColumns.AUTO)
+    // Cards per row is the Home grid's setting; subscriptions stay responsive.
+    val columnPreference = HomeFeedColumns.AUTO
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val feedGridState = rememberLazyGridState()
