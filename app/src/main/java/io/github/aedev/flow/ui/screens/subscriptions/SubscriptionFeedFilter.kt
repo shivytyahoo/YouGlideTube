@@ -10,6 +10,7 @@ internal data class SubscriptionFeedFilters(
     val showVideos: Boolean = true,
     val showShorts: Boolean = true,
     val showLive: Boolean = true,
+    val showCollaborations: Boolean = true,
     val watchedVideoIds: Set<String> = emptySet(),
     val watchedShortIds: Set<String> = emptySet(),
     val unplayableVideoIds: Set<String> = emptySet(),
@@ -44,7 +45,9 @@ internal fun subscriptionFeedSections(
                     video.isLive -> filters.showLive
                     else -> filters.showVideos
                 }
-            }.withStableUploadSortKeys(now)
+            }
+            .filter { video -> filters.showCollaborations || video.collaborators.isEmpty() }
+            .withStableUploadSortKeys(now)
     val (shorts, regular) = visible.partition { it.isShort }
     val latestShortPerChannel =
         shorts
