@@ -90,6 +90,7 @@ internal fun ChannelSearchResults(
                         spansOwnRow = { false },
                         includeLastRun = true,
                         itemsKey = uiState.searchResults,
+                        compactRowSpacing = if (!isGridView) 0.dp else feedLayout.cardSpacing,
                     )
                 val padding =
                     remember(contentPadding, plan.horizontalPadding) {
