@@ -25,4 +25,4 @@
 - Comments that work: post, reply, edit, delete, and like — including replies inside threads.
 - Live chat: send messages and remove your own.
 - Library and History keep your latest watches and likes on top, across restarts.
-- Sign in with your Google account (web login or TV code), with multiple accounts.
+- Sign in with your Google account, with multiple accounts.
