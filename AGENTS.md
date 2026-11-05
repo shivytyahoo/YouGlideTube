@@ -1,6 +1,6 @@
-# Working with Flow as an AI agent
+# Working with YouGlideTube as an AI agent
 
-Flow (`io.github.aedev.flow`) is an Android music/video app written in Kotlin with Jetpack Compose, Hilt, and Media3/ExoPlayer. It plays YouTube content via a native InnerTube client with a NewPipe-based fallback extraction path, supports local media playback, offline downloads, casting, lyrics, a device-to-device sync feature, and an on-device recommendation engine (FlowNeuroEngine). It follows Material 3 design guidelines closely.
+YouGlideTube (`shivyt.android.glidetube`) is a fork of Flow 3.0.0 — an Android music/video app written in Kotlin with Jetpack Compose, Hilt, and Media3/ExoPlayer. It plays YouTube content via a native InnerTube client with a NewPipe-based fallback extraction path, supports local media playback, offline downloads, casting, lyrics, a device-to-device sync feature, and an on-device recommendation engine (FlowNeuroEngine). It follows Material 3 design guidelines closely.
 
 Product flavors: `github` (default, in-app updater enabled) and `foss` (no updater). Always use flavor-prefixed Gradle tasks — e.g. `assembleGithubDebug`, `compileFossDebugKotlin` — never bare `assembleDebug`/`compileDebugKotlin`.
 
@@ -136,7 +136,7 @@ A legitimate hand-rolled component must therefore:
 
 ## Performance, battery, and thermals — non-negotiable
 
-Flow is a media player that runs for hours at a time. Jank, dropped frames, playback stutter,
+YouGlideTube is a media player that runs for hours at a time. Jank, dropped frames, playback stutter,
 device heat, and battery drain are critical bugs, not cosmetic issues. Every rule below is
 anchored in a real shipped regression that had to be found and fixed on-device — treat them as
 hard constraints, not suggestions.
@@ -236,7 +236,7 @@ hard constraints, not suggestions.
 
 ## Dependency injection and service-locator migration
 
-Flow uses Hilt, but some legacy app-owned classes are still reached through static/companion
+YouGlideTube uses Hilt, but some legacy app-owned classes are still reached through static/companion
 `getInstance()` calls. Treat those calls as migration debt, not as the pattern for new code. The
 goal is explicit, testable dependencies while preserving object identity, lifecycle, startup cost,
 and playback behavior.
