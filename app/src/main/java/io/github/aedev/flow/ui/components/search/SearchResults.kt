@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
@@ -62,6 +63,7 @@ fun SearchResults(
             spansOwnRow = { index -> pagingItems.peek(index).spansRow() },
             includeLastRun = pagingItems.loadState.append.endOfPaginationReached,
             itemsKey = pagingItems.itemSnapshotList,
+            compactRowSpacing = if (isGridMode) 0.dp else feedLayout.cardSpacing,
         )
 
     LazyVerticalGrid(
@@ -145,6 +147,21 @@ fun SearchShortsGrid(
     modifier: Modifier = Modifier,
 ) {
     val sidePadding = ShortCardDefaults.gridPadding(feedLayout)
+    // A Shorts search arrives as grid shelves of lockups, not flat videos — flatten both
+    // shapes, or the tab stays empty while the server sent Shorts.
+    val shorts =
+        remember(pagingItems.itemSnapshotList) {
+            pagingItems.itemSnapshotList.items
+                .flatMap { item ->
+                    when (item) {
+                        is SearchResultItem.VideoResult -> listOf(item.video)
+                        is SearchResultItem.ShelfResult ->
+                            if (item.kind == SearchShelfKind.SHORTS) item.videos else emptyList()
+
+                        else -> emptyList()
+                    }
+                }.distinctBy { it.id }
+        }
     LazyVerticalGrid(
         columns = GridCells.Adaptive(ShortCardDefaults.MinWidth),
         state = gridState,
@@ -160,17 +177,14 @@ fun SearchShortsGrid(
         verticalArrangement = Arrangement.spacedBy(ShortCardDefaults.Spacing),
     ) {
         items(
-            count = pagingItems.itemCount,
-            key = { index -> pagingItems.peek(index).itemKey(index) },
-            contentType = { index -> pagingItems.peek(index).contentType() },
-        ) { index ->
-            (pagingItems[index] as? SearchResultItem.VideoResult)?.let { result ->
-                MediaShortCard(
-                    video = result.video,
-                    onClick = { actions.onShortsClick(pagingItems.loadedShorts(), result.video) },
-                    modifier = Modifier.fillMaxSize(),
-                )
-            }
+            items = shorts,
+            key = { video -> video.id },
+        ) { video ->
+            MediaShortCard(
+                video = video,
+                onClick = { actions.onShortsClick(shorts, video) },
+                modifier = Modifier.fillMaxSize(),
+            )
         }
 
         item(span = { GridItemSpan(maxLineSpan) }) {
@@ -182,9 +196,6 @@ fun SearchShortsGrid(
         }
     }
 }
-
-private fun LazyPagingItems<SearchResultItem>.loadedShorts(): List<Video> =
-    (0 until itemCount).mapNotNull { (peek(it) as? SearchResultItem.VideoResult)?.video }
 
 /** The hero card and every strip own their row; only results share one. */
 private fun SearchResultItem?.spansRow(): Boolean =
