@@ -1,10 +1,13 @@
 package io.github.aedev.flow.data.local
 
+import kotlinx.serialization.Serializable
+
 /**
  * Everything the search feed can be narrowed by. Every field maps to a server-side `params` token
  * except [watchState], which YouTube only honours for a signed-in account, so it is applied to each
  * page against local watch history instead.
  */
+@Serializable
 data class SearchFilter(
     val contentType: ContentType = ContentType.ALL,
     val duration: Duration = Duration.ANY,
@@ -32,6 +35,7 @@ data class SearchFilter(
     }
 }
 
+@Serializable
 enum class ContentType {
     ALL,
     VIDEOS,
@@ -47,12 +51,14 @@ enum class ContentType {
  * their tokens still parse but no longer reorder anything (verified live 2026-09-14), so recency is
  * an [UploadDate] filter instead.
  */
+@Serializable
 enum class SortType {
     RELEVANCE,
     VIEW_COUNT,
 }
 
 /** YouTube moved these boundaries from four minutes to three when Shorts grew to three minutes. */
+@Serializable
 enum class Duration {
     ANY,
     UNDER_3_MINUTES,
@@ -60,6 +66,7 @@ enum class Duration {
     OVER_20_MINUTES,
 }
 
+@Serializable
 enum class UploadDate {
     ANY,
     LAST_HOUR,
@@ -70,12 +77,14 @@ enum class UploadDate {
 }
 
 /** Read against the user's watched threshold, the same line Home and Subscriptions hide by. */
+@Serializable
 enum class WatchState {
     ANY,
     UNWATCHED,
     WATCHED,
 }
 
+@Serializable
 enum class SearchFeature {
     HD,
     FOUR_K,
