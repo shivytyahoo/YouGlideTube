@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.SystemClock
 import android.util.Log
 import io.github.aedev.flow.data.local.CachedHomeVideo
+import io.github.aedev.flow.data.local.LocalDataManager
 import io.github.aedev.flow.data.local.HomeFeedCacheRepository
 import io.github.aedev.flow.data.local.SessionHistory
 import io.github.aedev.flow.data.model.Video
@@ -16,6 +17,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import java.time.LocalDate
 import java.util.concurrent.ConcurrentHashMap
 
 /** Below this, an abandoned view is navigation noise rather than a deliberate skip. */
@@ -280,6 +282,15 @@ internal class WatchSessionTracker(
     private fun richVideoOf(videoId: String): Video? = richVideoFor(videoId)?.takeIf { it.id == videoId }
 
     private fun finalize(session: Session) {
+        // The watch-time ledger counts every session's real watched time, graded or not.
+        if (session.watchedMs > 0) {
+            scope.launch {
+                runCatching {
+                    LocalDataManager(context.applicationContext)
+                        .addWatchLedgerMs(LocalDate.now(), session.watchedMs)
+                }
+            }
+        }
         // Prefer the rich (tags/description) video over the session stub: the screen's copy while it
         // still holds this video, else the last one the session saw.
         val video = richVideoOf(session.video.id) ?: session.richVideo ?: session.video
