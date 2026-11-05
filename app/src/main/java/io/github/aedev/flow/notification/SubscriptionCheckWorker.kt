@@ -11,7 +11,6 @@ import androidx.work.WorkManager
 import androidx.work.WorkRequest
 import androidx.work.WorkerParameters
 import io.github.aedev.flow.data.local.PlayerPreferences
-import io.github.aedev.flow.innertube.YouTube
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
@@ -33,10 +32,14 @@ class SubscriptionCheckWorker(
         const val WORK_NAME = "subscription_check_work"
         private const val TAG = "SubscriptionCheckWorker"
 
-        /** Schedules the 6-hour check; [BackgroundCheckScheduler] decides whether it should run at all. */
+        /** WorkManager rejects periodic work below 15 minutes, so a stale value clamps instead of crashing the scheduler. */
+        private const val MIN_INTERVAL_MINUTES = 15L
+
+        /** Schedules the check at [intervalMinutes]; [BackgroundCheckScheduler] decides whether it should run at all. */
         fun schedulePeriodicCheck(
             context: Context,
             reschedule: Boolean,
+            intervalMinutes: Long,
         ) {
             val constraints =
                 Constraints
@@ -47,8 +50,8 @@ class SubscriptionCheckWorker(
 
             val workRequest =
                 PeriodicWorkRequestBuilder<SubscriptionCheckWorker>(
-                    6,
-                    TimeUnit.HOURS,
+                    intervalMinutes.coerceAtLeast(MIN_INTERVAL_MINUTES),
+                    TimeUnit.MINUTES,
                 ).setConstraints(constraints)
                     .setBackoffCriteria(
                         BackoffPolicy.EXPONENTIAL,
@@ -61,7 +64,7 @@ class SubscriptionCheckWorker(
                 periodicWorkPolicy(reschedule),
                 workRequest,
             )
-            Log.d(TAG, "Scheduled subscription check every 6 hours")
+            Log.d(TAG, "Scheduled subscription check every $intervalMinutes minutes")
         }
 
         fun cancelScheduledChecks(context: Context) {
@@ -77,45 +80,11 @@ class SubscriptionCheckWorker(
                 Log.d(TAG, "Subscription notifications are off, skipping check")
                 return@withContext Result.success()
             }
-            if (!YouTube.isSignedIn()) {
-                Log.d(TAG, "Signed out, skipping check")
-                return@withContext Result.success()
-            }
-            val page = YouTube.serverSubscriptions().getOrNull()
-            if (page == null) {
-                Log.d(TAG, "Subscriptions feed failed, next cycle retries")
-                return@withContext Result.success()
-            }
-            val notifyShorts = preferences.notifShortsEnabled.first()
-            val currentVideos = page.videos + if (notifyShorts) page.shorts else emptyList()
-            val currentIds = currentVideos.map { it.id }.toSet()
-            if (currentIds.isEmpty()) {
-                Log.d(TAG, "Subscriptions feed empty, leaving state untouched")
-                return@withContext Result.success()
-            }
-            val seen = preferences.subscriptionSeenVideoIds.first()
-            val seeded = preferences.subscriptionCheckSeeded.first()
-            if (!seeded) {
-                preferences.setSubscriptionCheckState(currentIds, seeded = true)
-                Log.d(TAG, "Seeded seen set with ${currentIds.size} videos, not notifying")
-                return@withContext Result.success()
-            }
-            val fresh =
-                currentVideos
-                    .filter { it.id !in seen }
-                    .map {
-                        NotificationHelper.NewVideoEntry(
-                            channelName = it.channelName,
-                            videoTitle = it.title,
-                            videoId = it.id,
-                            thumbnailUrl = it.thumbnailUrl.takeIf { url -> url.isNotBlank() },
-                        )
-                    }
+            val fresh = collectFreshSubscriptionVideos(applicationContext)
             if (fresh.isNotEmpty()) {
                 NotificationHelper.showSubscriptionUpdates(applicationContext, fresh)
                 Log.d(TAG, "Announced ${fresh.size} new subscription videos")
             }
-            preferences.setSubscriptionCheckState(currentIds, seeded = true)
             Result.success()
         }
 }
