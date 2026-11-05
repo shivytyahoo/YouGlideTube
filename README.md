@@ -26,7 +26,8 @@
 
 **YouGlideTube** is a fast, buttery-smooth YouTube client for Android by
 [Shivyt](https://github.com/shivytyahoo) — built for instant playback,
-background play, downloads and a clean, distraction-free interface.
+background play, downloads and a clean, distraction-free interface,
+on your phone and on your Android TV.
 
 It is a fork of [Flow 3.0.0](https://github.com/A-EDev/Flow), rebranded
 and extended end to end: the player foundation builds on open-source work
@@ -39,6 +40,7 @@ text.
 | **App** | `shivyt.android.glidetube` |
 | **Latest release** | [1.0.2](https://github.com/shivytyahoo/YouGlideTube/releases/tag/v1.0.2) |
 | **Requires** | Android 8.0 (API 26) or newer |
+| **TV** | Android TV layout included — same app, big-screen interface |
 | **License** | GPL-3.0 |
 
 ## 🎨 Look and feel
@@ -61,6 +63,9 @@ warm saffron and coral accents on the mark and the player.
   search, everywhere. Nothing ever looks stuck together.
 - **Smooth by design** — a scratch launch animation, Glide-style loading
   and pull-to-refresh, and transitions that stay out of your way.
+- **Same look on the big screen** — the dark-first theme and the
+  blue-to-teal brand carry over to Android TV, so the app feels like
+  itself wherever you open it.
 
 The result is an app that feels considered rather than assembled: quiet
 where it should be quiet, colourful exactly where your videos are, and
@@ -194,10 +199,24 @@ pick up new files.
 - **In-app update checks** — the app fetches a new APK from the release
   page when one exists, and tells you honestly when the check fails
 
-### 📺 TV layout
+### 📺 Android TV
 
-- A big-screen layout for Android TV, with the same account feed,
-  subscriptions and music
+YouGlideTube is a proper TV app, not the phone app stretched wide. The
+same APK installs on Android TV, with a big-screen layout built for the
+remote.
+
+- **Navigation rail made for D-pad** — move with the remote, with focus
+  that always lands where you expect it; a remote guide is built in
+- **Same feed, subscriptions and music as mobile** — TV uses the same
+  account feed, the same subscriptions and the same music as your phone
+- **Home, Search, Library, History and Downloads** — Search is always on
+  TV, and your playlists, channels and local media are there too
+- **Shorts on the big screen** — its own D-pad Shorts tab, swiping with
+  the remote
+- **Full TV player** — D-pad controls, scrubbing, an Up Next rail and
+  sheets, on the same playback engine
+- **Same dark-first look** — the app's own dark theme and blue-to-teal
+  brand, not the TV's default
 
 ### 🔒 Privacy
 
@@ -219,7 +238,9 @@ tab icon sitting centred on its mark.
 It is a serious project, built with care over many late nights, and it
 shows in the small things: the pill that slides instead of jumping, the
 cards that never touch, the update check that would rather admit a failure
-than pretend everything is fine.
+than pretend everything is fine. And when you move to the couch, it is
+there too: the same app on Android TV, with the same feed and the same
+look, built for the remote.
 
 ## Differences from Flow
 
@@ -264,7 +285,8 @@ added or removed in this fork:
   steps up smoothly
 - Glass navigation pill, circles background and redesigned video cards
 - In-app update checks with same-version rebuild detection
-- TV layout support
+- Android TV support — big-screen layout with a D-pad navigation rail,
+  Shorts tab, full TV player and the same feed, subscriptions and music
 
 **Kept from Flow**
 
