@@ -55,6 +55,7 @@
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <!-- Device Sync: scan the peer's QR code to receive the session key out-of-band. -->
     <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-feature android:name="android.hardware.camera.any" android:required="false" />
 
     <!-- Lets the equalizer page offer an installed system or third-party equalizer panel. -->
@@ -280,6 +281,16 @@
             android:name=".notification.ReminderReceiver"
             android:enabled="true"
             android:exported="false" />
+
+        <!-- Restores enabled reminders after a reboot -->
+        <receiver
+            android:name=".notification.BootReminderReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
 
         <!-- Home-screen widgets (Jetpack Glance) -->
         <receiver
