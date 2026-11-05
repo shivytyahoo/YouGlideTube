@@ -27,12 +27,19 @@ class WellbeingViewModel
         private val viewHistory: SessionHistory,
         private val localData: LocalDataManager,
     ) : SettingsViewModel() {
-        /** Measured once per visit from this session's history: the last position on the last-watched day. */
+        /**
+         * Measured once per visit: the real per-day ledger once it covers a full week,
+         * else the session-history estimate (last position on the last-watched day).
+         */
         val summary =
             flow {
                 val today = LocalDate.now()
                 emit(
-                    summarizeWatchTime(
+                    summarizeLedgerTime(
+                        localData.watchLedger.first(),
+                        localData.watchLedgerStart.first(),
+                        today,
+                    ) ?: summarizeWatchTime(
                         viewHistory.getAllHistory().first().map { WatchRecord(it.timestamp, it.position) },
                         today,
                         ZoneId.systemDefault(),
