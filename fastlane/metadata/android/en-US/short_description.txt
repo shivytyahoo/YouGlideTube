@@ -1,1 +1,1 @@
-Privacy-respecting YouTube and Music client with local recommendations.
+Buttery-smooth YouTube client for Android, on your phone and TV.
