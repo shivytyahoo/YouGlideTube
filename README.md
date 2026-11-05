@@ -19,7 +19,7 @@
 
 <p align="center">
   <a href="https://github.com/shivytyahoo/YouGlideTube/releases/tag/v1.0.2"><b>⬇️ Download YouGlideTube 1.0.2</b></a><br>
-  <sub><code>YouGlideTube-1.0.2.apk</code> · 27,599,579 bytes · installs over 1.0.1 · Android 8.0 (API 26) or newer</sub>
+  <sub><code>YouGlideTube-1.0.2.apk</code> · universal APK — one file for every device · 27,599,579 bytes · installs over 1.0.1 · Android 8.0 (API 26) or newer</sub>
 </p>
 
 ## About
@@ -322,6 +322,19 @@ Fresh device screenshots of the new look are being added here.
 -->
 
 ## Install
+
+**One APK for every device** — there is nothing to choose. The release
+APK is universal: it carries native code for all four Android ABIs, and
+each device installs the one that fits it.
+
+| Architecture | Devices |
+|---|---|
+| `arm64-v8a` | 64-bit ARM — almost every phone today |
+| `armeabi-v7a` | 32-bit ARM — older phones |
+| `x86_64` and `x86` | Intel devices, tablets, Chromebooks and emulators |
+
+So whether your phone is 32-bit or 64-bit, ARM or Intel, the same file
+works. It needs Android 8.0 (API 26) or newer.
 
 1. Download the APK from
    [Releases](https://github.com/shivytyahoo/YouGlideTube/releases).
