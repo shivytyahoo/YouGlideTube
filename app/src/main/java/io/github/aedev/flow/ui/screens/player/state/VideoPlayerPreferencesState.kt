@@ -91,7 +91,8 @@ internal fun rememberVideoPlayerPreferences(context: Context): VideoPlayerPrefer
     val commentsPreviewEnabled by playerPreferences.commentsPreviewEnabled.collectAsState(initial = true)
     val showRelatedVideos by playerPreferences.showRelatedVideos.collectAsState(initial = true)
     val relatedCardStyle by playerPreferences.playerRelatedCardStyle.collectAsState(initial = PlayerRelatedCardStyle.FULL_WIDTH)
-    val feedColumns by playerPreferences.homeFeedColumns.collectAsState(initial = HomeFeedColumns.AUTO)
+    // Cards per row is the Home grid's setting; up-next stays responsive.
+    val feedColumns = HomeFeedColumns.AUTO
     val deArrowEnabled by playerPreferences.deArrowEnabled.collectAsState(initial = false)
     val downloadDialogStyle by playerPreferences.downloadDialogStyle.collectAsState(initial = null)
 
