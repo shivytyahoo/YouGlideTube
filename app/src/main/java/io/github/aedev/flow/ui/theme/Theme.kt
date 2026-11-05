@@ -162,6 +162,8 @@ fun FlowTheme(
     systemLightThemeMode: ThemeMode = ThemeMode.DARK,
     systemDarkThemeMode: ThemeMode = ThemeMode.DARK,
     systemDarkThemeVariant: ThemeVariant = ThemeVariant.DARK,
+    customLightTheme: CustomTheme? = customTheme,
+    customDarkTheme: CustomTheme? = customTheme,
     fontFamily: FontFamily = FlowFontFamily,
     content: @Composable () -> Unit,
 ) {
@@ -175,6 +177,8 @@ fun FlowTheme(
             systemLightThemeMode = systemLightThemeMode,
             systemDarkThemeMode = systemDarkThemeMode,
             systemDarkThemeVariant = systemDarkThemeVariant,
+            customLightTheme = customLightTheme,
+            customDarkTheme = customDarkTheme,
         )
 
     val extendedColors =
@@ -210,9 +214,18 @@ fun resolveFlowColorScheme(
     systemLightThemeMode: ThemeMode,
     systemDarkThemeMode: ThemeMode,
     systemDarkThemeVariant: ThemeVariant,
+    customLightTheme: CustomTheme? = customTheme,
+    customDarkTheme: CustomTheme? = customTheme,
 ): ColorScheme {
     val (effectiveThemeMode, effectiveVariant) =
         resolveFlowThemeSlot(isSystemDark, themeMode, themeVariant, systemLightThemeMode, systemDarkThemeMode, systemDarkThemeVariant)
+    // Follow-system picks the slot's own custom theme; manual CUSTOM mode keeps the shared one.
+    val slotCustomTheme =
+        if (themeMode == ThemeMode.SYSTEM) {
+            if (isSystemDark) customDarkTheme else customLightTheme
+        } else {
+            customTheme
+        }
     return when {
         effectiveThemeMode == ThemeMode.MATERIAL_YOU && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             when (effectiveVariant) {
@@ -222,8 +235,8 @@ fun resolveFlowColorScheme(
             }
         }
 
-        effectiveThemeMode == ThemeMode.CUSTOM && customTheme != null -> {
-            customTheme.colorsFor(effectiveVariant).toColorScheme(effectiveVariant)
+        effectiveThemeMode == ThemeMode.CUSTOM && slotCustomTheme != null -> {
+            slotCustomTheme.colorsFor(effectiveVariant).toColorScheme(effectiveVariant)
         }
 
         else -> {
