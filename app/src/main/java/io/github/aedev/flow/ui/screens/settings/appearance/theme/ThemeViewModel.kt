@@ -124,15 +124,12 @@ class ThemeViewModel
 
         fun setSystemDarkTheme(mode: ThemeMode) = write { dataManager.setSystemDarkThemeMode(mode) }
 
-        /**
-         * Puts custom theme [id] in a Follow-system slot. Both slots share one active custom theme, so
-         * picking a custom theme for one also changes it for the other if that slot is custom too.
-         */
+        /** Puts custom theme [id] in one Follow-system slot, leaving the other slot's pick alone. */
         fun setSystemSlotCustom(
             lightSlot: Boolean,
             id: String,
         ) = write {
-            dataManager.setActiveCustomTheme(id)
+            dataManager.setSystemSlotCustomTheme(lightSlot, id)
             if (lightSlot) dataManager.setSystemLightThemeMode(ThemeMode.CUSTOM) else dataManager.setSystemDarkThemeMode(ThemeMode.CUSTOM)
         }
 
