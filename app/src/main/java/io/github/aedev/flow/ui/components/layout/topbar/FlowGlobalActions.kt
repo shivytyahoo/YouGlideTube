@@ -14,6 +14,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 @Immutable
 data class FlowGlobalActions(
     val onOpenSettings: () -> Unit,
+    val onOpenNotifications: () -> Unit,
 )
 
 /**
@@ -29,12 +30,14 @@ val LocalFlowGlobalActions = staticCompositionLocalOf<FlowGlobalActions?> { null
 @Composable
 fun ProvideFlowGlobalActions(
     onOpenSettings: () -> Unit,
+    onOpenNotifications: () -> Unit,
     content: @Composable () -> Unit,
 ) {
     val actions =
-        remember(onOpenSettings) {
+        remember(onOpenSettings, onOpenNotifications) {
             FlowGlobalActions(
                 onOpenSettings = onOpenSettings,
+                onOpenNotifications = onOpenNotifications,
             )
         }
     CompositionLocalProvider(LocalFlowGlobalActions provides actions, content = content)
