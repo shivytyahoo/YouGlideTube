@@ -134,7 +134,8 @@ fun rememberSearchState(viewModel: SearchViewModel): SearchScreenState {
     val suggestionsEnabled = historyRepository.isSearchSuggestionsEnabledFlow().collectAsStateWithLifecycle(true)
     val gridMode = preferences.searchIsGridMode.collectAsStateWithLifecycle(false)
     val shortsEnabled = preferences.shortsContentEnabled.collectAsStateWithLifecycle(true)
-    val feedColumns = preferences.homeFeedColumns.collectAsStateWithLifecycle(HomeFeedColumns.AUTO)
+    // Cards per row is the Home grid's setting; search results stay responsive.
+    val feedColumns = remember { mutableStateOf(HomeFeedColumns.AUTO) }
     val deepFlow =
         remember(preferences) {
             combine(
