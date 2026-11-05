@@ -9,6 +9,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
 import io.github.aedev.flow.data.model.SponsorBlockSegment
@@ -35,8 +36,10 @@ internal fun DrawScope.drawSeekTrack(
     bufferedValue: Float,
     colors: SeekTrackColors,
     bottomAligned: Boolean,
+    restTrackHeight: Dp = RestTrackHeight,
+    activeTrackHeight: Dp = ActiveTrackHeight,
 ) {
-    val trackHeightPx = lerp(RestTrackHeight.toPx(), ActiveTrackHeight.toPx(), expansion)
+    val trackHeightPx = lerp(restTrackHeight.toPx(), activeTrackHeight.toPx(), expansion)
     val width = size.width
     val trackTop =
         if (bottomAligned) {
