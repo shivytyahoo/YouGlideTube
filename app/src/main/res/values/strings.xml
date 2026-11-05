@@ -695,7 +695,6 @@
     <!-- Settings Screen -->
     <string name="settings_title">Settings</string>
     <string name="settings_flow_engine_header">YouGlideTube Engine</string>
-    <string name="settings_active_learning">ACTIVE LEARNING</string>
     <string name="settings_reset_brain_title">Reset YouGlideTube Personality?</string>
     <string name="settings_reset_brain_body">This erases your YouGlideTube Brain profile.\n\n• Learned topics are forgotten.\n• Personality traits reset.\n• Recommendations go back to default.\n\nThis cannot be undone.</string>
     <string name="settings_reset_everything">Reset Everything</string>
@@ -703,20 +702,18 @@
     <string name="settings_view_analytics">View Analytics</string>
     <!-- Deep Glide Mode -->
     <string name="deep_flow_mode_title">Deep Glide Mode</string>
-    <string name="deep_flow_mode_subtitle">Pause learning while you browse</string>
-    <string name="deep_flow_learning_paused">LEARNING PAUSED</string>
+    <string name="deep_flow_mode_subtitle">Browse privately: video pauses, history and scrobbling stop</string>
     <string name="deep_flow_expires_in">Expires in %s</string>
     <string name="deep_flow_expire_duration_title">Auto-disable after</string>
-    <string name="deep_flow_expire_duration_subtitle">Learning resumes automatically after %s</string>
+    <string name="deep_flow_expire_duration_subtitle">Private mode switches off automatically after %s</string>
     <string name="deep_flow_save_history_title">Save to watch history</string>
     <string name="deep_flow_save_history_subtitle">Keep watch history without teaching recommendations</string>
     <string name="deep_flow_scrobble_title">Scrobble during Deep Glide</string>
-    <string name="taste_learning_paused">Deep Glide is on, learning is paused</string>
     <string name="deep_flow_scrobble_subtitle">Keep sending listens to Last.fm, Libre.fm and ListenBrainz</string>
     <string name="deep_flow_on_search_title">Show on search</string>
     <string name="deep_flow_on_search_subtitle">A Deep Glide switch above recent searches</string>
     <string name="deep_flow_dialog_title">Pause Duration</string>
-    <string name="deep_flow_dialog_body">How long should learning stay paused?</string>
+    <string name="deep_flow_dialog_body">How long should private mode stay on?</string>
     <string name="deep_flow_enabled_message">Deep Glide enabled</string>
     <string name="deep_flow_disabled_message">Deep Glide disabled</string>
     <string name="deep_flow_expired_message">Deep Glide timer ended</string>
@@ -907,8 +904,8 @@
     <!-- Player Appearance -->
     <string name="player_appearance_title">Player Appearance</string>
     <string name="player_appearance_header">Customize Player Controls</string>
-    <string name="player_appearance_style_title">Music Progress Bar Style</string>
-    <string name="player_appearance_style_subtitle">Select the visual style of the seek bar</string>
+    <string name="player_appearance_style_title">Progress Bar Style</string>
+    <string name="player_appearance_style_subtitle">Thickness applies to video too; wavy styles stay on the music player</string>
     <string name="player_background_style_title">Music Player Background</string>
     <string name="player_background_style_blur_gradient">Blur + Gradient</string>
     <string name="player_background_style_blur">Blurred Artwork</string>
@@ -1171,7 +1168,7 @@
     <string name="content_settings_home_subscriptions_subtitle">Mix videos from channels you follow into Home</string>
     <string name="settings_section_watch_history">Watch history</string>
     <string name="pause_watch_history_title">Pause watch history</string>
-    <string name="pause_watch_history_subtitle">Stop saving what you watch. Deep Glide also pauses learning</string>
+    <string name="pause_watch_history_subtitle">Stop saving what you watch</string>
     <string name="content_settings_show_app_logo_title">Show app logo icon</string>
     <string name="content_settings_show_app_logo_subtitle">Show the YouGlideTube logo in the Home top bar</string>
     <string name="content_settings_header_shorts">Shorts</string>
@@ -1634,6 +1631,7 @@
     <string name="tools_subtitle">Set reminders to balance your viewing habits</string>
     <string name="bedtime_start_title">Bedtime Start</string>
     <string name="bedtime_end_title">Wake Up Time</string>
+    <string name="bedtime_end_subtitle">End of the sleep window, shown with bedtime</string>
     <string name="confirm">Confirm</string>
     <!-- Sleep Timer -->
     <string name="sleep_timer">Sleep Timer</string>
