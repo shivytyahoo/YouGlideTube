@@ -9,7 +9,7 @@ import androidx.glance.testing.unit.hasContentDescriptionEqualTo
 import androidx.glance.testing.unit.hasTextEqualTo
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import io.github.aedev.flow.data.local.PlaylistRepository
+import io.github.aedev.flow.data.account.AccountPlaylistIds
 import io.github.aedev.flow.data.model.Video
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -23,7 +23,7 @@ class PlaylistContentTest {
     private val context: Context = ApplicationProvider.getApplicationContext()
 
     private val watchLater =
-        WidgetPlaylist(id = PlaylistRepository.WATCH_LATER_ID, name = "Watch later", count = 2, coverUrl = null, isMusic = false)
+        WidgetPlaylist(id = AccountPlaylistIds.WATCH_LATER, name = "Watch later", count = 2, coverUrl = null, isMusic = false)
 
     private fun video(
         id: String,
