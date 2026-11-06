@@ -32,10 +32,13 @@ import dagger.hilt.android.AndroidEntryPoint
 import io.github.aedev.flow.data.local.AppFontPreferences
 import io.github.aedev.flow.data.local.AppUiModePreferences
 import io.github.aedev.flow.data.local.LocalDataManager
+import io.github.aedev.flow.data.local.PlayerPreferences
 import io.github.aedev.flow.data.repository.DeArrowRepository
 import io.github.aedev.flow.data.repository.OriginalTitleRepository
 import io.github.aedev.flow.discord.DiscordPresenceRuntime
+import io.github.aedev.flow.innertube.YouTube
 import io.github.aedev.flow.notification.NotificationHelper
+import io.github.aedev.flow.notification.collectFreshSubscriptionVideos
 import io.github.aedev.flow.platform.AppIconController
 import io.github.aedev.flow.platform.AppUiMode
 import io.github.aedev.flow.platform.AppUiRoot
@@ -312,6 +315,21 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         DiscordPresenceRuntime.setAppForeground(true)
+        // Opening the app checks for new subscription videos (throttled), so the bell badge
+        // is live on open instead of only after a manual pull-to-refresh in the panel.
+        lifecycleScope.launch(Dispatchers.IO) {
+            runCatching {
+                val preferences = PlayerPreferences(applicationContext)
+                if (!preferences.notificationsEnabled.first() || !preferences.notifNewVideosEnabled.first()) return@launch
+                if (!YouTube.isSignedIn()) return@launch
+                val last = preferences.lastForegroundSubscriptionCheckMs.first()
+                if (System.currentTimeMillis() - last < FOREGROUND_CHECK_MIN_INTERVAL_MS) return@launch
+                preferences.setLastForegroundSubscriptionCheckMs(System.currentTimeMillis())
+                collectFreshSubscriptionVideos(applicationContext)
+                // The inbox changed, so the tray summary (and the launcher badge) must follow.
+                runCatching { NotificationHelper.syncSubscriptionSummary(applicationContext) }
+            }
+        }
     }
 
     override fun onDestroy() {
@@ -385,7 +403,14 @@ class MainActivity : ComponentActivity() {
         }
 
         val isShort = intent.getBooleanExtra("is_short", false) || intent.getBooleanExtra("is_shorts", false)
-        notificationVideoId?.let { links.openVideo(it, isShort = isShort) }
+        notificationVideoId?.let {
+            // Opening a video from its tray notification marks it read, so the bell drops with it.
+            lifecycleScope.launch(Dispatchers.IO) {
+                runCatching { PlayerPreferences(applicationContext).markInboxRead(it) }
+                runCatching { NotificationHelper.syncSubscriptionSummary(applicationContext) }
+            }
+            links.openVideo(it, isShort = isShort)
+        }
     }
 
     override fun onPictureInPictureModeChanged(
@@ -709,5 +734,8 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         const val EXTRA_BENCHMARK_BYPASS_ONBOARDING = "io.github.aedev.flow.extra.BENCHMARK_BYPASS_ONBOARDING"
+
+        /** Opening the app checks for new subscription videos at most this often. */
+        private const val FOREGROUND_CHECK_MIN_INTERVAL_MS = 30L * 60 * 1000
     }
 }
