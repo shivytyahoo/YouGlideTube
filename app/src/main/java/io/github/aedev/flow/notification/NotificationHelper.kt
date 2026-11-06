@@ -336,6 +336,63 @@ object NotificationHelper {
         val thumbnailUrl: String?,
     )
 
+    /** Stable tray id for one subscription video; the summary (1999) sits below this range. */
+    private fun videoNotificationId(videoId: String): Int =
+        NOTIFICATION_NEW_VIDEO + videoId.hashCode().and(0xFFFF)
+
+    /**
+     * One child notification for one unread subscription video. The first post alerts;
+     * re-posts (same id) stay silent when [alertOnce] is true, so re-syncing the tray
+     * never buzzes the phone again.
+     */
+    private suspend fun postSubscriptionVideoNotification(
+        context: Context,
+        manager: NotificationManagerCompat,
+        videoId: String,
+        channelName: String,
+        videoTitle: String,
+        thumbnailUrl: String?,
+        alertOnce: Boolean,
+    ) {
+        val notifId = videoNotificationId(videoId)
+        val watchIntent =
+            Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                putExtra("notification_video_id", videoId)
+                putExtra("video_id", videoId)
+                putExtra("video_title", videoTitle)
+            }
+        val watchPendingIntent =
+            PendingIntent.getActivity(
+                context,
+                notifId,
+                watchIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+        val builder =
+            NotificationCompat
+                .Builder(context, CHANNEL_SUBSCRIPTIONS)
+                .setSmallIcon(R.drawable.ic_launcher_dynamic_foreground)
+                .setContentTitle(channelName)
+                .setContentText(videoTitle)
+                .setContentIntent(watchPendingIntent)
+                .setAutoCancel(true)
+                .setOnlyAlertOnce(alertOnce)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setCategory(NotificationCompat.CATEGORY_SOCIAL)
+                .setGroup(GROUP_NEW_VIDEOS)
+                .setDeleteIntent(dismissVideoDeleteIntent(context, videoId))
+        thumbnailUrl?.let { url ->
+            getBitmapFromUrl(context, url, followThumbnailSetting = true)?.let { bm ->
+                builder.setLargeIcon(bm)
+                builder.setStyle(
+                    NotificationCompat.BigPictureStyle().bigPicture(bm).bigLargeIcon(null as Bitmap?),
+                )
+            }
+        }
+        manager.notify(notifId, builder.build())
+    }
+
     /**
      * Dispatcher for subscription update notifications.
      */
@@ -348,48 +405,63 @@ object NotificationHelper {
         if (videos.isEmpty()) return
 
         val manager = NotificationManagerCompat.from(context)
-        val multiple = videos.size > 1
 
         videos.forEach { v ->
-            val notifId = NOTIFICATION_NEW_VIDEO + v.videoId.hashCode().and(0xFFFF)
-            val watchIntent =
-                Intent(context, MainActivity::class.java).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                    putExtra("notification_video_id", v.videoId)
-                    putExtra("video_id", v.videoId)
-                    putExtra("video_title", v.videoTitle)
-                }
-            val watchPendingIntent =
-                PendingIntent.getActivity(
-                    context,
-                    notifId,
-                    watchIntent,
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-                )
-            val builder =
-                NotificationCompat
-                    .Builder(context, CHANNEL_SUBSCRIPTIONS)
-                    .setSmallIcon(R.drawable.ic_launcher_dynamic_foreground)
-                    .setContentTitle(v.channelName)
-                    .setContentText(v.videoTitle)
-                    .setContentIntent(watchPendingIntent)
-                    .setAutoCancel(true)
-                    .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-                    .setCategory(NotificationCompat.CATEGORY_SOCIAL)
-                    .setGroup(GROUP_NEW_VIDEOS)
-            v.thumbnailUrl?.let { url ->
-                getBitmapFromUrl(context, url, followThumbnailSetting = true)?.let { bm ->
-                    builder.setLargeIcon(bm)
-                    builder.setStyle(
-                        NotificationCompat.BigPictureStyle().bigPicture(bm).bigLargeIcon(null as Bitmap?),
-                    )
-                }
-            }
-            manager.notify(notifId, builder.build())
+            postSubscriptionVideoNotification(
+                context,
+                manager,
+                v.videoId,
+                v.channelName,
+                v.videoTitle,
+                v.thumbnailUrl,
+                alertOnce = false,
+            )
         }
 
-        if (!multiple) return
+        // The summary carries the count everywhere: the tray badge and the in-app bell
+        // both read the unread inbox total, never just this batch.
+        syncSubscriptionSummary(context)
+    }
 
+    /**
+     * The one number the launcher badge and the in-app bell both show: the unread inbox
+     * total. Re-posts the group summary with that number whenever the inbox changes, and
+     * removes it once nothing is unread — so the tray and the bell can never disagree,
+     * and the count only drops when the user clears something. It also keeps one child
+     * notification per unread video: Samsung's badge counts the active notifications in
+     * the shade, and a group summary on its own has nothing to count.
+     */
+    suspend fun syncSubscriptionSummary(context: Context) {
+        if (!hasNotificationPermission(context)) return
+        val manager = NotificationManagerCompat.from(context)
+        val unread =
+            PlayerPreferences(context).inboxNotifications.first().filter { !it.read }
+        // Reconcile the children first: drop stale ones (watched or cleared since the
+        // last sync) and post the missing ones silently, so the shade always carries
+        // exactly the unread videos — that is what the badge counts.
+        val activeIds = manager.activeNotifications.map { it.id }.toSet()
+        val unreadIds = unread.map { videoNotificationId(it.videoId) }.toSet()
+        activeIds
+            .filter { it in NOTIFICATION_NEW_VIDEO..(NOTIFICATION_NEW_VIDEO + 0xFFFF) && it !in unreadIds }
+            .forEach { manager.cancel(it) }
+        unread.forEach { entry ->
+            val id = videoNotificationId(entry.videoId)
+            if (id !in activeIds) {
+                postSubscriptionVideoNotification(
+                    context,
+                    manager,
+                    entry.videoId,
+                    entry.channelName,
+                    entry.videoTitle,
+                    entry.thumbnailUrl,
+                    alertOnce = true,
+                )
+            }
+        }
+        if (unread.isEmpty()) {
+            manager.cancel(NOTIFICATION_NEW_VIDEO_SUMMARY)
+            return
+        }
         val summaryIntent =
             Intent(context, MainActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -407,17 +479,16 @@ object NotificationHelper {
                 .setBigContentTitle(
                     context.resources.getQuantityString(
                         R.plurals.notification_new_videos_from_subscriptions,
-                        videos.size,
-                        videos.size,
+                        unread.size,
+                        unread.size,
                     ),
                 )
-        videos.take(6).forEach { v ->
+        unread.take(6).forEach { v ->
             inboxStyle.addLine("${v.channelName}: ${v.videoTitle}")
         }
-        if (videos.size > 6) {
-            inboxStyle.setSummaryText(context.getString(R.string.notification_more, videos.size - 6))
+        if (unread.size > 6) {
+            inboxStyle.setSummaryText(context.getString(R.string.notification_more, unread.size - 6))
         }
-
         val summaryNotification =
             NotificationCompat
                 .Builder(context, CHANNEL_SUBSCRIPTIONS)
@@ -426,10 +497,11 @@ object NotificationHelper {
                 .setContentText(
                     context.resources.getQuantityString(
                         R.plurals.notification_new_videos_from_subscriptions,
-                        videos.size,
-                        videos.size,
+                        unread.size,
+                        unread.size,
                     ),
                 ).setContentIntent(summaryPendingIntent)
+                .setDeleteIntent(clearInboxDeleteIntent(context))
                 .setAutoCancel(true)
                 .setOnlyAlertOnce(true)
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
@@ -437,11 +509,55 @@ object NotificationHelper {
                 .setStyle(inboxStyle)
                 .setGroup(GROUP_NEW_VIDEOS)
                 .setGroupSummary(true)
-                .setNumber(videos.size)
+                .setNumber(unread.size)
                 .build()
-
         manager.notify(NOTIFICATION_NEW_VIDEO_SUMMARY, summaryNotification)
     }
+
+    /** Swiping one tray notification removes that video from the inbox, then re-syncs the count. */
+    suspend fun dismissInboxVideo(
+        context: Context,
+        videoId: String,
+    ) {
+        cancelNotification(context, NOTIFICATION_NEW_VIDEO + videoId.hashCode().and(0xFFFF))
+        PlayerPreferences(context).removeInboxNotification(videoId)
+        syncSubscriptionSummary(context)
+    }
+
+    /** Clearing the tray summary (or Clear all in the app) removes every inbox entry and its tray row. */
+    suspend fun clearInboxAndTray(context: Context) {
+        val preferences = PlayerPreferences(context)
+        val entries = preferences.inboxNotifications.first()
+        entries.forEach { entry ->
+            cancelNotification(context, NOTIFICATION_NEW_VIDEO + entry.videoId.hashCode().and(0xFFFF))
+        }
+        cancelNotification(context, NOTIFICATION_NEW_VIDEO_SUMMARY)
+        preferences.clearInboxNotifications()
+    }
+
+    private fun clearInboxDeleteIntent(context: Context): PendingIntent =
+        PendingIntent.getBroadcast(
+            context,
+            NOTIFICATION_NEW_VIDEO_SUMMARY,
+            Intent(context, NotificationDismissReceiver::class.java).apply {
+                action = NotificationDismissReceiver.ACTION_CLEAR_INBOX
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+
+    private fun dismissVideoDeleteIntent(
+        context: Context,
+        videoId: String,
+    ): PendingIntent =
+        PendingIntent.getBroadcast(
+            context,
+            NOTIFICATION_NEW_VIDEO + videoId.hashCode().and(0xFFFF),
+            Intent(context, NotificationDismissReceiver::class.java).apply {
+                action = NotificationDismissReceiver.ACTION_DISMISS_VIDEO
+                putExtra(NotificationDismissReceiver.EXTRA_VIDEO_ID, videoId)
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
 
     /**
      * Show notification for new video from subscribed channel
