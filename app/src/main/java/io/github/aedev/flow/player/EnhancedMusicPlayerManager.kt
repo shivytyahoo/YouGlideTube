@@ -733,18 +733,25 @@ object EnhancedMusicPlayerManager {
         }
     }
 
-    fun updateAutomixItems(items: List<MusicTrack>) {
+    fun updateAutomixItems(
+        items: List<MusicTrack>,
+        playedIds: Set<String> = emptySet(),
+    ) {
         _automixItems.value =
             MusicRadioPlanner.seedPool(
                 candidates = items,
                 currentId = _currentTrack.value?.videoId,
                 queueIds = _queue.value.mapTo(HashSet()) { it.videoId },
+                playedIds = playedIds,
             )
         triggerQueueSave()
     }
 
     /** Radio top-up path: grows the suggestion pool without disturbing what's already in it. */
-    fun appendAutomixItems(items: List<MusicTrack>) {
+    fun appendAutomixItems(
+        items: List<MusicTrack>,
+        playedIds: Set<String> = emptySet(),
+    ) {
         if (items.isEmpty()) return
         val existing = _automixItems.value
         val grown =
@@ -753,6 +760,7 @@ object EnhancedMusicPlayerManager {
                 incoming = items,
                 currentId = _currentTrack.value?.videoId,
                 queueIds = _queue.value.mapTo(HashSet()) { it.videoId },
+                playedIds = playedIds,
             )
         if (grown === existing) return
         _automixItems.value = grown
