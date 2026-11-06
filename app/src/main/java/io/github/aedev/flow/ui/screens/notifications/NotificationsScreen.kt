@@ -53,7 +53,7 @@ internal fun NotificationsScreen(
     val removedMessage = stringResource(R.string.notifications_removed)
     var showClearDialog by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) { viewModel.markAllRead() }
+    LaunchedEffect(Unit) { viewModel.refreshIfStale() }
 
     Scaffold(
         modifier = modifier,
@@ -104,7 +104,7 @@ internal fun NotificationsScreen(
                         items(unread, key = { it.videoId }) { entry ->
                             NotificationRow(
                                 entry = entry,
-                                onClick = { onVideoClick(entry.videoId) },
+                                onClick = { viewModel.markRead(entry.videoId); onVideoClick(entry.videoId) },
                                 onDismiss = {
                                     viewModel.dismiss(entry.videoId)
                                     scope.launch { snackbarHostState.showSnackbar(removedMessage) }
@@ -117,7 +117,7 @@ internal fun NotificationsScreen(
                         items(recent, key = { it.videoId }) { entry ->
                             NotificationRow(
                                 entry = entry,
-                                onClick = { onVideoClick(entry.videoId) },
+                                onClick = { viewModel.markRead(entry.videoId); onVideoClick(entry.videoId) },
                                 onDismiss = {
                                     viewModel.dismiss(entry.videoId)
                                     scope.launch { snackbarHostState.showSnackbar(removedMessage) }
@@ -130,7 +130,7 @@ internal fun NotificationsScreen(
                         items(earlier, key = { it.videoId }) { entry ->
                             NotificationRow(
                                 entry = entry,
-                                onClick = { onVideoClick(entry.videoId) },
+                                onClick = { viewModel.markRead(entry.videoId); onVideoClick(entry.videoId) },
                                 onDismiss = {
                                     viewModel.dismiss(entry.videoId)
                                     scope.launch { snackbarHostState.showSnackbar(removedMessage) }
