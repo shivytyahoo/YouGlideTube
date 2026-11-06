@@ -268,6 +268,8 @@ class PlayerPreferences(
         val NOTIF_NEW_VIDEOS_ENABLED = booleanPreferencesKey("notif_new_videos_enabled")
         val SUBSCRIPTION_SEEN_VIDEO_IDS = stringSetPreferencesKey("subscription_seen_video_ids")
         val SUBSCRIPTION_CHECK_SEEDED = booleanPreferencesKey("subscription_check_seeded")
+        val SUBSCRIPTION_CHECK_LAST_MS = longPreferencesKey("subscription_check_last_ms")
+        val SUBSCRIPTION_CHECK_LAST_FOREGROUND_MS = longPreferencesKey("subscription_check_last_foreground_ms")
         val NOTIFICATION_INBOX = stringPreferencesKey("notification_inbox")
         val NOTIF_SHORTS_ENABLED = booleanPreferencesKey("notif_shorts_enabled")
         val NOTIF_DOWNLOADS_ENABLED = booleanPreferencesKey("notif_downloads_enabled")
@@ -1724,6 +1726,23 @@ class PlayerPreferences(
         context.playerPreferencesDataStore.edit { preferences ->
             preferences[Keys.SUBSCRIPTION_SEEN_VIDEO_IDS] = seenVideoIds
             preferences[Keys.SUBSCRIPTION_CHECK_SEEDED] = seeded
+            preferences[Keys.SUBSCRIPTION_CHECK_LAST_MS] = System.currentTimeMillis()
+        }
+    }
+
+    /** Last time a subscriptions check successfully fetched the feed; only videos published after this count as new. */
+    val lastSubscriptionCheckMs: Flow<Long> =
+        context.playerPreferencesDataStore.data
+            .map { preferences -> preferences[Keys.SUBSCRIPTION_CHECK_LAST_MS] ?: 0L }
+
+    /** Last time opening the app ran a subscriptions check; throttles the foreground check. */
+    val lastForegroundSubscriptionCheckMs: Flow<Long> =
+        context.playerPreferencesDataStore.data
+            .map { preferences -> preferences[Keys.SUBSCRIPTION_CHECK_LAST_FOREGROUND_MS] ?: 0L }
+
+    suspend fun setLastForegroundSubscriptionCheckMs(millis: Long) {
+        context.playerPreferencesDataStore.edit { preferences ->
+            preferences[Keys.SUBSCRIPTION_CHECK_LAST_FOREGROUND_MS] = millis
         }
     }
 
@@ -1751,18 +1770,21 @@ class PlayerPreferences(
         context.playerPreferencesDataStore.edit { preferences ->
             val current = preferences.inboxEntries()
             val known = current.map { it.videoId }.toSet()
-            val merged = (entries.filter { it.videoId !in known } + current).take(MAX_INBOX_ENTRIES)
+            val merged =
+                (entries.filter { it.videoId !in known } + current)
+                    .sortedByDescending { it.effectivePublishedAt }
+                    .take(MAX_INBOX_ENTRIES)
             preferences[Keys.NOTIFICATION_INBOX] = InboxJson.encodeToString(merged)
         }
     }
 
-    /** Marks every arrived notification read; opening the section clears the bell badge. */
-    suspend fun markInboxAllRead() {
+    /** Marks one arrived notification read; tapping it to watch is what clears its badge. */
+    suspend fun markInboxRead(videoId: String) {
         context.playerPreferencesDataStore.edit { preferences ->
             val current = preferences.inboxEntries()
-            if (current.any { !it.read }) {
+            if (current.any { it.videoId == videoId && !it.read }) {
                 preferences[Keys.NOTIFICATION_INBOX] =
-                    InboxJson.encodeToString(current.map { it.copy(read = true) })
+                    InboxJson.encodeToString(current.map { if (it.videoId == videoId) it.copy(read = true) else it })
             }
         }
     }
