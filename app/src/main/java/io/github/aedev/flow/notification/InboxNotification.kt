@@ -16,4 +16,9 @@ data class InboxNotification(
     val thumbnailUrl: String? = null,
     val receivedAt: Long,
     val read: Boolean = false,
-)
+    /** Approximate publish time, parsed from the feed's relative "3 days ago"; 0 when unknown. */
+    val publishedAt: Long = 0L,
+) {
+    /** Newest-first ordering key: the publish time when known, else the arrival time. */
+    val effectivePublishedAt: Long get() = if (publishedAt > 0) publishedAt else receivedAt
+}
