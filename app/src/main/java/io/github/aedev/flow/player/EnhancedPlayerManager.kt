@@ -86,6 +86,7 @@ import io.github.aedev.flow.player.surface.VideoSurfacePolicy
 import io.github.aedev.flow.player.tracker.PlaybackTracker
 import io.github.aedev.flow.utils.NetworkState
 import io.github.aedev.flow.utils.ThumbnailUrlResolver
+import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -123,6 +124,7 @@ class EnhancedPlayerManager private constructor() {
         private const val SABR_QUALITY_KEY_PREFIX = "sabr:"
         private const val LIVE_QUALITY_KEY_PREFIX = "live:"
         private const val AUTO_NEXT_TAG = "FlowVideoAutoNext"
+        private const val MAX_PLAYED_VIDEO_IDS = 500
 
         // Deliberately the error handler's tag: these lines are what a user's diagnostics dump is read for.
         private const val DENIAL_TAG = "PlayerErrorHandler"
@@ -211,6 +213,11 @@ class EnhancedPlayerManager private constructor() {
     @Volatile private var queueAutoplayEnabled: Boolean = true
     private var autoplayCandidates: List<Video> = emptyList()
     private var autoplaySourceVideoId: String? = null
+
+    // Videos this session already played. Every video's related list leads with the same few
+    // popular songs, and autoplay re-seeds from each new video — without this memory the
+    // player cycles those songs forever instead of moving on to new ones.
+    private val playedVideoIds: MutableSet<String> = ConcurrentHashMap.newKeySet()
 
     @Volatile private var relatedCandidatesSnapshot = RelatedCandidatesSnapshot()
     private var autoplayJob: Job? = null
@@ -1274,6 +1281,14 @@ class EnhancedPlayerManager private constructor() {
     private fun resetPlaybackStateForNewVideo(videoId: String) {
         if (startPausedVideoId != videoId) startPausedVideoId = null
         clearAutoplayCountdownInternal()
+        // Every video that starts counts as played, so the next advance never brings it back.
+        if (playedVideoIds.size >= MAX_PLAYED_VIDEO_IDS) playedVideoIds.clear()
+        playedVideoIds += videoId
+        // Watching it clears its notification, wherever it was opened from — a video
+        // opened from Home or Search is just as watched as one tapped from the inbox.
+        appContext?.let { context ->
+            scope.launch { runCatching { PlayerPreferences(context).markInboxRead(videoId) } }
+        }
         currentVideoId = videoId
         liveQualityHeights = emptyList()
         liveIsPortrait = false
@@ -1811,7 +1826,7 @@ class EnhancedPlayerManager private constructor() {
                 current = existingRelatedCandidates,
             )
         relatedCandidatesSnapshot = RelatedCandidatesSnapshot(sourceVideoId, relatedCandidates)
-        autoplayCandidates = relatedCandidates.filter { !it.isLive && !it.isUpcoming }
+        autoplayCandidates = relatedCandidates.filter { !it.isLive && !it.isUpcoming && it.id !in playedVideoIds }
         Log.d(TAG, "Autoplay candidates for $sourceVideoId: ${autoplayCandidates.size}, enabled=$enabled")
         autoNextLog("setAutoplayCandidates source=$sourceVideoId input=${videos.size} filtered=${autoplayCandidates.size} enabled=$enabled")
         if (sourceVideoId == currentVideoId) {
@@ -1849,16 +1864,28 @@ class EnhancedPlayerManager private constructor() {
             autoNextLog("playNextAutoplayCandidate blocked")
             return false
         }
+        return playNextCandidate(reason = "related-autoplay")
+    }
 
+    /** Manual next at the end of the queue: the next related video this session has not played yet. This is the viewer's explicit tap, so it does not wait on the autoplay switch. */
+    internal fun playNextUnplayedCandidate(): Boolean {
+        if (autoplayJob?.isActive == true || _playerState.value.isLooping) return false
+        return playNextCandidate(reason = "manual-next")
+    }
+
+    private fun playNextCandidate(reason: String): Boolean {
+        while (autoplayCandidates.firstOrNull()?.id in playedVideoIds) {
+            autoplayCandidates = autoplayCandidates.drop(1)
+        }
         val nextVideo =
             autoplayCandidates.firstOrNull() ?: run {
-                autoNextLog("playNextAutoplayCandidate no candidate")
+                autoNextLog("playNextCandidate no candidate")
                 return false
             }
 
-        autoNextLog("playNextAutoplayCandidate starting ${nextVideo.id}")
+        autoNextLog("playNextCandidate starting ${nextVideo.id}")
         autoplayCandidates = autoplayCandidates.drop(1)
-        playVideoFromServiceLayer(nextVideo, reason = "related-autoplay")
+        playVideoFromServiceLayer(nextVideo, reason = reason)
         return true
     }
 
