@@ -7,6 +7,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.aedev.flow.data.local.PlayerPreferences
 import io.github.aedev.flow.notification.InboxNotification
+import io.github.aedev.flow.notification.NotificationHelper
 import io.github.aedev.flow.notification.collectFreshSubscriptionVideos
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
@@ -35,16 +36,32 @@ internal class NotificationsViewModel
         private val _isRefreshing = MutableStateFlow(false)
         val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
-        fun markAllRead() {
-            viewModelScope.launch { preferences.markInboxAllRead() }
+        /** Last time the section checked for new videos on its own; opening it refreshes at most this often. */
+        private var lastAutoRefreshMs = 0L
+        private val autoRefreshMinIntervalMs = 5L * 60 * 1000
+
+        /** Tapping a notification to watch it is what clears its badge — opening the section does not. */
+        fun markRead(videoId: String) {
+            viewModelScope.launch {
+                preferences.markInboxRead(videoId)
+                NotificationHelper.syncSubscriptionSummary(context)
+            }
         }
 
         fun dismiss(videoId: String) {
-            viewModelScope.launch { preferences.removeInboxNotification(videoId) }
+            viewModelScope.launch { NotificationHelper.dismissInboxVideo(context, videoId) }
         }
 
         fun clearAll() {
-            viewModelScope.launch { preferences.clearInboxNotifications() }
+            viewModelScope.launch { NotificationHelper.clearInboxAndTray(context) }
+        }
+
+        /** Opening the section fetches fresh videos itself, so the bell is live without a manual pull. */
+        fun refreshIfStale() {
+            val now = System.currentTimeMillis()
+            if (now - lastAutoRefreshMs < autoRefreshMinIntervalMs) return
+            lastAutoRefreshMs = now
+            refresh()
         }
 
         fun refresh() {
@@ -55,6 +72,8 @@ internal class NotificationsViewModel
                 if (!preferences.notificationsEnabled.first() || !preferences.notifNewVideosEnabled.first()) return@launch
                 _isRefreshing.value = true
                 runCatching { collectFreshSubscriptionVideos(context) }
+                // The inbox changed, so the tray summary (and the launcher badge) must follow.
+                runCatching { NotificationHelper.syncSubscriptionSummary(context) }
                 _isRefreshing.value = false
             }
         }
