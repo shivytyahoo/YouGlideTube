@@ -267,6 +267,17 @@
             </intent-filter>
         </receiver>
 
+        <!-- Swiping a subscription notification away clears it from the inbox too -->
+        <receiver
+            android:name=".notification.NotificationDismissReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="io.github.aedev.flow.action.CLEAR_INBOX" />
+                <action android:name="io.github.aedev.flow.action.DISMISS_NOTIFICATION_VIDEO" />
+            </intent-filter>
+        </receiver>
+
         <!-- Restores a launcher entry after an update if the chosen icon alias no longer exists. -->
         <receiver
             android:name=".platform.LauncherAliasRepairReceiver"
