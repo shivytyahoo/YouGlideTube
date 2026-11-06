@@ -472,11 +472,9 @@ class VideoPlayerViewModel
         fun playNext() {
             val handledByPlayer = playerManager.playNext(loadStreamsInPlayer = false)
             if (!handledByPlayer) {
-                _uiState.value.relatedVideos.firstOrNull()?.let { nextVideo ->
-                    playVideo(nextVideo, userOpened = false)
-                    io.github.aedev.flow.player.GlobalPlayerState
-                        .setCurrentVideo(nextVideo)
-                }
+                // The queue is over: advance to the next related video this session has
+                // not played yet, instead of replaying the first related video.
+                playerManager.playNextUnplayedCandidate()
             }
         }
 
