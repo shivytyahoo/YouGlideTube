@@ -67,11 +67,12 @@ internal object MusicRadioPlanner {
         candidates: List<MusicTrack>,
         currentId: String?,
         queueIds: Set<String>,
+        playedIds: Set<String> = emptySet(),
     ): List<MusicTrack> =
         capArtists(
             candidates
                 .distinctBy { it.videoId }
-                .filterNot { it.videoId == currentId || it.videoId in queueIds },
+                .filterNot { it.videoId == currentId || it.videoId in queueIds || it.videoId in playedIds },
             emptyMap(),
         ).take(MAX_POOL_SIZE)
 
@@ -105,6 +106,7 @@ internal object MusicRadioPlanner {
         incoming: List<MusicTrack>,
         currentId: String?,
         queueIds: Set<String>,
+        playedIds: Set<String> = emptySet(),
     ): List<MusicTrack> {
         val room = MAX_POOL_SIZE - existing.size
         if (room <= 0) return existing
@@ -113,7 +115,7 @@ internal object MusicRadioPlanner {
             capArtists(
                 incoming
                     .distinctBy { it.videoId }
-                    .filterNot { it.videoId == currentId || it.videoId in queueIds || it.videoId in existingIds },
+                    .filterNot { it.videoId == currentId || it.videoId in queueIds || it.videoId in existingIds || it.videoId in playedIds },
                 artistCounts(existing),
             ).take(room)
         return if (fresh.isEmpty()) existing else existing + fresh
@@ -145,5 +147,6 @@ internal object MusicRadioPlanner {
         pool: List<MusicTrack>,
         queueIds: Set<String>,
         limit: Int,
-    ): List<MusicTrack> = pool.filterNot { it.videoId in queueIds }.take(limit)
+        playedIds: Set<String> = emptySet(),
+    ): List<MusicTrack> = pool.filterNot { it.videoId in queueIds || it.videoId in playedIds }.take(limit)
 }
