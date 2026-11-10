@@ -57,6 +57,7 @@ internal fun SettingsHomeScreen(
 ) {
     val context = LocalContext.current
     val deepFlow by viewModel.deepFlow.collectAsStateWithLifecycle()
+    val batterySaver by viewModel.batterySaver.collectAsStateWithLifecycle()
     val updateCheck by viewModel.updateCheck.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -115,6 +116,7 @@ internal fun SettingsHomeScreen(
                     SettingsHomeState(
                         selected = selected,
                         deepFlow = deepFlow,
+                        batterySaver = batterySaver,
                         updateCheckingLabel = checkingLabel.takeIf { updateCheck == UpdateCheckState.Checking },
                         selectedRowFocus = selectedRowFocus,
                     ),
@@ -122,6 +124,7 @@ internal fun SettingsHomeScreen(
                     SettingsHomeActions(
                         onOpen = onOpen,
                         onDeepFlowChange = viewModel::setDeepFlowEnabled,
+                        onBatterySaverChange = viewModel::setBatterySaverEnabled,
                         onDurationClick = { showDurationDialog = true },
                         onSaveHistoryChange = viewModel::setDeepFlowSaveToHistory,
                         onScrobbleChange = viewModel::setDeepFlowScrobble,
