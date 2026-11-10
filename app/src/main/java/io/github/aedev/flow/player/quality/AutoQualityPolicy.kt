@@ -41,16 +41,19 @@ internal object AutoQualityPolicy {
         return next.takeIf { it.bitrate == 0 || estimateBps > required }
     }
 
-    /** One quality down, when the estimate has fallen below [PlayerConfig.QUALITY_DOWNGRADE_THRESHOLD] of the current bitrate. */
-    fun stepDownForBandwidth(
+    /**
+     * Straight to the tallest quality the current estimate can sustain, instead of one rung at a
+     * time: a collapsed link walked 1080p to 360p one rung per 10 s while the player stalled at
+     * every step. Null when the fitting rung is not below the current one.
+     */
+    fun jumpDown(
         current: VideoStream,
         streams: List<VideoStream>,
         estimateBps: Long,
         preferredCodec: String?,
     ): VideoStream? {
-        if (current.bitrate <= 0) return null
-        if (estimateBps >= current.bitrate * PlayerConfig.QUALITY_DOWNGRADE_THRESHOLD) return null
-        return stepDown(current, streams, preferredCodec)
+        val fitting = initialPick(streams, estimateBps, preferredCodec) ?: return null
+        return fitting.takeIf { height(it) < height(current) }
     }
 
     fun stepDown(
