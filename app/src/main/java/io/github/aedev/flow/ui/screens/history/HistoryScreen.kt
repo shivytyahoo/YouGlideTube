@@ -23,10 +23,10 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,7 +48,6 @@ import io.github.aedev.flow.ui.components.library.HistoryList
 import io.github.aedev.flow.ui.components.shared.FlowAlertDialog
 import io.github.aedev.flow.ui.components.shared.FlowEmptyState
 import io.github.aedev.flow.ui.components.shared.FlowSearchField
-import kotlinx.coroutines.launch
 
 private val SearchFieldPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
 
@@ -72,20 +71,39 @@ fun HistoryScreen(
     var showClearDialog by remember { mutableStateOf(false) }
     var showClearShortsDialog by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
 
     val removedLabel = stringResource(R.string.removed_from_history)
     val undoLabel = stringResource(R.string.action_undo)
+    val clearFailedLabel = stringResource(R.string.history_clear_failed)
+    val removeFailedLabel = stringResource(R.string.history_remove_failed)
     val onRemove: (VideoHistoryEntry) -> Unit = { entry ->
         viewModel.removeFromHistory(entry.videoId)
-        scope.launch {
-            val result =
-                snackbarHostState.showSnackbar(
-                    message = removedLabel,
-                    actionLabel = undoLabel,
-                )
-            if (result == SnackbarResult.ActionPerformed) {
-                viewModel.restoreHistoryEntry(entry)
+    }
+    // The row only leaves after the server confirms the remove, so the
+    // snackbar — and its Undo — come from the VM's outcome, not the tap.
+    LaunchedEffect(Unit) {
+        viewModel.messages.collect { message ->
+            when (message) {
+                is HistoryUiMessage.Removed -> {
+                    val result =
+                        snackbarHostState.showSnackbar(
+                            message = removedLabel,
+                            actionLabel = undoLabel,
+                        )
+                    if (result == SnackbarResult.ActionPerformed) {
+                        viewModel.restoreHistoryEntry(message.entry)
+                    }
+                }
+
+                is HistoryUiMessage.Failed -> {
+                    snackbarHostState.showSnackbar(
+                        message =
+                            when (message.stringRes) {
+                                R.string.history_clear_failed -> clearFailedLabel
+                                else -> removeFailedLabel
+                            },
+                    )
+                }
             }
         }
     }
