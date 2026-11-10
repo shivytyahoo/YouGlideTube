@@ -1474,12 +1474,14 @@ class InnerTube {
     suspend fun likePlaylist(
         client: YouTubeClient,
         playlistId: String,
+        params: String? = null,
     ) = httpClient.post("like/like") {
         ytClient(client, setLogin = true)
         setBody(
             LikeBody(
                 context = client.toContext(locale, visitorData, dataSyncId),
                 target = LikeBody.Target.PlaylistTarget(playlistId),
+                params = params,
             ),
         )
     }
@@ -1487,14 +1489,69 @@ class InnerTube {
     suspend fun unlikePlaylist(
         client: YouTubeClient,
         playlistId: String,
+        params: String? = null,
     ) = httpClient.post("like/removelike") {
         ytClient(client, setLogin = true)
         setBody(
             LikeBody(
                 context = client.toContext(locale, visitorData, dataSyncId),
                 target = LikeBody.Target.PlaylistTarget(playlistId),
+                params = params,
             ),
         )
+    }
+
+    /**
+     * The same like, sent to the main site instead of the music host: a
+     * playlist the main site owns answers the music host with 404, the way
+     * its edits do (report 20), so the like is retried here with the session
+     * attached, never through mainSitePost (no cookie, no authorization).
+     */
+    suspend fun likePlaylistMainSite(
+        client: YouTubeClient,
+        playlistId: String,
+        like: Boolean,
+        params: String? = null,
+    ) = withRetry {
+        httpClient.post("https://www.youtube.com/youtubei/v1/like/${if (like) "like" else "removelike"}") {
+            ytClient(client, setLogin = true, apiUrl = YouTubeClient.API_URL_YOUTUBE)
+            if (cookie.isNullOrBlank() && oauthAccessToken != null && client.loginSupported) {
+                pageIdToken?.takeIf { it.isNotBlank() }?.let { header("X-Goog-Pageid", it) }
+            }
+            setBody(
+                LikeBody(
+                    context = client.toContext(locale, visitorData, dataSyncId),
+                    target = LikeBody.Target.PlaylistTarget(playlistId),
+                    params = params,
+                ),
+            )
+        }
+    }
+
+    /**
+     * A history control's tokens, sent to the main site: youtubei.js
+     * History.clearWatchHistory / removeVideo post the feedbackTokens the
+     * FEhistory page issued with its Clear-all button and each video's
+     * DELETE menu item to youtubei/v1/feedback. Without this the clear only
+     * wipes the local list and the next FEhistory fetch brings it all back
+     * (report 26).
+     */
+    suspend fun feedbackMainSite(
+        client: YouTubeClient,
+        tokens: List<String>,
+    ) = withRetry {
+        httpClient.post("https://www.youtube.com/youtubei/v1/feedback") {
+            ytClient(client, setLogin = true, apiUrl = YouTubeClient.API_URL_YOUTUBE)
+            if (cookie.isNullOrBlank() && oauthAccessToken != null && client.loginSupported) {
+                pageIdToken?.takeIf { it.isNotBlank() }?.let { header("X-Goog-Pageid", it) }
+            }
+            setBody(
+                FeedbackBody(
+                    context = client.toContext(locale, visitorData, dataSyncId),
+                    feedbackTokens = tokens,
+                ),
+            )
+        }
     }
 
     suspend fun addToPlaylist(
@@ -1513,6 +1570,68 @@ class InnerTube {
                     ),
             ),
         )
+    }
+
+    /**
+     * Several edits in one request, the shape youtubei.js PlaylistManager uses:
+     * one playlist fetch, then one edit_playlist call carrying every action.
+     * N separate edits to the same playlist race each other on the server
+     * (report 15: rapid taps, then 400 "Precondition check failed" and 409s),
+     * so a multi-select remove goes through here, never one call per video.
+     */
+    suspend fun editPlaylist(
+        client: YouTubeClient,
+        playlistId: String,
+        actions: List<Action>,
+    ) = httpClient.post("browse/edit_playlist") {
+        ytClient(client, setLogin = true)
+        setBody(
+            EditPlaylistBody(
+                context = client.toContext(locale, visitorData, dataSyncId),
+                playlistId = playlistId.removePrefix("VL"),
+                actions = actions,
+            ),
+        )
+    }
+
+    /**
+     * The same edit, sent to the main site instead of the music host. System
+     * playlists are edited from www.youtube.com: the music host answers a Watch
+     * Later edit with 401 "You are not authorized to edit this playlist" while
+     * the same call gets 200 for a user playlist (device report 17).
+     *
+     * This must NOT go through mainSitePost: that helper sends no cookie and no
+     * authorization at all, so the endpoint answers a guest edit with HTTP 200
+     * and applies it to nobody — five 200 adds left the account's Watch Later
+     * empty (device report 19). The edit rides the same ytClient builder the
+     * main-site browses use, with the session attached.
+     */
+    suspend fun editPlaylistMainSite(
+        client: YouTubeClient,
+        playlistId: String,
+        actions: List<Action>,
+    ) = withRetry {
+        val response =
+            httpClient.post("https://www.youtube.com/youtubei/v1/browse/edit_playlist") {
+                ytClient(client, setLogin = true, apiUrl = YouTubeClient.API_URL_YOUTUBE)
+                if (cookie.isNullOrBlank() && oauthAccessToken != null && client.loginSupported) {
+                    pageIdToken?.takeIf { it.isNotBlank() }?.let { header("X-Goog-Pageid", it) }
+                }
+                setBody(
+                    EditPlaylistBody(
+                        context = client.toContext(locale, visitorData, dataSyncId),
+                        playlistId = playlistId.removePrefix("VL"),
+                        actions = actions,
+                    ),
+                )
+            }
+        // HTTP 200 alone proves nothing here (report 19), so log what the server says.
+        val bodyStatus =
+            runCatching {
+                Json.parseToJsonElement(response.bodyAsText()).jsonObject["status"]?.jsonPrimitive?.contentOrNull
+            }.getOrNull()
+        ShivLog.i("playlistEditBody id=$playlistId status=${response.status.value} bodyStatus=$bodyStatus")
+        response
     }
 
     suspend fun addPlaylistToPlaylist(
