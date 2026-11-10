@@ -3,6 +3,7 @@ package io.github.aedev.flow.ui.screens.settings.appearance
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ViewList
 import androidx.compose.material.icons.outlined.AppShortcut
+import androidx.compose.material.icons.outlined.Celebration
 import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.TextFields
@@ -35,6 +36,7 @@ import io.github.aedev.flow.ui.components.shared.FlowToggleOption
 import io.github.aedev.flow.ui.screens.settings.index.AppearanceIndex
 import io.github.aedev.flow.ui.screens.settings.index.DestinationIndex
 import io.github.aedev.flow.ui.theme.AppFont
+import io.github.aedev.flow.ui.theme.FestivalBackground
 import io.github.aedev.flow.ui.theme.GridItemSize
 import io.github.aedev.flow.ui.theme.ThemeCatalog
 import io.github.aedev.flow.ui.theme.ThemeMode
@@ -60,6 +62,7 @@ internal fun AppearanceScreen(
     val libraryPreviews by viewModel.libraryPreviews.collectAsStateWithLifecycle()
     val separatePlaylists by viewModel.separatePlaylists.collectAsStateWithLifecycle()
     val appLogo by viewModel.appLogo.collectAsStateWithLifecycle()
+    val animatedBackground by viewModel.animatedBackground.collectAsStateWithLifecycle()
     val cardLikeButtons by viewModel.cardLikeButtons.collectAsStateWithLifecycle()
     val cardMarkWatched by viewModel.cardMarkWatched.collectAsStateWithLifecycle()
 
@@ -68,6 +71,7 @@ internal fun AppearanceScreen(
     val iconAppliedMessage = stringResource(R.string.app_icon_apply_toast)
     var showIconDialog by rememberSaveable { mutableStateOf(false) }
     var showInterfaceDialog by rememberSaveable { mutableStateOf(false) }
+    var showAnimatedBackgroundsDialog by rememberSaveable { mutableStateOf(false) }
 
     val themeSummary =
         if (themeMode == ThemeMode.SYSTEM) {
@@ -82,6 +86,7 @@ internal fun AppearanceScreen(
     val iconSummary = stringResource(appIconOption(appIcon).nameRes)
     val fontSummary = fontLabel(font)
     val interfaceSummary = stringResource(interfaceModeLabel(interfaceMode))
+    val animatedBackgroundSummary = stringResource(FestivalBackground.byId(animatedBackground).nameRes)
     val viewModeOptions =
         listOf(
             FlowToggleOption(HomeViewMode.GRID, stringResource(R.string.content_settings_layout_grid), Icons.Outlined.GridView),
@@ -147,6 +152,13 @@ internal fun AppearanceScreen(
             switch(AppearanceIndex.libraryPreviews, libraryPreviews, viewModel::setLibraryPreviews)
             switch(AppearanceIndex.separatePlaylists, separatePlaylists, viewModel::setSeparatePlaylists)
             switch(AppearanceIndex.appLogo, appLogo, viewModel::setAppLogo)
+            nav(
+                AppearanceIndex.animatedBackgrounds,
+                value = animatedBackgroundSummary,
+                icon = Icons.Outlined.Celebration,
+                showChevron = false,
+                onClick = { showAnimatedBackgroundsDialog = true },
+            )
         }
         group(key = "appearance.cards", header = R.string.settings_section_video_cards) {
             switch(AppearanceIndex.cardLikeButtons, cardLikeButtons, viewModel::setCardLikeButtons)
@@ -185,6 +197,19 @@ internal fun AppearanceScreen(
             selected = interfaceMode,
             onSelect = viewModel::setInterfaceMode,
             onDismiss = { showInterfaceDialog = false },
+        )
+    }
+
+    if (showAnimatedBackgroundsDialog) {
+        FlowChoiceDialog(
+            title = stringResource(R.string.animated_backgrounds_title),
+            options =
+                FestivalBackground.entries.map { background ->
+                    FlowChoice(background.id, stringResource(background.nameRes))
+                },
+            selected = animatedBackground,
+            onSelect = viewModel::setAnimatedBackground,
+            onDismiss = { showAnimatedBackgroundsDialog = false },
         )
     }
 }
