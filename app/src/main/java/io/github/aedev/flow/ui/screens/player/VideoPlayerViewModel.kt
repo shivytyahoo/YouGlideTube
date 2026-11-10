@@ -71,8 +71,6 @@ class VideoPlayerViewModel
         private val videoDownloadManager: VideoDownloadManager,
         private val offlineSubtitleStore: io.github.aedev.flow.data.video.OfflineSubtitleStore,
         private val autoDownload: AutoDownloadTrigger,
-        private val accountPlaylists: io.github.aedev.flow.data.account.AccountPlaylists,
-        private val youTubePlaylists: io.github.aedev.flow.data.repository.YouTubePlaylistRepository,
         private val playerPreferences: PlayerPreferences,
         private val videoQueueStore: VideoQueueStore,
         private val watchLaterCleanup: WatchLaterCleanup,
@@ -225,29 +223,6 @@ class VideoPlayerViewModel
             videoDownloadManager.downloadedVideos
                 .map { list -> list.map { it.video.id }.toSet() }
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
-
-        /**
-         * Whether the video sits in any of the account's playlists (Watch later included),
-         * read from the account's pages; the save sheet itself always shows live membership.
-         */
-        fun isVideoSavedToAnyPlaylist(videoId: String): Flow<Boolean> =
-            kotlinx.coroutines.flow.flow {
-                emit(false)
-                if (!io.github.aedev.flow.innertube.YouTube.isSignedIn()) return@flow
-                accountPlaylists.ensureLoaded()
-                val candidates =
-                    accountPlaylists.playlists.value.map { it.id } +
-                        io.github.aedev.flow.data.account.AccountPlaylistIds.WATCH_LATER
-                var saved = false
-                for (playlistId in candidates.distinct()) {
-                    val videos = youTubePlaylists.complete(playlistId)?.videos.orEmpty()
-                    if (videos.any { it.id == videoId }) {
-                        saved = true
-                        break
-                    }
-                }
-                emit(saved)
-            }
 
         /**
          * Detect whether the device is currently on Wi-Fi.
