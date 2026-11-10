@@ -30,7 +30,12 @@ class DownloadValidator
                 val hasVideo = mimes.any { it.startsWith("video/") }
                 val durationUs =
                     tracks.maxOfOrNull { if (it.containsKey(MediaFormat.KEY_DURATION)) it.getLong(MediaFormat.KEY_DURATION) else 0L } ?: 0L
-                hasAudio && (hasVideo || !expectVideo) && durationMatches(durationUs / 1000L, expectedDurationMs)
+                val actualMs = durationUs / 1000L
+                val ok = hasAudio && (hasVideo || !expectVideo) && durationMatches(actualMs, expectedDurationMs)
+                if (!ok) {
+                    Log.w(TAG, "Rejecting ${file.name}: hasAudio=$hasAudio hasVideo=$hasVideo actualMs=$actualMs expectedMs=$expectedDurationMs")
+                }
+                ok
             } catch (e: Exception) {
                 Log.w(TAG, "Unreadable download ${file.name}", e)
                 false
