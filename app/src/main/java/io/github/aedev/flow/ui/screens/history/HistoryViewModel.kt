@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import io.github.aedev.flow.R
 import io.github.aedev.flow.data.local.PlayerPreferences
 import io.github.aedev.flow.data.local.VideoHistoryEntry
 import io.github.aedev.flow.innertube.YouTube
@@ -16,9 +17,14 @@ import io.github.aedev.flow.data.shorts.ShortsContentFilter
 import io.github.aedev.flow.data.shorts.queue.ShortsQueueHandoff
 import io.github.aedev.flow.data.shorts.queue.ShortsQueueSource
 import io.github.aedev.flow.utils.PerformanceDispatcher
+import io.github.aedev.flow.utils.ShivLog
 import io.github.aedev.flow.utils.ThumbnailUrlResolver
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -28,6 +34,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -38,6 +45,10 @@ import javax.inject.Inject
 private const val ENRICHMENT_BATCH_LIMIT = 30
 private const val ENRICHMENT_CHUNK_SIZE = 5
 private const val ENRICHMENT_CHUNK_DELAY_MS = 300L
+
+// Clear All loads at most 3 history pages a pass and the server keeps a
+// continuation past the third, so one pass can never empty a long history.
+private const val MAX_CLEAR_PASSES = 10
 
 enum class HistoryContentFilter {
     All,
@@ -84,9 +95,24 @@ class HistoryViewModel
         private val _uiState = MutableStateFlow(HistoryUiState())
         val uiState: StateFlow<HistoryUiState> = _uiState.asStateFlow()
 
+        private val _messages = Channel<HistoryUiMessage>(Channel.BUFFERED)
+        val messages: Flow<HistoryUiMessage> = _messages.receiveAsFlow()
+
         // Signed-in server list, kept apart so session plays can head it live.
         private val _serverEntries = MutableStateFlow<List<VideoHistoryEntry>>(emptyList())
         private val _serverShorts = MutableStateFlow<Map<String, io.github.aedev.flow.data.model.Video>>(emptyMap())
+
+        /** The Clear-all token the last FEhistory page carried, if the server sent one. */
+        private var clearHistoryToken: String? = null
+
+        // Report 29 killed the fallback twice the moment the user left the
+        // History screen: viewModelScope dies with the screen and cancels
+        // the job mid-batch. Clear All runs here instead — the scope is
+        // owned by this ViewModel but never cancelled with it, so leaving
+        // the screen cannot stop it; the job holds the scope alive only
+        // until it finishes, then both are collectable.
+        private val clearScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        private val isClearing = AtomicBoolean(false)
 
         private val _searchQuery = MutableStateFlow("")
         val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
@@ -237,6 +263,9 @@ class HistoryViewModel
         private suspend fun loadServerHistory() {
             val videos = mutableListOf<io.github.aedev.flow.data.model.Video>()
             val shortVideos = mutableMapOf<String, io.github.aedev.flow.data.model.Video>()
+            val removeTokens = mutableMapOf<String, String>()
+            var clearToken: String? = null
+            var clearTokenSource: String? = null
             var continuation: String? = null
             var pages = 0
             do {
@@ -246,6 +275,9 @@ class HistoryViewModel
                     shortVideos[short.id] = short
                     videos += short
                 }
+                removeTokens += page.removeTokens
+                if (clearToken == null) clearToken = page.clearHistoryToken
+                if (clearTokenSource == null) clearTokenSource = page.clearHistoryTokenSource
                 continuation = page.continuation
                 pages++
             } while (continuation != null && pages < 3)
@@ -268,8 +300,11 @@ class HistoryViewModel
                         channelName = video.channelName,
                         channelId = video.channelId,
                         isShort = video.isShort,
+                        removeFeedbackToken = removeTokens[video.id],
                     )
                 }
+            clearHistoryToken = clearToken
+            ShivLog.i("historyTokens clear=${clearToken != null} src=$clearTokenSource removes=${removeTokens.size} videos=${videos.size}")
             _serverEntries.value = entries
             _serverShorts.value = shortVideos
             // Snapshot the account list now: without this a logout drops every
@@ -358,41 +393,143 @@ class HistoryViewModel
         }
 
         fun clearHistory() {
-            viewModelScope.launch {
-                viewHistory.clearAllHistory()
+            // One clear at a time; a second tap while one runs is ignored —
+            // the running job keeps shrinking the list in the background.
+            if (!isClearing.compareAndSet(false, true)) return
+            clearScope.launch {
+                try {
+                    if (YouTube.isSignedIn()) {
+                        // The list IS the server list: wiping it locally only
+                        // brings it all back on the next refresh (report 26).
+                        // One pass removes at most the 3 loaded pages, and
+                        // the server keeps a continuation past the third
+                        // (report 29: cont=true on page 3), so removing the
+                        // newest entries just pulls older ones into the
+                        // window — the list stays full-looking after a single
+                        // pass. Loop: reload, remove, repeat until a reload
+                        // finds nothing left.
+                        var pass = 0
+                        while (pass < MAX_CLEAR_PASSES) {
+                            pass++
+                            loadServerHistory()
+                            val entries = _serverEntries.value
+                            if (entries.isEmpty()) break
+                            if (!clearLoadedHistory(entries)) {
+                                _messages.send(HistoryUiMessage.Failed(R.string.history_clear_failed))
+                                return@launch
+                            }
+                            ShivLog.i("historyClearPass pass=$pass remaining=${_serverEntries.value.size}")
+                        }
+                        if (_serverEntries.value.isNotEmpty()) {
+                            _messages.send(HistoryUiMessage.Failed(R.string.history_clear_failed))
+                            return@launch
+                        }
+                    }
+                    viewHistory.clearAllHistory()
+                    accountHistoryCapture.save(emptyList())
+                    clearHistoryToken = null
+                    _serverEntries.value = emptyList()
+                    _serverShorts.value = emptyMap()
+                    _uiState.update { it.copy(historyEntries = emptyList(), shortVideos = emptyMap()) }
+                } finally {
+                    isClearing.set(false)
+                }
             }
-            // Signed in, clearing is this session's view of the server list too,
-            // or the merge collector would put its entries straight back.
-            _serverEntries.value = emptyList()
-            _serverShorts.value = emptyMap()
-            _uiState.update { it.copy(historyEntries = emptyList(), shortVideos = emptyMap()) }
+        }
+
+        /**
+         * Removes exactly the loaded entries from the server: the Clear-all
+         * token when the page carried one, else every entry's own remove
+         * token in batches of 50. Each confirmed batch drops its rows from
+         * the list at once, so progress is visible and a stopped job still
+         * leaves the list smaller. False on refusal or partial coverage.
+         */
+        private suspend fun clearLoadedHistory(entries: List<VideoHistoryEntry>): Boolean {
+            val token = clearHistoryToken
+            if (token != null) {
+                return YouTube.sendHistoryFeedback(listOf(token)).getOrDefault(false)
+            }
+            val pairs =
+                entries.mapNotNull { entry ->
+                    entry.removeFeedbackToken?.let { entry.videoId to it }
+                }
+            // Partial coverage would leave history behind silently.
+            if (pairs.size != entries.size) return false
+            for (chunk in pairs.chunked(50)) {
+                if (!YouTube.sendHistoryFeedback(chunk.map { it.second }).getOrDefault(false)) {
+                    return false
+                }
+                val removedIds = chunk.map { it.first }.toSet()
+                _serverEntries.update { list -> list.filterNot { it.videoId in removedIds } }
+                _uiState.update { state ->
+                    state.copy(
+                        historyEntries = state.historyEntries.filterNot { it.videoId in removedIds },
+                    )
+                }
+            }
+            ShivLog.i("historyClearFallback tokens=${pairs.size}")
+            return true
         }
 
         fun clearShortsHistory() {
             viewModelScope.launch {
+                if (YouTube.isSignedIn()) {
+                    // No single "delete all Shorts" token exists: every short
+                    // carries its own remove token, and the feedback endpoint
+                    // takes a list of them in one call.
+                    val serverShorts = _serverEntries.value.filter { it.isShort }
+                    if (serverShorts.isNotEmpty()) {
+                        val tokens = serverShorts.mapNotNull { it.removeFeedbackToken }
+                        if (tokens.isEmpty() ||
+                            !YouTube.sendHistoryFeedback(tokens).getOrDefault(false)
+                        ) {
+                            _messages.send(HistoryUiMessage.Failed(R.string.history_clear_failed))
+                            return@launch
+                        }
+                    }
+                }
                 viewHistory.clearShortsHistory()
-            }
-            _serverEntries.update { entries -> entries.filterNot { it.isShort } }
-            _serverShorts.value = emptyMap()
-            _uiState.update { state ->
-                state.copy(
-                    historyEntries = state.historyEntries.filterNot { it.isShort },
-                    shortVideos = emptyMap(),
+                // The capture keeps the account snapshot; drop its shorts too,
+                // or a logout would resurrect them on the signed-out screen.
+                accountHistoryCapture.save(
+                    accountHistoryCapture.entriesFlow.first().filterNot { it.isShort },
                 )
+                _serverEntries.update { entries -> entries.filterNot { it.isShort } }
+                _serverShorts.value = emptyMap()
+                _uiState.update { state ->
+                    state.copy(
+                        historyEntries = state.historyEntries.filterNot { it.isShort },
+                        shortVideos = emptyMap(),
+                    )
+                }
             }
         }
 
         fun removeFromHistory(videoId: String) {
             viewModelScope.launch {
+                val entry = _uiState.value.historyEntries.firstOrNull { it.videoId == videoId }
+                if (YouTube.isSignedIn()) {
+                    val token =
+                        _serverEntries.value.firstOrNull { it.videoId == videoId }?.removeFeedbackToken
+                    if (token != null &&
+                        !YouTube.sendHistoryFeedback(listOf(token)).getOrDefault(false)
+                    ) {
+                        _messages.send(HistoryUiMessage.Failed(R.string.history_remove_failed))
+                        return@launch
+                    }
+                    // No token: the row is session-local, or the page never
+                    // carried its token — a local remove is all there is.
+                }
                 viewHistory.clearVideoHistory(videoId)
-            }
-            _serverEntries.update { entries -> entries.filterNot { it.videoId == videoId } }
-            _serverShorts.update { shorts -> shorts - videoId }
-            _uiState.update { state ->
-                state.copy(
-                    historyEntries = state.historyEntries.filterNot { it.videoId == videoId },
-                    shortVideos = state.shortVideos - videoId,
-                )
+                _serverEntries.update { entries -> entries.filterNot { it.videoId == videoId } }
+                _serverShorts.update { shorts -> shorts - videoId }
+                _uiState.update { state ->
+                    state.copy(
+                        historyEntries = state.historyEntries.filterNot { it.videoId == videoId },
+                        shortVideos = state.shortVideos - videoId,
+                    )
+                }
+                if (entry != null) _messages.send(HistoryUiMessage.Removed(entry))
             }
         }
 
@@ -411,6 +548,13 @@ class HistoryViewModel
     }
 
 internal fun historyYear(timestamp: Long): Int = Calendar.getInstance().apply { timeInMillis = timestamp }.get(Calendar.YEAR)
+
+/** One-off History outcomes the screen shows: a removed row (with Undo) or a server refusal. */
+sealed interface HistoryUiMessage {
+    data class Removed(val entry: VideoHistoryEntry) : HistoryUiMessage
+
+    data class Failed(val stringRes: Int) : HistoryUiMessage
+}
 
 data class HistoryUiState(
     val historyEntries: List<VideoHistoryEntry> = emptyList(),
