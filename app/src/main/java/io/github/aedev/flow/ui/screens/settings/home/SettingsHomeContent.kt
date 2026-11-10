@@ -24,6 +24,7 @@ import io.github.aedev.flow.ui.screens.settings.index.HomeIndex
 internal data class SettingsHomeState(
     val selected: SettingsDestination?,
     val deepFlow: DeepFlowState,
+    val batterySaver: Boolean,
     /** Shown on the update row while a check the user started is running; null when idle. */
     val updateCheckingLabel: String?,
     /** Attached to the [selected] page's row, so a host can return focus to it. */
@@ -33,6 +34,7 @@ internal data class SettingsHomeState(
 internal class SettingsHomeActions(
     val onOpen: (SettingsTarget) -> Unit,
     val onDeepFlowChange: (Boolean) -> Unit,
+    val onBatterySaverChange: (Boolean) -> Unit,
     val onDurationClick: () -> Unit,
     val onSaveHistoryChange: (Boolean) -> Unit,
     val onScrobbleChange: (Boolean) -> Unit,
@@ -55,6 +57,15 @@ internal fun SettingsListScope.homeContent(
             modifier = state.selectedFocusModifier(destination),
         )
 
+// First on the list, so it is one tap away: the whole point is reaching it fast.
+group(key = "home.battery", header = R.string.settings_battery_saver_title) {
+        switch(
+            HomeIndex.batterySaver,
+            checked = state.batterySaver,
+            onCheckedChange = actions.onBatterySaverChange,
+            icon = HomeRowIcons.BatterySaver,
+        )
+    }
 group(key = "home.account", header = R.string.account_title) {
         page(SettingsDestination.ACCOUNT)
     }
