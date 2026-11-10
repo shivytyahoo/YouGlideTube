@@ -34,6 +34,34 @@ internal fun audioWorkerCount(threads: Int): Int {
 }
 
 /**
+ * One ranged request for [url], asking for bytes [from]..[to]. googlevideo takes its range as a
+ * query parameter with the minting client's headers; anything else takes a plain Range header.
+ * Shared by the full-file downloader and the segment clip fetcher, so both send identical
+ * requests for the same bytes.
+ */
+internal fun blockRequest(
+    url: String,
+    from: Long,
+    to: Long,
+    fallbackUserAgent: String,
+): Request {
+    val builder = Request.Builder()
+    if (YouTubeStreamUrls.isYouTubeStreamUrl(url)) {
+        val client = StreamDenialClassifier.clientOf(url)
+        builder
+            .url(YouTubeStreamUrls.buildYouTubeBlockUrl(url, from, to))
+            .header("User-Agent", GoogleVideoRequestPolicy.userAgent(client, fallbackUserAgent))
+        GoogleVideoRequestPolicy.headers(client).forEach { (name, value) -> builder.header(name, value) }
+    } else {
+        builder
+            .url(url)
+            .header("Range", "bytes=$from-$to")
+            .header("User-Agent", fallbackUserAgent)
+    }
+    return builder.build()
+}
+
+/**
  * Fetches every stream of a [TransferJob] in fixed-size byte ranges, several at a time, straight
  * into pre-sized part files.
  *
@@ -261,28 +289,6 @@ class RangeDownloader internal constructor(
             429, 500, 502, 503, 504 -> BlockOutcome.Retry("HTTP ${response.code}", retryAfterMs = retryAfterMs(response))
             else -> BlockOutcome.Retry("HTTP ${response.code}")
         }
-
-    private fun blockRequest(
-        url: String,
-        from: Long,
-        to: Long,
-        fallbackUserAgent: String,
-    ): Request {
-        val builder = Request.Builder()
-        if (YouTubeStreamUrls.isYouTubeStreamUrl(url)) {
-            val client = StreamDenialClassifier.clientOf(url)
-            builder
-                .url(YouTubeStreamUrls.buildYouTubeBlockUrl(url, from, to))
-                .header("User-Agent", GoogleVideoRequestPolicy.userAgent(client, fallbackUserAgent))
-            GoogleVideoRequestPolicy.headers(client).forEach { (name, value) -> builder.header(name, value) }
-        } else {
-            builder
-                .url(url)
-                .header("Range", "bytes=$from-$to")
-                .header("User-Agent", fallbackUserAgent)
-        }
-        return builder.build()
-    }
 
     private sealed interface ContentLength {
         data class Known(
