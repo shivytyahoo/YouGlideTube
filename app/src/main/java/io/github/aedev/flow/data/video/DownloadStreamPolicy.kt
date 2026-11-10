@@ -13,6 +13,17 @@ import kotlin.math.abs
  */
 object DownloadStreamPolicy {
     /**
+     * The key that tells two audio tracks apart. YouTube hands the same itag to every
+     * language of one encoding — Hindi and its English dub are both itag 140 — so an
+     * itag alone cannot name a track (device report 10: ticking Hindi ticked English
+     * too, and the resolver's itag lookup returned the dub). The track id names the
+     * language; the bitrate separates the same language at two bitrates.
+     */
+    fun audioTrackKey(format: Format): String =
+        listOf(format.itag.toString(), format.audioTrack?.id.orEmpty(), audioBitrateKbps(format).toString())
+            .joinToString("|")
+
+    /**
      * Codec order within one resolution for a *download*, which is deliberately not
      * [VideoCodecUtils.playbackCodecRank]: playback ranks h264 first because it is the codec every
      * decoder handles, while a download ranks vp9 first because it is the smallest file the app can
@@ -132,7 +143,19 @@ object DownloadStreamPolicy {
                         locale?.toLanguageTag().equals(preferredLang, ignoreCase = true)
                 }
             } else {
-                aac.filter { it.isOriginal }
+                // "original": the track the player plays by default is the original in
+                // practice, and audioIsDefault is the only signal that survives when the
+                // original/dubbed flags are absent or wrong — the highest-bitrate fallback
+                // below once picked an English auto-dub over the Hindi default (user report
+                // 2026-11-08), because a dub can out-bitrate the original. So prefer the
+                // default track first, then originals, and only then any AAC.
+                val defaults = aac.filter { it.audioTrack?.audioIsDefault == true }
+                val originals = aac.filter { it.isOriginal }
+                when {
+                    defaults.isNotEmpty() -> defaults
+                    originals.isNotEmpty() -> originals
+                    else -> aac
+                }
             }
         val candidates = inLanguage.ifEmpty { aac }
         return when (quality) {
