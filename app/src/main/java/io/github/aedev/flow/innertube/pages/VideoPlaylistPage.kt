@@ -26,6 +26,9 @@ data class VideoPlaylistPage(
     val isShortsGrid: Boolean = false,
     /** The count in the header, unavailable videos included. */
     val videoCount: Int? = null,
+    /** The Save button's like tokens, when the page carries one. */
+    val likeParams: String? = null,
+    val removeLikeParams: String? = null,
 )
 
 /**
@@ -63,6 +66,7 @@ internal fun JsonElement.toVideoPlaylistPage(): VideoPlaylistPage {
     // so an account list never renders empty for a shape difference.
     val harvested = if (strictVideos.isEmpty()) harvestFeedPage() else null
     val owner = pageHeader?.headerOwner() ?: legacyHeader?.legacyOwner()
+    val likeTokens = findPlaylistLikeTokens()
     return VideoPlaylistPage(
         title =
             (
@@ -107,7 +111,51 @@ internal fun JsonElement.toVideoPlaylistPage(): VideoPlaylistPage {
                 .youtubeText()
                 ?.filter(Char::isDigit)
                 ?.toIntOrNull(),
+        likeParams = likeTokens.first,
+        removeLikeParams = likeTokens.second,
     )
+}
+
+/**
+ * The Save button's like tokens. youtubei.js LikeEndpoint sends `{ target, params }`, with
+ * `likeParams` for LIKE and `removeLikeParams` for INDIFFERENT (removelike) — the app used to
+ * send no params at all, and the server answered removelike with 403 "The caller does not have
+ * permission" (report 24). The button lives under the header in either shape, so the whole
+ * response is walked and the first playlist-target likeEndpoint wins per field.
+ */
+private fun JsonElement.findPlaylistLikeTokens(): Pair<String?, String?> {
+    var likeParams: String? = null
+    var removeLikeParams: String? = null
+
+    fun visit(element: JsonElement) {
+        if (likeParams != null && removeLikeParams != null) return
+        when (element) {
+            is JsonObject -> {
+                val endpoint = element["likeEndpoint"]?.objectOrNull()
+                if (endpoint != null && endpoint.isPlaylistTarget()) {
+                    if (likeParams == null) {
+                        likeParams = endpoint["likeParams"].stringOrNull()?.takeIf(String::isNotBlank)
+                    }
+                    if (removeLikeParams == null) {
+                        removeLikeParams = endpoint["removeLikeParams"].stringOrNull()?.takeIf(String::isNotBlank)
+                    }
+                }
+                for (child in element.values) visit(child)
+            }
+
+            is JsonArray -> for (child in element) visit(child)
+            else -> Unit
+        }
+    }
+    visit(this)
+    return likeParams to removeLikeParams
+}
+
+/** A likeEndpoint whose target is a playlist: `{ playlistId }`, or a bare playlist id. */
+private fun JsonObject.isPlaylistTarget(): Boolean {
+    val target = this["target"] ?: return false
+    target.stringOrNull()?.let { return it.startsWith("PL") }
+    return target.objectOrNull()?.get("playlistId").stringOrNull()?.isNotBlank() == true
 }
 
 /**
@@ -132,8 +180,20 @@ private fun JsonElement.playlistItems(): Pair<List<JsonElement>, Boolean> {
     root["contents"].forEachObject { node ->
         if (list.isNotEmpty()) return@forEachObject
         val contents = node["itemSectionRenderer"].objectOrNull()?.get("contents").arrayOrNull() ?: return@forEachObject
-        if (contents.any { it.objectOrNull()?.containsKey("lockupViewModel") == true }) {
-            list = contents
+        // Playlist pages wrap their rows in playlistVideoListRenderer; system playlists
+        // (Watch Later, Liked videos) still use its playlistVideoRenderer rows.
+        val items =
+            contents.flatMap { element ->
+                element
+                    .objectOrNull()
+                    ?.get("playlistVideoListRenderer")
+                    .objectOrNull()
+                    ?.get("contents")
+                    .arrayOrNull()
+                    ?: listOf(element)
+            }
+        if (items.any { it.objectOrNull()?.containsKey("lockupViewModel") == true || it.objectOrNull()?.containsKey("playlistVideoRenderer") == true }) {
+            list = items
             return@forEachObject
         }
         contents
