@@ -3,6 +3,7 @@ package io.github.aedev.flow.ui.screens.music.collection
 import io.github.aedev.flow.R
 import io.github.aedev.flow.data.model.PlaylistInfo
 import io.github.aedev.flow.data.music.model.MusicTrack
+import io.github.aedev.flow.data.repository.YouTubePlaylistRepository
 import io.github.aedev.flow.innertube.YouTube
 
 /** Creates a playlist on the account; null when the account refused or is signed out. */
@@ -24,16 +25,14 @@ internal suspend fun createMusicPlaylist(
     )
 }
 
-/** Copies [tracks] onto an account playlist, one add per track. */
+/** Copies [tracks] onto an account playlist in one account write. */
 internal suspend fun copyTracksToPlaylist(
+    youTubePlaylists: YouTubePlaylistRepository,
     target: PlaylistInfo,
     tracks: List<MusicTrack>,
 ): CollectionMessage? {
     if (tracks.isEmpty()) return null
-    var added = 0
-    for (track in tracks) {
-        if (YouTube.addToPlaylist(target.id, track.videoId).isSuccess) added++
-    }
+    val added = youTubePlaylists.addVideos(target.id, tracks.map { it.videoId }).size
     return if (added > 0) {
         CollectionMessage(
             pluralRes = R.plurals.merge_playlist_success,
