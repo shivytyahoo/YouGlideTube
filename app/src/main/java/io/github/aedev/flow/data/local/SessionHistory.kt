@@ -35,6 +35,8 @@ data class VideoHistoryEntry(
     val isMusic: Boolean = false,
     val isShort: Boolean = false,
     val isLocal: Boolean = false,
+    /** History only: the server-issued token that removes this entry from the account. */
+    val removeFeedbackToken: String? = null,
 ) {
     val progressPercentage: Float
         get() = if (duration > 0) (position.toFloat() / duration.toFloat()) * 100f else 0f
