@@ -48,6 +48,7 @@ import io.github.aedev.flow.ui.components.music.sheet.LocalMusicMenus
 import io.github.aedev.flow.ui.components.music.sheet.rememberMusicMenus
 import io.github.aedev.flow.ui.components.musicplayer.common.canTurnLight
 import io.github.aedev.flow.ui.components.musicplayer.sheet.rememberMusicPlayerSheetState
+import io.github.aedev.flow.ui.components.shared.LocalBatterySaver
 import io.github.aedev.flow.ui.components.shared.LocalMediaOpenOrigins
 import io.github.aedev.flow.ui.components.shared.MediaMiniBarDefaults
 import io.github.aedev.flow.ui.components.shared.MediaOpenOrigins
@@ -59,6 +60,8 @@ import io.github.aedev.flow.ui.screens.home.HomeViewModel
 import io.github.aedev.flow.ui.screens.player.VideoPlayerViewModel
 import io.github.aedev.flow.ui.screens.update.UPDATE_ROUTE
 import io.github.aedev.flow.ui.screens.update.UpdateLaunchEffect
+import io.github.aedev.flow.ui.theme.FestivalBackground
+import io.github.aedev.flow.ui.theme.FestivalBackgroundLayer
 import io.github.aedev.flow.ui.theme.MorpheCirclesBackground
 import io.github.aedev.flow.ui.theme.ThemeMode
 import io.github.aedev.flow.ui.theme.ThemeVariant
@@ -99,6 +102,8 @@ fun FlowApp(
     val isShortsNavigationEnabled by preferences.effectiveShortsNavigationEnabled.collectAsState(initial = true)
     val isMusicNavigationEnabled by preferences.musicNavigationEnabled.collectAsState(initial = true)
     val isSearchNavigationEnabled by preferences.searchNavigationEnabled.collectAsState(initial = false)
+    val animatedBackground by preferences.animatedBackground.collectAsState(initial = "diwali")
+    val batterySaver by preferences.batterySaverEnabled.collectAsState(initial = false)
     val disableShortsPlayer by preferences.effectiveDisableShortsPlayer.collectAsState(initial = false)
     val musicPlayerBackgroundStyle by preferences.musicPlayerBackgroundStyle.collectAsState(
         initial = io.github.aedev.flow.data.local.MusicPlayerBackgroundStyle.BLUR_GRADIENT,
@@ -187,6 +192,7 @@ fun FlowApp(
         }
     }
 
+    CompositionLocalProvider(LocalBatterySaver provides batterySaver) {
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val density = LocalDensity.current
         val screenHeightPx = constraints.maxHeight.toFloat()
@@ -469,6 +475,16 @@ fun FlowApp(
                                     playerSheetState.currentValue != PlayerSheetValue.Expanded &&
                                     !musicPlayerSheetState.isExpanded,
                         )
+                        // Festival background: over the circles, same freeze rule, one
+                        // choice from Appearance → Animated backgrounds.
+                        FestivalBackgroundLayer(
+                            background = FestivalBackground.byId(animatedBackground),
+                            modifier = Modifier.fillMaxSize(),
+                            animated =
+                                !isShortsPlayerRoute &&
+                                    playerSheetState.currentValue != PlayerSheetValue.Expanded &&
+                                    !musicPlayerSheetState.isExpanded,
+                        )
                         if (needsOnboarding != null) {
                             val homeViewModel: HomeViewModel = hiltViewModel(activity!!)
                             LaunchedEffect(homeViewModel) {
@@ -569,5 +585,6 @@ fun FlowApp(
 
         YouGlideTubeLaunchIntro()
 
+    }
     }
 }
