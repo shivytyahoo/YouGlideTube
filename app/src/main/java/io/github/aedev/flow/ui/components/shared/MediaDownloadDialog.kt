@@ -22,6 +22,8 @@ import io.github.aedev.flow.data.video.DownloadStreamPolicy
 import io.github.aedev.flow.data.video.downloader.request.DownloadSubtitle
 import io.github.aedev.flow.player.state.SubtitleOption
 import io.github.aedev.flow.player.stream.VideoCodecUtils
+import io.github.aedev.flow.utils.formatDurationMillis
+import io.github.aedev.flow.utils.parseTimestampMs
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,6 +46,21 @@ fun MediaDownloadDialog(
     val subtitleOptions = remember(subtitles) { downloadableSubtitles(subtitles) }
     var subtitleChoice by remember(subtitleOptions, lastSubtitleLanguage) {
         mutableStateOf(defaultDownloadSubtitle(subtitleOptions, lastSubtitleLanguage))
+    }
+
+    var clipEnabled by remember { mutableStateOf(false) }
+    var clipStartText by remember { mutableStateOf("") }
+    var clipEndText by remember { mutableStateOf("") }
+    val videoLengthMs = video.duration * 1000L
+
+    // The clip range in ms when the toggle is on and the range is valid, null otherwise.
+    // Times are "M:SS", "H:MM:SS" or bare seconds; end must sit inside the video.
+    fun resolveClipRange(): Pair<Long, Long>? {
+        if (!clipEnabled) return null
+        val start = parseTimestampMs(clipStartText) ?: return null
+        val end = parseTimestampMs(clipEndText) ?: return null
+        if (start < 0L || end <= start || end > videoLengthMs) return null
+        return start to end
     }
 
     BasicAlertDialog(onDismissRequest = onDismiss) {
@@ -88,6 +105,66 @@ fun MediaDownloadDialog(
                     )
                 }
 
+                if (video.duration > 0) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(R.string.download_clip_title),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                            Text(
+                                text = stringResource(R.string.download_clip_subtitle),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Switch(
+                            checked = clipEnabled,
+                            onCheckedChange = { clipEnabled = it },
+                        )
+                    }
+                    if (clipEnabled) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            OutlinedTextField(
+                                value = clipStartText,
+                                onValueChange = { clipStartText = it },
+                                label = { Text(stringResource(R.string.download_clip_start)) },
+                                placeholder = { Text(formatDurationMillis(0L)) },
+                                singleLine = true,
+                                modifier = Modifier.weight(1f),
+                            )
+                            OutlinedTextField(
+                                value = clipEndText,
+                                onValueChange = { clipEndText = it },
+                                label = { Text(stringResource(R.string.download_clip_end)) },
+                                placeholder = { Text(formatDurationMillis(videoLengthMs)) },
+                                singleLine = true,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = stringResource(R.string.download_clip_length, formatDurationMillis(videoLengthMs)),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            text = stringResource(R.string.download_clip_keyframe_note),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(16.dp))
 
                 val effectiveAudioForDownload =
@@ -96,6 +173,13 @@ fun MediaDownloadDialog(
                     remember(effectiveAudioForDownload) {
                         effectiveAudioForDownload.sortedByDescending { it.averageBitrate ?: it.bitrate }
                     }
+                // Multi-audio: the languages to keep in the file, all ticked by default.
+                // Unticking all still keeps the default track, so a download never loses audio.
+                // The key names each track fully (itag + track id + bitrate): an itag alone
+                // cannot tell Hindi from its English dub, they share itag 140.
+                var selectedAudioKeys by remember(audioFormats) {
+                    mutableStateOf(audioFormats.map { DownloadStreamPolicy.audioTrackKey(it) }.toSet())
+                }
                 val distinctFormats =
                     remember(innerTubeVideoFormats) { DownloadStreamPolicy.buildDownloadVideoFormats(innerTubeVideoFormats) }
                 val hdrLabel = stringResource(R.string.download_quality_hdr)
@@ -104,6 +188,90 @@ fun MediaDownloadDialog(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.heightIn(max = 400.dp),
                 ) {
+                    // ===== Audio Tracks Section (multi-audio) =====
+                    // Shown only when the video offers more than one audio language: the user
+                    // ticks the languages to keep, and every ticked one downloads with the
+                    // video as a track in the same file.
+                    if (audioFormats.size > 1) {
+                        item {
+                            Text(
+                                text = stringResource(R.string.download_audio_tracks_title),
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(vertical = 4.dp),
+                            )
+                            Text(
+                                text = stringResource(R.string.download_audio_tracks_subtitle),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                        }
+
+                        itemsIndexed(audioFormats) { audioIndex, audioStream ->
+                            val bitrate = DownloadStreamPolicy.audioBitrateKbps(audioStream)
+                            val bitrateLabel = "$bitrate${stringResource(R.string.kbps)}"
+                            val audioFormat =
+                                DownloadStreamPolicy.audioFormatLabel(audioStream, stringResource(R.string.audio_format_unknown))
+                            val languageLabel = DownloadStreamPolicy.audioLanguageLabel(audioStream)
+                            val trackTypeLabel =
+                                DownloadStreamPolicy.audioTrackTypeLabel(
+                                    format = audioStream,
+                                    originalLabel = stringResource(R.string.audio_track_original),
+                                    dubbedLabel = stringResource(R.string.audio_track_dubbed),
+                                )
+                            val checked = DownloadStreamPolicy.audioTrackKey(audioStream) in selectedAudioKeys
+
+                            Surface(
+                                onClick = {
+                                    val key = DownloadStreamPolicy.audioTrackKey(audioStream)
+                                    selectedAudioKeys =
+                                        if (checked) selectedAudioKeys - key else selectedAudioKeys + key
+                                },
+                                shape = flowRowGroupShape(audioIndex, audioFormats.size),
+                                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Row(
+                                    modifier =
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Checkbox(
+                                        checked = checked,
+                                        onCheckedChange = { isChecked ->
+                                            val key = DownloadStreamPolicy.audioTrackKey(audioStream)
+                                            selectedAudioKeys =
+                                                if (isChecked) selectedAudioKeys + key else selectedAudioKeys - key
+                                        },
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = listOfNotNull(languageLabel, trackTypeLabel).joinToString(stringResource(R.string.list_separator_dot)),
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.SemiBold,
+                                        )
+                                        Text(
+                                            text = "$audioFormat $bitrateLabel",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        item {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
+                    }
+
                     if (distinctFormats.isEmpty()) {
                         item {
                             Text(stringResource(R.string.no_download_streams), modifier = Modifier.padding(16.dp))
@@ -111,8 +279,23 @@ fun MediaDownloadDialog(
                         item {
                             Button(
                                 onClick = {
-                                    onDismiss()
-                                    DownloadLauncher.startDefaultDownload(context, video)
+                                    val clipRange = resolveClipRange()
+                                    if (clipEnabled && clipRange == null) {
+                                        Toast
+                                            .makeText(
+                                                context,
+                                                context.getString(R.string.download_clip_invalid),
+                                                Toast.LENGTH_LONG,
+                                            ).show()
+                                    } else {
+                                        onDismiss()
+                                        DownloadLauncher.startDefaultDownload(
+                                            context,
+                                            video,
+                                            clipStartMs = clipRange?.first,
+                                            clipEndMs = clipRange?.second,
+                                        )
+                                    }
                                 },
                                 modifier = Modifier.fillMaxWidth(),
                             ) {
@@ -139,10 +322,26 @@ fun MediaDownloadDialog(
 
                         Surface(
                             onClick = downloadVideo@{
+                                val clipRange = resolveClipRange()
+                                if (clipEnabled && clipRange == null) {
+                                    Toast
+                                        .makeText(
+                                            context,
+                                            context.getString(R.string.download_clip_invalid),
+                                            Toast.LENGTH_LONG,
+                                        ).show()
+                                    return@downloadVideo
+                                }
                                 onDismiss()
+                                // Multi-audio: the ticked languages, primary first (the batch 36
+                                // pick — the default track the player plays). Unticking all
+                                // falls back to every offered track, so the default is kept.
+                                // The keys name each track fully: Hindi and its English dub
+                                // share one itag, so itags alone cannot tell them apart.
+                                val tickedAudio = audioFormats.filter { DownloadStreamPolicy.audioTrackKey(it) in selectedAudioKeys }
                                 val compatibleAudio =
                                     DownloadStreamPolicy.pickAacAudio(
-                                        allAudio = effectiveAudioForDownload,
+                                        allAudio = tickedAudio.ifEmpty { effectiveAudioForDownload },
                                         preferredLang = preferredLang,
                                     )
                                 if (compatibleAudio == null) {
@@ -159,10 +358,13 @@ fun MediaDownloadDialog(
                                     video,
                                     format,
                                     compatibleAudio,
+                                    audioTrackKeys = tickedAudio.map { DownloadStreamPolicy.audioTrackKey(it) },
                                     subtitle =
                                         subtitleChoice?.toDownloadSubtitle() ?: DownloadSubtitle.OFF.takeIf {
                                             subtitleOptions.isNotEmpty()
                                         },
+                                    clipStartMs = clipRange?.first,
+                                    clipEndMs = clipRange?.second,
                                 )
                                 if (subtitleOptions.isNotEmpty()) rememberDownloadSubtitleChoice(audioLangPref, subtitleChoice)
                             },
@@ -234,14 +436,31 @@ fun MediaDownloadDialog(
 
                             Surface(
                                 onClick = {
-                                    onDismiss()
-                                    if (DownloadLauncher.startAudioOnlyDownload(context, video, audioStream)) {
+                                    val clipRange = resolveClipRange()
+                                    if (clipEnabled && clipRange == null) {
                                         Toast
                                             .makeText(
                                                 context,
-                                                context.getString(R.string.ui_download_audio, bitrate, audioFormat),
-                                                Toast.LENGTH_SHORT,
+                                                context.getString(R.string.download_clip_invalid),
+                                                Toast.LENGTH_LONG,
                                             ).show()
+                                    } else {
+                                        onDismiss()
+                                        if (DownloadLauncher.startAudioOnlyDownload(
+                                                context,
+                                                video,
+                                                audioStream,
+                                                clipStartMs = clipRange?.first,
+                                                clipEndMs = clipRange?.second,
+                                            )
+                                        ) {
+                                            Toast
+                                                .makeText(
+                                                    context,
+                                                    context.getString(R.string.ui_download_audio, bitrate, audioFormat),
+                                                    Toast.LENGTH_SHORT,
+                                                ).show()
+                                        }
                                     }
                                 },
                                 shape = flowRowGroupShape(audioIndex, audioFormats.size),
