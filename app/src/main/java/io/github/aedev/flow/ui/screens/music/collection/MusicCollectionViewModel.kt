@@ -14,6 +14,7 @@ import io.github.aedev.flow.data.local.PlayerPreferences
 import io.github.aedev.flow.data.account.AccountPlaylistIds
 import io.github.aedev.flow.data.account.AccountPlaylists
 import io.github.aedev.flow.data.account.toPlaylistInfo
+import io.github.aedev.flow.data.model.Playlist
 import io.github.aedev.flow.data.model.PlaylistInfo
 import io.github.aedev.flow.data.music.YouTubeMusicService
 import io.github.aedev.flow.data.music.model.MusicTrack
@@ -26,6 +27,8 @@ import io.github.aedev.flow.data.recommendation.music.DailyMixStore
 import io.github.aedev.flow.ui.components.shared.quickactions.QuickActionUndo
 import io.github.aedev.flow.ui.screens.music.MusicViewModel
 import io.github.aedev.flow.utils.PerformanceDispatcher
+import java.util.Collections
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -40,6 +43,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 import io.github.aedev.flow.data.music.MusicSessionLibrary as MusicLibrary
@@ -74,6 +78,9 @@ class MusicCollectionViewModel
 
         private val _state = MutableStateFlow(MusicCollectionUiState())
         val state: StateFlow<MusicCollectionUiState> = _state.asStateFlow()
+
+        private val _isCreating = MutableStateFlow(false)
+        val isCreating: StateFlow<Boolean> = _isCreating.asStateFlow()
 
         private val _messages = Channel<CollectionMessage>(Channel.BUFFERED)
 
@@ -114,6 +121,10 @@ class MusicCollectionViewModel
 
         private var loadJob: Job? = null
         private var moreJob: Job? = null
+
+        // Videos with a remove still running. The guard is checked on the calling
+        // (main) thread and cleared on the worker thread, so the set is synchronized.
+        private val removingIds = Collections.synchronizedSet(mutableSetOf<String>())
         private var graphRecorded = false
 
 
@@ -146,13 +157,19 @@ class MusicCollectionViewModel
             moreJob =
                 viewModelScope.launch(PerformanceDispatcher.networkIO) {
                     _state.update { it.copy(isLoadingMore = true, moreFailed = false) }
-                    val (tracks, next) = YouTubeMusicService.fetchPlaylistContinuation(details.id, token)
+                    val result = YouTubeMusicService.fetchPlaylistContinuation(details.id, token)
                     _state.update { state ->
                         val current = state.details ?: return@update state
-                        if (tracks.isEmpty() && next == null) {
-                            state.copy(isLoadingMore = false, moreFailed = true)
-                        } else {
-                            state.copy(details = current.appending(tracks, next), isLoadingMore = false)
+                        when {
+                            result == null -> state.copy(isLoadingMore = false, moreFailed = true)
+                            result.first.isEmpty() && result.second == null -> {
+                                // The page came back empty with no next page: nothing more
+                                // exists behind this token (report 16: the 4th item is a video
+                                // the music continuation drops). Keeping the token would
+                                // leave a Retry button that can never succeed.
+                                state.copy(details = current.copy(continuation = null), isLoadingMore = false)
+                            }
+                            else -> state.copy(details = current.appending(result.first, result.second), isLoadingMore = false)
                         }
                     }
                 }
@@ -164,7 +181,8 @@ class MusicCollectionViewModel
             var details = _state.value.details ?: return null
             var pages = 0
             while (details.continuation != null && pages < MAX_PAGES) {
-                val (tracks, next) = YouTubeMusicService.fetchPlaylistContinuation(details.id, details.continuation.orEmpty())
+                val result = YouTubeMusicService.fetchPlaylistContinuation(details.id, details.continuation.orEmpty()) ?: break
+                val (tracks, next) = result
                 if (tracks.isEmpty() && next == null) break
                 details = details.appending(tracks, next)
                 pages++
@@ -202,35 +220,64 @@ class MusicCollectionViewModel
         fun removeTracks(videoIds: Set<String>) {
             if (videoIds.isEmpty()) return
             val kind = _state.value.kind
+            // A second tap while a video's remove is still running would race it against
+            // a stale page (report 16: one tap, then 200, two 400s and noSetVideoId).
+            val fresh = videoIds.filter { removingIds.add(it) }
+            if (fresh.isEmpty()) return
             viewModelScope.launch(PerformanceDispatcher.diskIO) {
-                val message =
-                    when (kind) {
-                        MusicCollectionKind.OWN -> {
-                            val removed =
-                                _state.value.details
-                                    ?.tracks
-                                    ?.filter { it.videoId in videoIds }
-                                    .orEmpty()
-                            if (removed.isEmpty()) return@launch
-                            removed.forEach { youTubePlaylists.removeVideo(collectionId, it.videoId) }
-                            CollectionMessage(
-                                pluralRes = R.plurals.songs_removed_from_playlist,
-                                count = removed.size,
-                                args = listOf(removed.size),
-                                undo =
-                                    QuickActionUndo.PlaylistRemoval(
-                                        playlistId = collectionId,
-                                        videos = removed.map { it.toStoredVideo() },
-                                    ),
-                            )
-                        }
-
-                        MusicCollectionKind.LIKED -> {
-                            val removed =
-                                likedMedia.unlike(
+                // Rows whose remove never confirmed (the server refused, or the call
+                // was cut short by leaving the page — report 17: the third diwali
+                // remove was cancelled mid-flight) come back in the finally below, so
+                // the list never lies about what the server still holds.
+                val succeededOwnIds = mutableSetOf<String>()
+                var removedOwn: List<MusicTrack> = emptyList()
+                var beforeOwn: PlaylistDetails? = null
+                try {
+                    val message =
+                        when (kind) {
+                            MusicCollectionKind.OWN -> {
+                                removedOwn =
                                     _state.value.details
                                         ?.tracks
-                                        ?.filter { it.videoId in videoIds }
+                                        ?.filter { it.videoId in fresh }
+                                        .orEmpty()
+                                if (removedOwn.isEmpty()) return@launch
+                                // Rows vanish at once: the server round trip takes ~1s, and a
+                                // row that stays visible that long gets tapped again.
+                                beforeOwn = _state.value.details
+                                _state.update { state ->
+                                    state.details?.let { details ->
+                                        state.copy(details = details.copy(tracks = details.tracks.filterNot { it.videoId in fresh }))
+                                    } ?: state
+                                }
+                                // One request for the whole selection: one call per track
+                                // let the server refuse the later edits, so only the
+                                // first of a multi-select ever left.
+                                succeededOwnIds += youTubePlaylists.removeVideos(collectionId, removedOwn.map { it.videoId }.toSet())
+                                val succeeded = removedOwn.filter { it.videoId in succeededOwnIds }
+                                if (succeeded.isEmpty()) return@launch
+                                // The Library card keeps the old count and thumbnail until the
+                                // account list is re-read (report 17: diwali showed "3 videos"
+                                // outside after all three were removed inside).
+                                accountPlaylists.refresh()
+                                CollectionMessage(
+                                    pluralRes = R.plurals.songs_removed_from_playlist,
+                                    count = succeeded.size,
+                                    args = listOf(succeeded.size),
+                                    undo =
+                                        QuickActionUndo.PlaylistRemoval(
+                                            playlistId = collectionId,
+                                            videos = succeeded.map { it.toStoredVideo() },
+                                        ),
+                                )
+                            }
+
+                            MusicCollectionKind.LIKED -> {
+                                val removed =
+                                    likedMedia.unlike(
+                                        _state.value.details
+                                            ?.tracks
+                                            ?.filter { it.videoId in fresh }
                                         ?.map {
                                             io.github.aedev.flow.data.local.LikedVideoInfo(
                                                 videoId = it.videoId,
@@ -257,7 +304,24 @@ class MusicCollectionViewModel
                             return@launch
                         }
                     }
-                _messages.send(message)
+                    _messages.send(message)
+                } finally {
+                    removingIds.removeAll(fresh)
+                    val unconfirmed = removedOwn.filter { it.videoId !in succeededOwnIds }
+                    if (unconfirmed.isNotEmpty()) {
+                        val unconfirmedIds = unconfirmed.map { it.videoId }.toSet()
+                        _state.update { state ->
+                            val details = state.details ?: return@update state
+                            val restored = details.tracks.toMutableList()
+                            beforeOwn?.tracks?.forEachIndexed { index, track ->
+                                if (track.videoId in unconfirmedIds && restored.none { it.videoId == track.videoId }) {
+                                    restored.add(index.coerceAtMost(restored.size), track)
+                                }
+                            }
+                            state.copy(details = details.copy(tracks = restored))
+                        }
+                    }
+                }
             }
         }
 
@@ -279,9 +343,19 @@ class MusicCollectionViewModel
             _state.update { it.copy(isDeleted = true) }
             loadJob?.cancel()
             viewModelScope.launch(PerformanceDispatcher.networkIO) {
-                YouTube.deletePlaylist(collectionId)
-                accountPlaylists.refresh()
-                _messages.send(CollectionMessage(stringRes = R.string.toast_playlist_deleted))
+                // The tombstone goes first and the server call follows, so the
+                // playlist leaves the list at once; a refused delete puts it
+                // back instead of vanishing a playlist that still exists.
+                accountPlaylists.removePlaylist(collectionId)
+                if (YouTube.deletePlaylist(collectionId).isSuccess) {
+                    accountPlaylists.refresh()
+                    _messages.send(CollectionMessage(stringRes = R.string.toast_playlist_deleted))
+                } else {
+                    accountPlaylists.unremovePlaylist(collectionId)
+                    accountPlaylists.refresh()
+                    _state.update { it.copy(isDeleted = false) }
+                    _messages.send(CollectionMessage(stringRes = R.string.toast_failed_to_delete_playlist))
+                }
             }
         }
 
@@ -289,21 +363,39 @@ class MusicCollectionViewModel
         fun saveAsPlaylist() {
             val details = _state.value.details ?: return
             if (_state.value.kind != MusicCollectionKind.DAILY_MIX || details.tracks.isEmpty()) return
+            if (_isCreating.value) return
+            _isCreating.value = true
             viewModelScope.launch(PerformanceDispatcher.networkIO) {
-                val target = createMusicPlaylist(details.title, details.description.orEmpty())
-                val saved = target != null && copyTracksToPlaylist(target, details.tracks) != null
-                if (target != null) accountPlaylists.refresh()
-                _messages.send(
-                    CollectionMessage(
-                        stringRes =
-                            if (saved) {
-                                R.string.daily_mix_saved_as_playlist
-                            } else {
-                                R.string.toast_failed_to_save_playlist
-                            },
-                        args = if (saved) listOf(details.title) else emptyList(),
-                    ),
-                )
+                try {
+                    val target = createMusicPlaylist(details.title, details.description.orEmpty())
+                    if (target != null) {
+                        accountPlaylists.addEntry(
+                            Playlist(
+                                id = target.id,
+                                name = target.name,
+                                thumbnailUrl = target.thumbnailUrl,
+                                videoCount = target.videoCount,
+                                description = target.description,
+                                isLocal = false,
+                            ),
+                        )
+                    }
+                    val saved = target != null && copyTracksToPlaylist(youTubePlaylists, target, details.tracks) != null
+                    if (target != null) accountPlaylists.refresh()
+                    _messages.send(
+                        CollectionMessage(
+                            stringRes =
+                                if (saved) {
+                                    R.string.daily_mix_saved_as_playlist
+                                } else {
+                                    R.string.toast_failed_to_save_playlist
+                                },
+                            args = if (saved) listOf(details.title) else emptyList(),
+                        ),
+                    )
+                } finally {
+                    _isCreating.value = false
+                }
             }
         }
 
@@ -330,7 +422,7 @@ class MusicCollectionViewModel
         ) {
             viewModelScope.launch(PerformanceDispatcher.networkIO) {
                 val tracks = songs ?: loadAll()?.tracks.orEmpty()
-                copyTracksToPlaylist(target, tracks)?.let { _messages.send(it) }
+                copyTracksToPlaylist(youTubePlaylists, target, tracks)?.let { _messages.send(it) }
             }
         }
 
@@ -339,15 +431,33 @@ class MusicCollectionViewModel
             name: String,
             description: String,
             songs: List<MusicTrack>? = null,
+            onDone: () -> Unit = {},
         ) {
+            if (_isCreating.value) return
+            _isCreating.value = true
             viewModelScope.launch(PerformanceDispatcher.networkIO) {
-                val target = createMusicPlaylist(name, description)
-                if (target == null) {
-                    _messages.send(CollectionMessage(stringRes = R.string.toast_failed_to_merge_playlist))
-                    return@launch
+                try {
+                    val target = createMusicPlaylist(name, description)
+                    if (target == null) {
+                        _messages.send(CollectionMessage(stringRes = R.string.toast_failed_to_merge_playlist))
+                        return@launch
+                    }
+                    accountPlaylists.addEntry(
+                        Playlist(
+                            id = target.id,
+                            name = target.name,
+                            thumbnailUrl = target.thumbnailUrl,
+                            videoCount = target.videoCount,
+                            description = target.description,
+                            isLocal = false,
+                        ),
+                    )
+                    val tracks = songs ?: loadAll()?.tracks.orEmpty()
+                    copyTracksToPlaylist(youTubePlaylists, target, tracks)?.let { _messages.send(it) }
+                } finally {
+                    _isCreating.value = false
+                    withContext(Dispatchers.Main) { onDone() }
                 }
-                val tracks = songs ?: loadAll()?.tracks.orEmpty()
-                copyTracksToPlaylist(target, tracks)?.let { _messages.send(it) }
             }
         }
 
