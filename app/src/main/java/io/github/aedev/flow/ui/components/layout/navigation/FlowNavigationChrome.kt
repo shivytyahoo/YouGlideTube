@@ -30,6 +30,7 @@ import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 import androidx.compose.ui.unit.dp
+import io.github.aedev.flow.ui.components.shared.LocalBatterySaver
 import io.github.aedev.flow.ui.utils.LocalWindowSizeClass
 import io.github.aedev.flow.ui.utils.isExpandedWidth
 import io.github.aedev.flow.ui.utils.isMediumHeight
@@ -106,9 +107,13 @@ fun FlowNavigationChrome(
             // The bar's blur source: the content under it, marked here, with the bar as
             // a sibling — never inside the source, where it would blur itself. Morphe
             // draws the same line in its GlassBlur docs, and its pager subcomposes
-            // content and bar separately for exactly this reason.
+            // content and bar separately for exactly this reason. Battery saver: no
+            // blur at all — the source is never marked and the bar gets a null haze,
+            // so its glass falls back to a solid tint (morpheGlassFill's own rule).
             val barHaze = rememberHazeState()
-            Box(Modifier.fillMaxSize().hazeSource(barHaze)) {
+            val batterySaver = LocalBatterySaver.current
+            val hazeState: HazeState? = if (batterySaver) null else barHaze
+            Box(Modifier.fillMaxSize().then(if (batterySaver) Modifier else Modifier.hazeSource(barHaze))) {
                 content()
             }
             if (!usesRail) {
@@ -118,7 +123,7 @@ fun FlowNavigationChrome(
                     onTabSelected = onTabSelected,
                     visible = barVisible,
                     onHeightChanged = onBarHeightChanged,
-                    hazeState = barHaze,
+                    hazeState = hazeState,
                 )
             }
         }
@@ -150,7 +155,7 @@ private fun BoxScope.NavigationBarSlot(
     onTabSelected: (FlowTab) -> Unit,
     visible: Boolean,
     onHeightChanged: (Dp) -> Unit,
-    hazeState: HazeState,
+    hazeState: HazeState?,
 ) {
     val density = LocalDensity.current
     val bottomInsetPx = ShortNavigationBarDefaults.windowInsets.getBottom(density)
