@@ -29,6 +29,7 @@ fun SaveSongSheet(
 ) {
     val playlists by viewModel.playlists.collectAsStateWithLifecycle()
     val savedIds by viewModel.savedIds.collectAsStateWithLifecycle()
+    val isCreating by viewModel.isCreating.collectAsStateWithLifecycle()
     var showCreateDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(track.videoId) { viewModel.loadMembership(track.videoId) }
@@ -60,10 +61,10 @@ fun SaveSongSheet(
             title = stringResource(R.string.title_create_playlist),
             confirmLabel = stringResource(R.string.action_create),
             icon = Icons.AutoMirrored.Filled.PlaylistAdd,
+            isBusy = isCreating,
             onDismiss = { showCreateDialog = false },
             onConfirm = { name, description ->
-                viewModel.createAndAdd(track, name, description)
-                showCreateDialog = false
+                viewModel.createAndAdd(track, name, description) { showCreateDialog = false }
             },
         )
     }
