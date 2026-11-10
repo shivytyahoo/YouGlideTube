@@ -63,6 +63,9 @@ internal object DownloadLauncher {
         audioFormat: PlayerResponse.StreamingData.Format,
         threads: Int? = null,
         subtitle: DownloadSubtitle? = null,
+        clipStartMs: Long? = null,
+        clipEndMs: Long? = null,
+        audioTrackKeys: List<String> = emptyList(),
     ) {
         promptStoragePermissionIfNeeded(context)
         submit(
@@ -74,8 +77,11 @@ internal object DownloadLauncher {
                 audioItag = audioFormat.itag,
                 audioTrackId = audioFormat.audioTrack?.id,
                 audioLanguage = audioFormat.audioLanguageTag,
+                audioTrackKeys = audioTrackKeys,
                 threads = threads,
                 subtitle = subtitle,
+                clipStartMs = clipStartMs,
+                clipEndMs = clipEndMs,
             ),
         )
         Toast.makeText(context, context.getString(R.string.ui_started_download, video.title), Toast.LENGTH_SHORT).show()
@@ -87,6 +93,8 @@ internal object DownloadLauncher {
         video: Video,
         format: PlayerResponse.StreamingData.Format,
         threads: Int? = null,
+        clipStartMs: Long? = null,
+        clipEndMs: Long? = null,
     ): Boolean {
         promptStoragePermissionIfNeeded(context)
         submit(
@@ -97,6 +105,8 @@ internal object DownloadLauncher {
                 audioTrackId = format.audioTrack?.id,
                 audioLanguage = format.audioLanguageTag,
                 threads = threads,
+                clipStartMs = clipStartMs,
+                clipEndMs = clipEndMs,
             ),
         )
         return true
@@ -109,9 +119,11 @@ internal object DownloadLauncher {
     fun startDefaultDownload(
         context: Context,
         video: Video,
+        clipStartMs: Long? = null,
+        clipEndMs: Long? = null,
     ) {
         promptStoragePermissionIfNeeded(context)
-        submit(context, video.toDownloadRequest(targetHeight = 0))
+        submit(context, video.toDownloadRequest(targetHeight = 0, clipStartMs = clipStartMs, clipEndMs = clipEndMs))
         Toast.makeText(context, context.getString(R.string.ui_started_download, video.title), Toast.LENGTH_SHORT).show()
     }
 
