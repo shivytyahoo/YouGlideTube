@@ -2,6 +2,7 @@ package io.github.aedev.flow.data.video.downloader.work
 
 import android.content.Context
 import android.util.Log
+import androidx.media3.common.C
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.aedev.flow.R
 import io.github.aedev.flow.data.local.PlayerPreferences
@@ -18,6 +19,7 @@ import io.github.aedev.flow.data.video.downloader.tags.CoverArtLoader
 import io.github.aedev.flow.data.video.downloader.tags.DownloadKind
 import io.github.aedev.flow.data.video.downloader.tags.Mp4Remuxer
 import io.github.aedev.flow.data.video.downloader.tags.Mp4TagWriter
+import io.github.aedev.flow.data.video.downloader.transfer.StreamRole
 import io.github.aedev.flow.data.video.storage.DownloadCovers
 import io.github.aedev.flow.data.video.storage.DownloadFiles
 import io.github.aedev.flow.data.video.storage.DownloadPlacement
@@ -105,9 +107,42 @@ class DownloadRunner
             fetched: FetchOutcome.Fetched,
             cover: ByteArray?,
         ) {
-            notifier.show(request.videoId, request.tags.title, DownloadPhase.Finishing)
+            val mergeTotal = mergeTotalBytes(fetched)
+            // The two extractors do not share a timebase on segment-only parts: WebM reports
+            // absolute stream times (base 0), while fragmented MP4 reports times relative to
+            // its first segment (device report 9: audio firstSampleTime=0). Each input is
+            // shifted by the absolute time of its reported zero — its own first-selected
+            // segment start — or every audio sample falls below the snapped offset and is
+            // skipped, leaving a video-only file.
+            val videoBaseUs =
+                if (fetched.streams?.video?.mimeType?.contains("webm", ignoreCase = true) == true) {
+                    0L
+                } else {
+                    fetched.snappedStartUsByRole[StreamRole.VIDEO] ?: 0L
+                }
+            // Multi-audio: one input per ticked language, primary first, each shifted by its
+            // own first segment start (audio is always MP4, so its extractor reports times
+            // relative to its own part). A full download has no bases, so they stay 0.
+            val audioLanguages = fetched.streams?.audioTracks?.ifEmpty { null }?.map { it.audioLanguageTag } ?: listOf(fetched.streams?.audio?.audioLanguageTag)
+            val audioInputs =
+                fetched.audioParts.mapIndexed { index, part ->
+                    Mp4Remuxer.AudioInput(
+                        path = part.path,
+                        baseUs = fetched.audioBaseUs.getOrNull(index) ?: 0L,
+                        language = audioLanguages.getOrNull(index)?.takeIf { it.isNotBlank() },
+                    )
+                }
+            Log.w(
+                TAG,
+                "${request.videoId}: merge start segmentClip=${fetched.segmentClip} " +
+                    "videoBytes=${fetched.videoPart?.length()} audioBytes=${fetched.audioParts.joinToString { "${it.length()}" }} " +
+                    "audioLangs=${audioLanguages.joinToString()} " +
+                    "clip=${request.clipStartMs}..${request.clipEndMs} snappedStartUs=${fetched.snappedStartUs} " +
+                    "videoBaseUs=$videoBaseUs audioBaseUs=${fetched.audioBaseUs.joinToString()}",
+            )
+            notifier.show(request.videoId, request.tags.title, DownloadPhase.Finishing(0L, mergeTotal))
             downloads.emitProgress(
-                DownloadProgressUpdate(request.videoId, itemId, 0L, 0L, DownloadItemStatus.DOWNLOADING, isMerging = true),
+                DownloadProgressUpdate(request.videoId, itemId, 0L, mergeTotal, DownloadItemStatus.DOWNLOADING, isMerging = true),
             )
 
             val extension = if (request.wantsAudioOnly) "m4a" else "mp4"
@@ -117,10 +152,22 @@ class DownloadRunner
                 withContext(Dispatchers.IO) {
                     remuxer.remux(
                         videoPath = fetched.videoPart?.path,
-                        audioPath = fetched.audioPart.path,
+                        audioInputs = audioInputs,
                         outputPath = output.path,
                         tags = request.tags,
                         isCancelled = { !runJob.isActive },
+                        onProgress = { fraction ->
+                            val done = (fraction.coerceIn(0f, 1f) * mergeTotal).toLong()
+                            downloads.emitProgress(
+                                DownloadProgressUpdate(request.videoId, itemId, done, mergeTotal, DownloadItemStatus.DOWNLOADING, isMerging = true),
+                            )
+                            notifier.show(request.videoId, request.tags.title, DownloadPhase.Finishing(done, mergeTotal))
+                        },
+                        clipStartUs = (request.clipStartMs ?: 0L) * 1000L,
+                        clipEndUs = request.clipEndMs?.let { it * 1000L } ?: C.TIME_UNSET,
+                        skipSeeks = fetched.segmentClip,
+                        snappedStartUs = fetched.snappedStartUs,
+                        videoBaseUs = videoBaseUs,
                     )
                 }
             if (remuxed is Mp4Remuxer.Result.Failure) {
@@ -134,7 +181,24 @@ class DownloadRunner
             } catch (e: IOException) {
                 Log.w(TAG, "${request.videoId}: tags not written", e)
             }
-            if (!validator.isPlayable(output, expectVideo = !request.wantsAudioOnly, expectedDurationMs = fetched.durationMs)) {
+            // A clip file runs the clip's length, not the video's — the validator must be
+            // told the trimmed length (from the snapped start the remuxer reports), or
+            // every clip would fail as "unreadable".
+            // When the remuxer could not read a start at all (0 for a clip that starts later),
+            // the requested start is the honest fallback: it is at most one segment away.
+            val trimmedStartMs =
+                ((remuxed as Mp4Remuxer.Result.Success).firstSampleTimeUs / 1000L)
+                    .takeIf { it > 0L }
+                    ?: (request.clipStartMs ?: 0L)
+            Log.w(TAG, "${request.videoId}: remux ok trimmedStartMs=$trimmedStartMs")
+            val expectedDurationMs =
+                if (request.isClip) {
+                    ((request.clipEndMs ?: 0L) - trimmedStartMs).coerceAtLeast(0L)
+                } else {
+                    fetched.durationMs
+                }
+            if (!validator.isPlayable(output, expectVideo = !request.wantsAudioOnly, expectedDurationMs = expectedDurationMs)) {
+                Log.w(TAG, "${request.videoId}: validator rejected output expectedDurationMs=$expectedDurationMs")
                 fail(request, staging, context.getString(R.string.download_failed_unreadable), keepParts = false)
                 return
             }
@@ -142,6 +206,7 @@ class DownloadRunner
             val size = output.length()
             val placed = placement.place(output, request, extension)
             if (placed == null) {
+                Log.w(TAG, "${request.videoId}: placement returned null for ${request.tags.title}")
                 fail(request, staging, context.getString(R.string.download_failed_save), keepParts = true)
                 return
             }
@@ -175,6 +240,10 @@ class DownloadRunner
                 runCatching { subtitleFile.writeBeside(request, placed, captions) }.onFailure { Log.w(TAG, "subtitle file not saved", it) }
             }
         }
+
+        /** The merged file is about the size of its parts, so merge progress reads as bytes. */
+        private fun mergeTotalBytes(fetched: FetchOutcome.Fetched): Long =
+            (fetched.videoPart?.length() ?: 0L) + fetched.audioParts.sumOf { it.length() }
 
         /** What the row shows for the stream it holds: "VP9 1080p60" for a video, "128 kbps" for audio. */
         private fun qualityOf(fetched: FetchOutcome.Fetched): String {
