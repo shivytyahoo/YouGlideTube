@@ -3,9 +3,11 @@ package io.github.aedev.flow.ui.components.shared
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -36,6 +38,7 @@ fun CollectionEditDialog(
     initialDescription: String = "",
     icon: ImageVector? = null,
     showDescription: Boolean = true,
+    isBusy: Boolean = false,
 ) {
     var name by remember(initialName) { mutableStateOf(initialName) }
     var description by remember(initialDescription) { mutableStateOf(initialDescription) }
@@ -81,9 +84,16 @@ fun CollectionEditDialog(
         confirmButton = {
             Button(
                 onClick = { onConfirm(name, description) },
-                enabled = name.isNotBlank(),
+                enabled = name.isNotBlank() && !isBusy,
             ) {
-                Text(confirmLabel)
+                // The create used to freeze the main thread, so the button
+                // showed no press at all and repeat taps queued duplicates.
+                // While the create runs, the button spins instead.
+                if (isBusy) {
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp))
+                } else {
+                    Text(confirmLabel)
+                }
             }
         },
         dismissButton = {
