@@ -22,6 +22,11 @@ data class PlaylistDetailUiState(
     val thumbnailUrl: String = "",
     val isLocalPlaylist: Boolean = false,
     val isSaved: Boolean = false,
+    /** The Save button's like tokens from the page, when it carries one. */
+    val likeParams: String? = null,
+    val removeLikeParams: String? = null,
+    /** Null until the page loads: the page may carry no Save button at all. */
+    val hasSaveButton: Boolean? = null,
     val isWatchLater: Boolean = false,
     /** Liked videos: read from the likes, where removing a video unlikes it. */
     val isLikes: Boolean = false,
