@@ -1,11 +1,16 @@
 package io.github.aedev.flow.ui.screens.playlists
 
+import android.content.Context
+import android.widget.Toast
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import io.github.aedev.flow.R
 import io.github.aedev.flow.data.account.AccountPlaylists
 import io.github.aedev.flow.data.account.toPlaylistInfo
 import io.github.aedev.flow.data.local.PlayerPreferences
+import io.github.aedev.flow.data.model.Playlist
 import io.github.aedev.flow.data.model.PlaylistInfo
 import io.github.aedev.flow.data.playlist.PlaylistListOrder
 import io.github.aedev.flow.innertube.YouTube
@@ -26,6 +31,7 @@ import javax.inject.Inject
 class PlaylistsViewModel
     @Inject
     constructor(
+        @ApplicationContext private val context: Context,
         private val accountPlaylists: AccountPlaylists,
         private val preferences: PlayerPreferences,
     ) : ViewModel() {
@@ -53,14 +59,39 @@ class PlaylistsViewModel
             }
         }
 
+        private val _isCreating = MutableStateFlow(false)
+        val isCreating: StateFlow<Boolean> = _isCreating.asStateFlow()
+
         fun createPlaylist(
             name: String,
             description: String,
+            onDone: () -> Unit = {},
         ) {
-            if (!YouTube.isSignedIn()) return
+            if (!YouTube.isSignedIn() || _isCreating.value) return
+            _isCreating.value = true
             viewModelScope.launch {
-                runCatching { YouTube.createPlaylist(name) }
-                accountPlaylists.refresh()
+                try {
+                    val playlistId = runCatching { YouTube.createPlaylist(name) }.getOrNull()?.removePrefix("VL")
+                    if (playlistId.isNullOrBlank()) {
+                        Toast.makeText(context, context.getString(R.string.toast_failed_to_create_playlist), Toast.LENGTH_SHORT).show()
+                    } else {
+                        // The new playlist shows at once instead of after the
+                        // next list re-read, which may not even carry it.
+                        accountPlaylists.addEntry(
+                            Playlist(
+                                id = playlistId,
+                                name = name,
+                                thumbnailUrl = "",
+                                videoCount = 0,
+                                isLocal = false,
+                            ),
+                        )
+                        accountPlaylists.refresh()
+                    }
+                } finally {
+                    _isCreating.value = false
+                    onDone()
+                }
             }
         }
 
@@ -82,8 +113,18 @@ class PlaylistsViewModel
 
         fun deletePlaylist(playlistId: String) {
             viewModelScope.launch {
-                YouTube.deletePlaylist(playlistId)
-                accountPlaylists.refresh()
+                // The tombstone goes first and the server call follows, so the
+                // playlist leaves the list the moment Delete is tapped; a
+                // refused delete puts it back instead of vanishing one that
+                // still exists.
+                accountPlaylists.removePlaylist(playlistId)
+                if (YouTube.deletePlaylist(playlistId).isSuccess) {
+                    accountPlaylists.refresh()
+                } else {
+                    accountPlaylists.unremovePlaylist(playlistId)
+                    accountPlaylists.refresh()
+                    Toast.makeText(context, context.getString(R.string.toast_failed_to_delete_playlist), Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }
