@@ -23,6 +23,13 @@ data class DownloadRequest(
     val audioItag: Int? = null,
     val audioTrackId: String? = null,
     val audioLanguage: String? = null,
+    /**
+     * The audio tracks the dialog ticked for a multi-audio download, primary first, each
+     * named by [DownloadStreamPolicy.audioTrackKey]: an itag alone cannot name a track
+     * (Hindi and its English dub share itag 140), so the key carries the track id and
+     * bitrate too. Empty means just [audioItag] (the single-audio pick).
+     */
+    val audioTrackKeys: List<String> = emptyList(),
     val collectionId: String? = null,
     val threads: Int? = null,
     val durationSeconds: Int = 0,
@@ -32,10 +39,16 @@ data class DownloadRequest(
     val subtitle: DownloadSubtitle? = null,
     /** Where that file was written, so deleting the download removes it too. */
     val subtitleFile: String? = null,
+    /** Clip download: only [clipStartMs, clipEndMs) is kept, the rest is trimmed after the merge. Null on either means the whole video. */
+    val clipStartMs: Long? = null,
+    val clipEndMs: Long? = null,
 ) {
     val videoId: String get() = tags.videoId
     val kind: DownloadKind get() = tags.kind
     val isMusic: Boolean get() = tags.kind == DownloadKind.MUSIC
+
+    /** True when a real clip range was asked for (both ends set, end after start). */
+    val isClip: Boolean get() = clipStartMs != null && clipEndMs != null && clipEndMs > clipStartMs
 
     /** Music is always audio; so is anything asked for as audio only. */
     val wantsAudioOnly: Boolean get() = audioOnly || isMusic
