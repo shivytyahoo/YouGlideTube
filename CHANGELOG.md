@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.0.4 — 2026-11-10
+
+- Animated backgrounds: choose from 30 festival looks — Diwali diyas, and 29 more — in Settings → Appearance → Layout.
+- Live videos play again: live streams were blocked on every player; they now load through your signed-in session.
+- History, finally fixed: Clear All wipes your whole YouTube watch history in one go, and it stays gone after refresh.
+- Delete and Delete Shorts now remove videos from your server history too, not just the local list.
+- Video quality is Auto by default: videos climb to the best quality your network can handle instead of staying pinned to 480p on mobile data.
+- Playlists that actually load: your playlist list was coming back empty — it now shows all of them.
+- Watch Later works: adding a video to Watch Later now saves it on the server.
+- Library stays live: counts and thumbnails update the moment you add, remove, or delete a playlist.
+- Deleting a playlist sticks: it no longer comes back after you leave the screen.
+- Player Save button flips to Saved the instant you save a video.
+- Save and unsave fixed: saving someone else's playlist, then removing it, works now instead of failing with a permission error.
+- Download a clip: pick a start and end time and download just that part — no need to download the whole video.
+- Clip downloads are much faster now: only the clip's own segments are fetched, for MP4 and WebM (VP9/AV1) alike.
+- Multi-audio downloads: tick Hindi and English and the download carries both audio tracks.
+- Smoother on slow networks: videos keep a bigger buffer and step up quality more slowly, so mid-video stalls are rarer.
+- TV catches up with mobile: matching banner, circles and backgrounds on TV, visit a channel from any feed card or the player, previews follow the remote, and a clear focus ring.
+- Battery saver in Settings: switches off animations, glass blur, feed previews and Shorts pre-loading for a lighter, faster app.
+- Autoplay no longer crashes at the end of the queue when there is nothing next.
+- Fixed a thin outline that appeared around cards on phones.
+
 ## 1.0.2 — 2026-11-05
 
 - Notifications, in the app: a bell with an unread badge on every screen, New / Last 7 days / Earlier groups, pull to refresh, clear all, and dismiss — and the check interval you pick in Settings now actually reschedules the check.
