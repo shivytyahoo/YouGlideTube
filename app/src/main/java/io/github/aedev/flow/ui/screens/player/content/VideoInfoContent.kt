@@ -8,12 +8,14 @@ import android.widget.Toast
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.aedev.flow.R
 import io.github.aedev.flow.data.localmedia.LocalMediaIds
@@ -22,6 +24,7 @@ import io.github.aedev.flow.data.model.Video
 import io.github.aedev.flow.innertube.YouTube
 import io.github.aedev.flow.player.EnhancedPlayerManager
 import io.github.aedev.flow.ui.components.shared.SaveVideoSheet
+import io.github.aedev.flow.ui.components.shared.SaveVideoViewModel
 import io.github.aedev.flow.ui.components.shared.rememberVideoShareAction
 import io.github.aedev.flow.ui.components.shared.shareMediaFiles
 import io.github.aedev.flow.ui.components.shared.subscribedCollaboratorIds
@@ -42,6 +45,7 @@ internal fun VideoInfoContent(
     video: Video,
     uiState: VideoPlayerUiState,
     viewModel: VideoPlayerViewModel,
+    saveVideoViewModel: SaveVideoViewModel = hiltViewModel(),
     screenState: PlayerScreenState,
     commentsUiState: PlayerCommentsUiState,
     commentsEnabled: Boolean = true,
@@ -80,8 +84,13 @@ internal fun VideoInfoContent(
 
     val downloadedVideoIds by viewModel.downloadedVideoIds.collectAsStateWithLifecycle()
     val isVideoDownloaded = remember(downloadedVideoIds, video.id) { downloadedVideoIds.contains(video.id) }
-    val isVideoSaved by remember(video.id) { viewModel.isVideoSavedToAnyPlaylist(video.id) }
-        .collectAsStateWithLifecycle(initialValue = false)
+    // The Save button reads the save sheet's own live membership: the sheet's
+    // toggles update it at once, so the button flips the moment a save lands
+    // instead of waiting for a reload. The old one-shot flow ran once per
+    // video and never heard about the sheet's saves (report 25).
+    val savedPlaylistIds by saveVideoViewModel.savedIds.collectAsStateWithLifecycle()
+    LaunchedEffect(video.id) { saveVideoViewModel.loadMembership(video.id) }
+    val isVideoSaved = savedPlaylistIds.isNotEmpty()
 
     if (showAddToPlaylistDialog) {
         SaveVideoSheet(
