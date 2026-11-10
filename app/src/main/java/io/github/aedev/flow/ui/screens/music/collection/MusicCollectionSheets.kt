@@ -60,6 +60,7 @@ internal fun CollectionSheets(
 
         is CollectionSheet.AddTo -> {
             val targets by viewModel.mergeTargets.collectAsStateWithLifecycle()
+            val isCreating by viewModel.isCreating.collectAsStateWithLifecycle()
             var creating by remember { mutableStateOf(false) }
             MergeIntoCollectionSheet(
                 targets =
@@ -85,10 +86,13 @@ internal fun CollectionSheets(
                     title = stringResource(R.string.create_new_playlist),
                     confirmLabel = stringResource(R.string.create),
                     icon = Icons.AutoMirrored.Filled.PlaylistAdd,
+                    isBusy = isCreating,
                     onDismiss = { creating = false },
                     onConfirm = { name, description ->
-                        viewModel.createAndAdd(name, description, sheet.songs)
-                        onDismiss()
+                        viewModel.createAndAdd(name, description, sheet.songs) {
+                            creating = false
+                            onDismiss()
+                        }
                     },
                 )
             }
