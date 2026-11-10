@@ -29,7 +29,12 @@ sealed interface DownloadPhase {
         val percent: Int get() = if (totalBytes > 0) ((downloadedBytes * 100) / totalBytes).toInt().coerceIn(0, 100) else 0
     }
 
-    data object Finishing : DownloadPhase
+    data class Finishing(
+        val downloadedBytes: Long,
+        val totalBytes: Long,
+    ) : DownloadPhase {
+        val percent: Int get() = if (totalBytes > 0) ((downloadedBytes * 100) / totalBytes).toInt().coerceIn(0, 100) else 0
+    }
 
     data object Paused : DownloadPhase
 
@@ -113,6 +118,7 @@ class DownloadNotifier
         private fun signatureOf(phase: DownloadPhase): String =
             when (phase) {
                 is DownloadPhase.Transferring -> "t${phase.percent}"
+                is DownloadPhase.Finishing -> "f${phase.percent}"
                 else -> phase.toString()
             }
 
@@ -153,10 +159,17 @@ class DownloadNotifier
                         .addAction(action(videoId, DownloadActionReceiver.ACTION_CANCEL, R.string.cancel))
                 }
 
-                DownloadPhase.Finishing -> {
+                is DownloadPhase.Finishing -> {
                     builder
-                        .setContentText(context.getString(R.string.download_merging_audio_video))
-                        .setProgress(0, 0, true)
+                        .setContentText(
+                            context.getString(
+                                R.string.notification_download_merging_progress,
+                                phase.percent,
+                                Formatter.formatShortFileSize(context, phase.downloadedBytes),
+                                Formatter.formatShortFileSize(context, phase.totalBytes),
+                            ),
+                        ).setProgress(100, phase.percent, phase.totalBytes <= 0)
+                        .addAction(action(videoId, DownloadActionReceiver.ACTION_CANCEL, R.string.cancel))
                 }
 
                 DownloadPhase.Paused -> {
