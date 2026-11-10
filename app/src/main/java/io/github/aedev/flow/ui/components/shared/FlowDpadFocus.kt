@@ -34,6 +34,13 @@ import androidx.compose.ui.zIndex
  */
 val LocalDpadNavigation = staticCompositionLocalOf { false }
 
+/**
+ * True while the full battery saver is on: ambient animations, the glass blur, feed previews
+ * and speculative prefetch are all off, and the app runs on its plain, fastest path. Provided
+ * at the app root from the battery-saver preference; false by default.
+ */
+val LocalBatterySaver = staticCompositionLocalOf { false }
+
 object FocusLiftDefaults {
     /** Cards and tiles: Google's TV focus scale for medium-sized items. */
     const val CARD_SCALE = 1.05f
