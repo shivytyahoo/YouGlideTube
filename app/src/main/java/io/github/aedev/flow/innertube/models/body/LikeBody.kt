@@ -7,6 +7,10 @@ import kotlinx.serialization.Serializable
 data class LikeBody(
     val context: Context,
     val target: Target,
+    // youtubei.js LikeEndpoint sends the params the server issued with the
+    // button (likeParams / removeLikeParams); without them the server 403s.
+    // explicitNulls = false omits this when no params are known.
+    val params: String? = null,
 ) {
     @Serializable
     sealed class Target {
