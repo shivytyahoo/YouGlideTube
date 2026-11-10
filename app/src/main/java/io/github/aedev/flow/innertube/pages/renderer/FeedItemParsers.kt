@@ -14,6 +14,7 @@ import io.github.aedev.flow.innertube.pages.youtubeText
 import io.github.aedev.flow.utils.ThumbnailUrlResolver
 import io.github.aedev.flow.utils.premiereDateText
 import io.github.aedev.flow.utils.relativedate.RelativeUploadDateParser
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 
@@ -37,6 +38,7 @@ internal val FEED_ITEM_PARSERS: Map<String, FeedItemParser> =
         "shortsLockupViewModel" to FeedItemParser { node, owner -> node.toShortItem("shortsLockupViewModel", owner) },
         "reelItemRenderer" to FeedItemParser { node, owner -> node.toShortItem("reelItemRenderer", owner) },
         "videoRenderer" to FeedItemParser { node, owner -> node.toVideoRendererItem(owner) },
+        "playlistVideoRenderer" to FeedItemParser { node, owner -> node.toPlaylistVideoItem(owner) },
         "gridVideoRenderer" to FeedItemParser { node, owner -> node.toVideoRendererItem(owner) },
         "playlistRenderer" to FeedItemParser { node, _ -> node.toPlaylistRendererItem() },
         "gridPlaylistRenderer" to FeedItemParser { node, _ -> node.toPlaylistRendererItem() },
@@ -61,8 +63,31 @@ internal fun JsonElement?.toFeedItem(owner: FeedItemOwner): FeedItem? {
             ?.get("content")
             .objectOrNull()
             ?: node
-    return FEED_ITEM_PARSERS.firstNotNullOfOrNull { (key, parser) ->
+    FEED_ITEM_PARSERS.firstNotNullOfOrNull { (key, parser) ->
         content[key].objectOrNull()?.let { parser.parse(it, owner) }
+    }?.let { return it }
+    // Some surfaces nest the item deeper than the rich-item wrapper — a lockup directly
+    // under richItemRenderer, or inside a list/sheet node — so search the element's subtree.
+    // Bounded: the direct shapes above already cover the common case, and a feed item's
+    // subtree is small. The first renderer found wins; the walker's dedup by distinctKey
+    // collapses it if the same item is also reached as its own array element.
+    return node.findFeedRenderer(depth = 0)?.let { (key, renderer) ->
+        FEED_ITEM_PARSERS[key]?.parse(renderer, owner)
+    }
+}
+
+private fun JsonElement.findFeedRenderer(depth: Int): Pair<String, JsonObject>? {
+    if (depth > 4) return null
+    val node = objectOrNull()
+    if (node != null) {
+        FEED_ITEM_PARSERS.keys.firstOrNull { node.containsKey(it) }?.let { key ->
+            node[key].objectOrNull()?.let { return key to it }
+        }
+    }
+    return when (this) {
+        is JsonObject -> values.firstNotNullOfOrNull { it.findFeedRenderer(depth + 1) }
+        is JsonArray -> firstNotNullOfOrNull { it.findFeedRenderer(depth + 1) }
+        else -> null
     }
 }
 
@@ -121,6 +146,38 @@ private fun JsonObject.toVideoRendererItem(owner: FeedItemOwner): FeedItem? {
             snippetHighlights = highlights,
         )
     return if (isShort) FeedItem.ShortItem(video) else FeedItem.VideoItem(video)
+}
+
+/**
+ * A playlist page's own video row. System playlists (Watch Later, Liked videos) still arrive
+ * in this older shape where the feed only knows lockups — the field recipe is youtubei.js
+ * PlaylistVideo: videoId, title, shortBylineText, thumbnail, setVideoId at the top level,
+ * lengthText with a lengthSeconds fallback, and the views-plus-age videoInfo line.
+ */
+private fun JsonObject.toPlaylistVideoItem(owner: FeedItemOwner): FeedItem? {
+    val videoId = this["videoId"].stringOrNull()?.takeIf(String::isNotBlank) ?: return null
+    val title = this["title"].youtubeText()?.takeIf(String::isNotBlank) ?: return null
+    val videoInfo = this["videoInfo"].youtubeText().orEmpty()
+    val timeStatus = this["thumbnailOverlays"].timeStatusStyle()
+    val video =
+        Video(
+            id = videoId,
+            title = title,
+            channelName = bylineName() ?: owner.name,
+            channelId =
+                this["shortBylineText"].bylineChannelId()
+                    ?: owner.id.takeIf(String::isNotBlank).orEmpty(),
+            thumbnailUrl = ThumbnailUrlResolver.normalizeVideoThumbnail(videoId, this["thumbnail"].largestImageUrl()),
+            duration =
+                parseDurationText(this["lengthText"].youtubeText())
+                    ?: this["lengthSeconds"].stringOrNull()?.toIntOrNull()
+                    ?: 0,
+            viewCount = parseYouTubeViewCount(videoInfo),
+            uploadDate = videoInfo.substringAfter("•", "").trim(),
+            isLive = timeStatus == TIME_STATUS_LIVE,
+            isShort = timeStatus == TIME_STATUS_SHORTS,
+        )
+    return FeedItem.VideoItem(video)
 }
 
 /** A Short can arrive as a plain video row, and then tapping it opens the reel player, not the watch page. */
