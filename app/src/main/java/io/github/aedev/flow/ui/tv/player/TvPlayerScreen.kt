@@ -356,6 +356,7 @@ fun TvPlayerScreen(
                     isLiked = uiState.likeState == "LIKED",
                     isDisliked = uiState.likeState == "DISLIKED",
                 ),
+            onOpenChannel = onOpenChannel,
             seekBarFocusRequester = seekBarFocusRequester,
             playPauseFocusRequester = playPauseFocusRequester,
             onSeekBarFocusChanged = { seekBarFocused = it },
