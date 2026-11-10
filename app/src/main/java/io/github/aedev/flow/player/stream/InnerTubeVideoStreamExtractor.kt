@@ -775,7 +775,7 @@ object InnerTubeVideoStreamExtractor {
             }
             val sts = withTimeoutOrNull(SIGNATURE_TIMESTAMP_WAIT_MS) { CipherDeobfuscator.ensureSignatureTimestamp() }
 
-            val playerResponse =
+            val playerResult =
                 withTimeoutOrNull(WEB_PLAYER_TIMEOUT_MS) {
                     YouTube
                         .playerWeb(
@@ -787,11 +787,28 @@ object InnerTubeVideoStreamExtractor {
                             cpn = cpn,
                             reloadToken = reloadToken,
                             client = client,
-                        ).getOrNull()
+                            // Report 31: the anonymous SABR /player (visitor
+                            // + PoToken only) is walled on every client while
+                            // the official app plays the same video on the
+                            // same network — send the signed-in session with
+                            // it, the way fetchWebTracking already does.
+                            withAuth = true,
+                        )
                 }
+            val playerResponse = playerResult?.getOrNull()
             if (playerResponse == null) {
-                failureReasons.add("$label: timeout or null response")
-                Log.w(TAG, "$label+SABR: player request timeout/null")
+                // A timeout, an HTTP failure and a null body are three
+                // different walls — report 32's "timeout/null" hid which one
+                // the live /player actually hit.
+                val cause =
+                    when {
+                        playerResult == null -> "timeout"
+                        playerResult.exceptionOrNull() != null ->
+                            "error=${playerResult.exceptionOrNull()?.javaClass?.simpleName}: ${playerResult.exceptionOrNull()?.message}"
+                        else -> "null response"
+                    }
+                failureReasons.add("$label: $cause")
+                Log.w(TAG, "$label+SABR: player request $cause")
                 return null
             }
 
@@ -803,6 +820,28 @@ object InnerTubeVideoStreamExtractor {
                 Log.w(TAG, "$label: $tag, reason=$reason")
                 PlayerDiagnostics.logWarning(TAG, "skip $label v${client.clientVersion}: $tag reason=$reason pot=true")
                 return null
+            }
+
+            // A live broadcast carries no adaptive formats — only HLS/DASH
+            // manifests — so the SABR resolve below can never serve it, and
+            // the live step never runs either because it waits for an
+            // answering direct /player that never comes (report 32). The
+            // authenticated WEB /player is the one request that
+            // demonstrably answers for walled videos, so take the live
+            // manifest straight from it before the VOD logic.
+            if (playerResponse.isLiveNow()) {
+                playerResponse.toLiveResultOrNull(client)?.let {
+                    Log.w(
+                        TAG,
+                        "$label+SABR: live manifest via ${client.clientName} " +
+                            "(hls=${it.liveHlsUrl != null}, dash=${it.liveDashUrl != null})",
+                    )
+                    PlayerDiagnostics.logWarning(
+                        TAG,
+                        "$label+SABR $videoId: live manifest hls=${it.liveHlsUrl != null} dash=${it.liveDashUrl != null}",
+                    )
+                    return it
+                }
             }
 
             // StreamerContext.po_token carries the videoId-bound content token, which is what GVS
