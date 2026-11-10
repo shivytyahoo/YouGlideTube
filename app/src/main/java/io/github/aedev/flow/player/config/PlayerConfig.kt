@@ -23,23 +23,23 @@ object PlayerConfig {
     /** Allocator buffer size (64 KB optimal for DASH segments) */
     const val ALLOCATOR_BUFFER_SIZE = 64 * 1024
 
-    /** Back buffer duration in milliseconds (10 seconds for instant rewind) */
-    const val BACK_BUFFER_DURATION_MS = 10_000
+    /** Back buffer duration in milliseconds (45 seconds for instant rewind) */
+    const val BACK_BUFFER_DURATION_MS = 45_000
 
     /** Back buffer duration for low-memory devices. */
     const val LOW_MEMORY_BACK_BUFFER_DURATION_MS = 0
 
     /** Hard runtime cap for main-player max buffer */
-    const val MAX_SAFE_MAIN_BUFFER_MS = 45_000
+    const val MAX_SAFE_MAIN_BUFFER_MS = 75_000
 
     /** Hard runtime cap for main-player min buffer so low-RAM devices do not over-retain media. */
-    const val MAX_SAFE_MAIN_MIN_BUFFER_MS = 20_000
+    const val MAX_SAFE_MAIN_MIN_BUFFER_MS = 50_000
 
     /** Runtime caps used when Android reports a small app heap. */
     const val LOW_MEMORY_MAX_SAFE_MAIN_BUFFER_MS = 18_000
     const val LOW_MEMORY_MAX_SAFE_MAIN_MIN_BUFFER_MS = 8_000
 
-    const val MAIN_TARGET_BUFFER_BYTES = 32 * 1024 * 1024
+    const val MAIN_TARGET_BUFFER_BYTES = 96 * 1024 * 1024
 
     /** Smaller target buffer budgets for devices with 256-384 MB app heaps. */
     const val LOW_MEMORY_MAIN_TARGET_BUFFER_BYTES = 4 * 1024 * 1024
@@ -74,24 +74,34 @@ object PlayerConfig {
     // ===== Bandwidth Thresholds =====
 
     /**
-     * Initial bandwidth estimate in bits per second. Deliberately assumes slow 4G (1.5 Mbps) rather
-     * than fast broadband: the meter corrects upward within seconds on a fast network, but an
-     * optimistic start stalls the first seconds on a slow one — and a stall is what this build
-     * exists to remove.
+     * Initial bandwidth estimate in bits per second, used only when no measured estimate has
+     * been persisted yet. Media3's own default (1 Mbps): the meter corrects upward within
+     * seconds on a fast network, but an optimistic start stalls the first seconds on a slow
+     * one — and a stall is what this build exists to remove. Once a real estimate exists it
+     * is persisted on release and seeded on the next start instead.
      */
-    const val INITIAL_BANDWIDTH_ESTIMATE = 1_500_000L
+    const val INITIAL_BANDWIDTH_ESTIMATE = 1_000_000L
+
+    /**
+     * The persisted estimate is from the last session's network, and a stale-high seed starts the
+     * next session at 4K on a link that cannot carry it — the first segments take a minute to arrive
+     * and the video stalls before it has played a frame. Cap the seed so playback always starts at
+     * a modest quality and climbs on the live measurement instead; climbing costs a few seconds of
+     * lower quality, stalling costs the video.
+     */
+    const val MAX_INITIAL_BANDWIDTH_ESTIMATE_BPS = 3_000_000L
 
     // ===== Quality Adaptation =====
 
     /** Share of the bandwidth estimate a stream may use, for Auto's own picks and Media3's ladder alike. */
     const val AUTO_BANDWIDTH_FRACTION = 0.7f
 
-    /** Buffer a ladder needs before Media3 moves it up a quality (Media3's default is 10 s). */
-    const val ABR_MIN_BUFFER_FOR_QUALITY_INCREASE_MS = 5_000
+    /** Buffer a ladder needs before Media3 moves it up a quality (Media3's default). */
+    const val ABR_MIN_BUFFER_FOR_QUALITY_INCREASE_MS = 10_000
 
     /**
      * Media3 holds the current quality while more than this is buffered. At its 25 s default a full
-     * 45 s buffer drains for 20 s before a collapsed network steps down; the midpoint of the main
+     * 75 s buffer drains for 50 s before a collapsed network steps down; the midpoint of the main
      * buffer window cuts that to 12.5 s.
      */
     const val ABR_MAX_BUFFER_FOR_QUALITY_DECREASE_MS = (MAX_SAFE_MAIN_MIN_BUFFER_MS + MAX_SAFE_MAIN_BUFFER_MS) / 2
@@ -101,9 +111,6 @@ object PlayerConfig {
 
     /** Upgrade threshold - need 30% more bandwidth to upgrade */
     const val QUALITY_UPGRADE_THRESHOLD = 1.3f
-
-    /** Downgrade threshold - downgrade if bandwidth drops to 70% */
-    const val QUALITY_DOWNGRADE_THRESHOLD = 0.7f
 
     /** Maximum stream errors before quality downgrade */
     const val MAX_STREAM_ERRORS = 2
