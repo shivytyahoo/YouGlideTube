@@ -42,6 +42,7 @@ class PlayerFactory {
         val bufferForPlaybackMs: Int,
         val bufferRebufferMs: Int,
         val playDuringCalls: Boolean,
+        val bandwidthEstimateBps: Long?,
     )
 
     private var cachedPrefs: CachedPrefs? = null
@@ -59,6 +60,7 @@ class PlayerFactory {
                     bufferForPlaybackMs = buffers.playbackMs,
                     bufferRebufferMs = buffers.rebufferMs,
                     playDuringCalls = prefs.playDuringCalls.first(),
+                    bandwidthEstimateBps = prefs.bandwidthEstimateBps.first(),
                 )
             }
         cachedPrefs = result
@@ -77,15 +79,23 @@ class PlayerFactory {
                 bufferForPlaybackMs = buffers.playbackMs,
                 bufferRebufferMs = buffers.rebufferMs,
                 playDuringCalls = prefs.playDuringCalls.first(),
+                bandwidthEstimateBps = prefs.bandwidthEstimateBps.first(),
             )
     }
 
-    fun createBandwidthMeter(context: Context): DefaultBandwidthMeter =
-        DefaultBandwidthMeter
+    fun createBandwidthMeter(context: Context): DefaultBandwidthMeter {
+        // Seed from the last measured estimate so the ABR starts at the real link speed
+        // instead of re-walking the ladder after every restart; an unseeded first launch
+        // falls back to the (deliberately modest) default estimate. The seed is capped:
+        // a stale-high estimate from another network (fast Wi-Fi, now slow 4G) would
+        // otherwise start the session at 4K and stall the first seconds.
+        val seeded = ensurePrefs(context).bandwidthEstimateBps?.coerceIn(100_000L, PlayerConfig.MAX_INITIAL_BANDWIDTH_ESTIMATE_BPS)
+        return DefaultBandwidthMeter
             .Builder(context)
-            .setInitialBitrateEstimate(PlayerConfig.INITIAL_BANDWIDTH_ESTIMATE)
+            .setInitialBitrateEstimate(seeded ?: PlayerConfig.INITIAL_BANDWIDTH_ESTIMATE)
             .setResetOnNetworkTypeChange(true)
             .build()
+    }
 
     fun createTrackSelector(
         context: Context,
