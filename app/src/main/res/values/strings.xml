@@ -1171,6 +1171,42 @@
     <string name="pause_watch_history_subtitle">Stop saving what you watch</string>
     <string name="content_settings_show_app_logo_title">Show app logo icon</string>
     <string name="content_settings_show_app_logo_subtitle">Show the YouGlideTube logo in the Home top bar</string>
+    <string name="animated_backgrounds_title">Animated backgrounds</string>
+    <string name="animated_backgrounds_subtitle">Festival animations over the background</string>
+    <string name="animated_background_none">None</string>
+    <string name="festival_diwali">Diwali</string>
+    <string name="festival_holi">Holi</string>
+    <string name="festival_eid_fitr">Eid al-Fitr</string>
+    <string name="festival_eid_adha">Eid al-Adha</string>
+    <string name="festival_christmas">Christmas</string>
+    <string name="festival_new_year">New Year</string>
+    <string name="festival_halloween">Halloween</string>
+    <string name="festival_navratri">Navratri</string>
+    <string name="festival_durga_puja">Durga Puja</string>
+    <string name="festival_ganesh_chaturthi">Ganesh Chaturthi</string>
+    <string name="festival_raksha_bandhan">Raksha Bandhan</string>
+    <string name="festival_janmashtami">Janmashtami</string>
+    <string name="festival_makar_sankranti">Makar Sankranti</string>
+    <string name="festival_pongal">Pongal</string>
+    <string name="festival_baisakhi">Baisakhi</string>
+    <string name="festival_onam">Onam</string>
+    <string name="festival_dussehra">Dussehra</string>
+    <string name="festival_karva_chauth">Karva Chauth</string>
+    <string name="festival_guru_nanak">Guru Nanak Jayanti</string>
+    <string name="festival_mahashivratri">Mahashivratri</string>
+    <string name="festival_independence_day">Independence Day</string>
+    <string name="festival_republic_day">Republic Day</string>
+    <string name="festival_lohri">Lohri</string>
+    <string name="festival_ram_navami">Ram Navami</string>
+    <string name="festival_valentines_day">Valentine\u2019s Day</string>
+    <string name="festival_easter">Easter</string>
+    <string name="festival_thanksgiving">Thanksgiving</string>
+    <string name="festival_st_patricks_day">St. Patrick\u2019s Day</string>
+    <string name="festival_chinese_new_year">Chinese New Year</string>
+    <string name="festival_earth_day">Earth Day</string>
+    <string name="settings_battery_saver_title">Battery saver</string>
+    <string name="settings_battery_saver_subtitle">Animations, glass and previews off — the fastest, lightest app</string>
+    <string name="settings_keywords_battery_saver">battery saver, fast, light, animations off, speed</string>
     <string name="content_settings_header_shorts">Shorts</string>
     <string name="content_settings_shorts_content_title">Show Shorts</string>
     <string name="content_settings_shorts_content_subtitle">Hide Shorts everywhere. Saved Shorts and history are kept.</string>
@@ -2448,6 +2484,13 @@
     <!-- Player Dialogs -->
     <string name="download_video">Download Video</string>
     <string name="select_quality">Select your preferred quality</string>
+    <string name="download_clip_title">Download a clip</string>
+    <string name="download_clip_subtitle">Only part of the video, from start to end</string>
+    <string name="download_clip_start">Start</string>
+    <string name="download_clip_end">End</string>
+    <string name="download_clip_length">Video length: %1$s</string>
+    <string name="download_clip_keyframe_note">The clip starts at the nearest keyframe just before your start time.</string>
+    <string name="download_clip_invalid">Enter a valid clip range — start before end, inside the video length.</string>
     <string name="no_download_streams">No download streams available</string>
     <!-- Compact download dialog -->
     <string name="download_audio">Audio</string>
@@ -3009,6 +3052,8 @@
     <string name="history_delete_shorts">Delete Shorts from history</string>
     <string name="history_delete_shorts_title">Delete Shorts?</string>
     <string name="history_delete_shorts_body">This removes all Shorts from your watch history. Other videos are kept.</string>
+    <string name="history_clear_failed">Couldn\'t clear watch history. Try again.</string>
+    <string name="history_remove_failed">Couldn\'t remove this video from history. Try again.</string>
     <!-- Music recognition (Shazam) -->
     <string name="recognize_music">Recognize music</string>
     <string name="recognition_history">Recognition history</string>
@@ -3252,9 +3297,13 @@
     </plurals>
     <string name="ui_playlist_saved_to_library">Playlist saved to library</string>
     <string name="ui_playlist_removed_from_library">Playlist removed from library</string>
+    <string name="ui_playlist_still_in_library">Your own playlists stay in your library</string>
+    <string name="ui_playlist_unsave_failed">Failed to remove playlist from library</string>
     <string name="ui_download_audio">Downloading audio: %1$skbps %2$s</string>
     <string name="audio_track_original">Original</string>
     <string name="audio_track_dubbed">Dubbed</string>
+    <string name="download_audio_tracks_title">Audio tracks</string>
+    <string name="download_audio_tracks_subtitle">Tick the languages to keep in the download</string>
     <string name="subtitle_load_failed">Couldn’t load %1$s subtitles — try again</string>
     <string name="subtitle_translation_unavailable">Translation unavailable — showing %1$s</string>
     <string name="ui_skipped_segment">Skipped %1$s</string>
@@ -3281,6 +3330,7 @@
     <string name="toast_sabr_download_failed">SABR download failed: %1$s</string>
     <string name="toast_copied_to_clipboard">Copied to clipboard</string>
     <string name="toast_playlist_deleted">Playlist deleted</string>
+    <string name="toast_failed_to_delete_playlist">Failed to delete playlist</string>
     <string name="toast_playlist_renamed">Playlist renamed</string>
     <string name="toast_starting_playlist_download">Starting download for %1$s…</string>
     <plurals name="toast_downloaded_tracks_from_playlist">
@@ -3303,6 +3353,7 @@
     <string name="playlist_moved_to_music">Moved to Music</string>
     <string name="playlist_moved_to_videos">Moved to Videos</string>
     <string name="toast_failed_to_save_playlist">Failed to save playlist</string>
+    <string name="toast_failed_to_create_playlist">Failed to create playlist</string>
     <string name="toast_removed_playlist_from_library">Playlist removed from library</string>
     <string name="toast_failed_to_merge_playlist">Failed to merge playlist</string>
     <!-- Localization follow-up: notifications (#738) -->
@@ -3318,6 +3369,8 @@
     <string name="notification_download_paused_hint">tap to resume</string>
     <!-- Download notification subtitle: percent, bytes so far, total bytes -->
     <string name="notification_download_progress">%1$d%% • %2$s / %3$s</string>
+    <!-- Merge notification subtitle: percent, bytes so far, total bytes -->
+    <string name="notification_download_merging_progress">Merging audio &amp; video… %1$d%% • %2$s / %3$s</string>
     <plurals name="notification_downloads_active">
         <item quantity="one">Downloading %1$d item</item>
         <item quantity="other">Downloading %1$d items</item>
