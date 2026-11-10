@@ -58,8 +58,16 @@ class SettingsHomeViewModel
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), DeepFlowState())
 
 
+        val batterySaver: StateFlow<Boolean> =
+            playerPreferences.batterySaverEnabled
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), false)
+
         private val _updateCheck = MutableStateFlow<UpdateCheckState>(UpdateCheckState.Idle)
         val updateCheck: StateFlow<UpdateCheckState> = _updateCheck.asStateFlow()
+
+        fun setBatterySaverEnabled(enabled: Boolean) {
+            viewModelScope.launch { playerPreferences.setBatterySaverEnabled(enabled) }
+        }
 
         fun setDeepFlowEnabled(enabled: Boolean) {
             viewModelScope.launch { DeepFlowManager.setEnabled(context, enabled) }
