@@ -101,7 +101,13 @@ class MusicSessionLibrary
         ) {
             _savedCollections.update { if (saved) it + collectionId else it - collectionId }
             if (YouTube.isSignedIn()) {
-                scope.launch { runCatching { YouTube.likePlaylist(collectionId, saved) } }
+                scope.launch {
+                    // A refused like used to leave the local state lying about
+                    // the library; put it back when the server says no.
+                    if (YouTube.likePlaylist(collectionId, saved).isFailure) {
+                        _savedCollections.update { if (saved) it - collectionId else it + collectionId }
+                    }
+                }
             }
         }
 
