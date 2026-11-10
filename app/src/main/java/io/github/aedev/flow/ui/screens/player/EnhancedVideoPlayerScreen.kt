@@ -21,6 +21,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.util.UnstableApi
+import io.github.aedev.flow.data.local.PlayerPreferences
 import io.github.aedev.flow.data.localmedia.LocalMediaIds
 import io.github.aedev.flow.data.model.Video
 import io.github.aedev.flow.player.EnhancedPlayerManager
@@ -30,6 +31,8 @@ import io.github.aedev.flow.ui.components.videoplayer.sheet.PlaylistQueueDock
 import io.github.aedev.flow.ui.components.videoplayer.sheet.PlaylistQueueDockDefaults
 import io.github.aedev.flow.ui.components.videoplayer.sheet.PlaylistQueuePaneCard
 import io.github.aedev.flow.ui.screens.player.content.PlayerDetailSideColumn
+import io.github.aedev.flow.ui.theme.FestivalBackground
+import io.github.aedev.flow.ui.theme.FestivalBackgroundLayer
 import io.github.aedev.flow.ui.theme.MorpheCirclesBackground
 import io.github.aedev.flow.ui.screens.player.content.VideoInfoContent
 import io.github.aedev.flow.ui.screens.player.content.relatedListUsesGrid
@@ -91,6 +94,9 @@ internal fun EnhancedVideoPlayerScreen(
     val relatedCardStyle = prefs.relatedCardStyle
     val isInPipMode by GlobalPlayerState.isInPipMode.collectAsStateWithLifecycle()
     val playerState by EnhancedPlayerManager.getInstance().playerState.collectAsStateWithLifecycle()
+    val animatedBackground by remember { PlayerPreferences(context) }
+        .animatedBackground
+        .collectAsState(initial = "diwali")
     Box(
         modifier =
             Modifier
@@ -103,6 +109,13 @@ internal fun EnhancedVideoPlayerScreen(
         // the page is actually visible — fullscreen video covers it anyway, and PiP
         // hides the page, so both freeze it instead of burning frames behind video.
         MorpheCirclesBackground(
+            modifier = Modifier.fillMaxSize(),
+            animated = !isFullscreenShown && !isInPipMode,
+        )
+        // Festival background: over the circles, same freeze rule, one choice from
+        // Appearance → Animated backgrounds.
+        FestivalBackgroundLayer(
+            background = FestivalBackground.byId(animatedBackground),
             modifier = Modifier.fillMaxSize(),
             animated = !isFullscreenShown && !isInPipMode,
         )
