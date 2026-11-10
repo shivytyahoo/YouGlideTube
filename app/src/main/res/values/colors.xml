@@ -24,7 +24,7 @@
     <color name="icon_bg_expressive_oval">#EB0000</color>
     <color name="icon_bg_expressive_pill">#FFF8F6</color>
     <color name="splash_background">#FDFCFF</color>
-    <color name="splash_foreground">#F6F1FF</color>
+    <color name="splash_foreground">#1A1C1E</color>
     <color name="splash_background_light">#FDFCFF</color>
     <color name="splash_background_dark">#1A1C1E</color>
     <color name="splash_background_black">#000000</color>
