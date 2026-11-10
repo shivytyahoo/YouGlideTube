@@ -76,8 +76,14 @@ class PlaylistDetailViewModel
         private val _uiState = MutableStateFlow(PlaylistDetailUiState())
         val uiState: StateFlow<PlaylistDetailUiState> = _uiState.asStateFlow()
 
+        // Videos with a remove still running; only touched on the main thread.
+        private val removingIds = mutableSetOf<String>()
+
         private val _messages = Channel<PlaylistUiMessage>(Channel.BUFFERED)
         val messages: Flow<PlaylistUiMessage> = _messages.receiveAsFlow()
+
+        private val _isCreating = MutableStateFlow(false)
+        val isCreating: StateFlow<Boolean> = _isCreating.asStateFlow()
 
         val sortOrder: StateFlow<PlaylistSortOrder> =
             combine(
@@ -173,8 +179,16 @@ class PlaylistDetailViewModel
         /** Saves this playlist to the account's library. */
         fun saveToLibrary() {
             viewModelScope.launch {
-                if (YouTube.isSignedIn()) YouTube.likePlaylist(playlistId, true)
+                val result = if (YouTube.isSignedIn()) YouTube.likePlaylist(playlistId, true, params = _uiState.value.likeParams) else null
+                // A failed save used to end in silence: no toast, no state
+                // change, and the user tapping again saw nothing happen.
+                if (result?.isFailure != false) {
+                    _messages.send(PlaylistUiMessage(stringRes = R.string.failed_to_save_to_library))
+                    return@launch
+                }
+                accountPlaylists.markSaved(playlistId)
                 _uiState.update { it.copy(isLocalPlaylist = true, isSaved = true) }
+                accountPlaylists.refresh()
                 val saved = if (_uiState.value.isFromMusic) R.string.toast_saved_playlist_to_music_library else R.string.ui_playlist_saved_to_library
                 _messages.send(PlaylistUiMessage(stringRes = saved))
             }
@@ -183,9 +197,35 @@ class PlaylistDetailViewModel
         /** Takes this playlist out of the account's library. */
         fun unsaveFromLibrary() {
             viewModelScope.launch {
-                if (YouTube.isSignedIn()) YouTube.likePlaylist(playlistId, false)
-                _uiState.update { it.copy(isLocalPlaylist = false, isSaved = false) }
-                _messages.send(PlaylistUiMessage(stringRes = R.string.ui_playlist_removed_from_library))
+                // The page carries no Save button: YouTube renders none for
+                // your own playlists, and the server answers removelike with
+                // 403 "does not have permission" (report 24). Nothing to call.
+                if (_uiState.value.hasSaveButton == false) {
+                    accountPlaylists.markSaved(playlistId)
+                    _uiState.update { it.copy(isLocalPlaylist = true, isSaved = true) }
+                    _messages.send(PlaylistUiMessage(stringRes = R.string.ui_playlist_still_in_library))
+                    return@launch
+                }
+                val result = if (YouTube.isSignedIn()) YouTube.likePlaylist(playlistId, false, params = _uiState.value.removeLikeParams) else null
+                // A failed unlike leaves the playlist saved: the old code toasted
+                // "removed" either way, and the merge kept the row regardless.
+                if (result?.isFailure != false) {
+                    _messages.send(PlaylistUiMessage(stringRes = R.string.ui_playlist_unsave_failed))
+                    return@launch
+                }
+                accountPlaylists.markUnsaved(playlistId)
+                accountPlaylists.refresh()
+                if (accountPlaylists.playlists.value.any { it.id == playlistId }) {
+                    // The server kept listing it after a successful unlike: an own
+                    // playlist stays in the library by ownership — only Delete
+                    // removes it. Put the bookmark back instead of lying.
+                    accountPlaylists.markSaved(playlistId)
+                    _uiState.update { it.copy(isLocalPlaylist = true, isSaved = true) }
+                    _messages.send(PlaylistUiMessage(stringRes = R.string.ui_playlist_still_in_library))
+                } else {
+                    _uiState.update { it.copy(isLocalPlaylist = false, isSaved = false) }
+                    _messages.send(PlaylistUiMessage(stringRes = R.string.ui_playlist_removed_from_library))
+                }
             }
         }
 
@@ -197,19 +237,66 @@ class PlaylistDetailViewModel
                 unlikeVideos(videoIds)
                 return
             }
+            // A second tap while a video's remove is still running would race it against
+            // a stale page (report 16: one tap, then 200, two 400s and noSetVideoId).
+            val fresh = videoIds.filter { removingIds.add(it) }
+            if (fresh.isEmpty()) return
             viewModelScope.launch {
-                val removed = _uiState.value.videos.filter { it.id in videoIds }
-                if (removed.isEmpty()) return@launch
-                removed.forEach { playlistRepository.removeVideo(playlistId, it.id) }
-                _uiState.update { state -> state.copy(videos = state.videos.filterNot { it.id in videoIds }) }
-                _messages.send(
-                    PlaylistUiMessage(
-                        pluralRes = R.plurals.playlist_videos_removed,
-                        count = removed.size,
-                        args = listOf(removed.size),
-                        undo = QuickActionUndo.PlaylistRemoval(playlistId = playlistId, videos = removed),
-                    ),
-                )
+                // Rows whose remove never confirmed (the server refused, or the call
+                // was cut short by leaving the page — report 17: the third diwali
+                // remove was cancelled mid-flight) come back here, so the list never
+                // lies about what the server still holds.
+                val succeededIds = mutableSetOf<String>()
+                var removed: List<Video> = emptyList()
+                var before: List<Video> = emptyList()
+                try {
+                    removed = _uiState.value.videos.filter { it.id in fresh }
+                    if (removed.isEmpty()) return@launch
+                    // Rows vanish at once: the server round trip takes ~1s, and a row
+                    // that stays visible that long gets tapped again.
+                    before = _uiState.value.videos
+                    _uiState.update { state -> state.copy(videos = state.videos.filterNot { it.id in fresh }) }
+                    // One request for the whole selection: one call per video let
+                    // the server refuse the later edits, so only the first left.
+                    succeededIds += playlistRepository.removeVideos(playlistId, removed.map { it.id }.toSet())
+                    val succeeded = removed.filter { it.id in succeededIds }
+                    if (succeeded.isEmpty()) return@launch
+                    _messages.send(
+                        PlaylistUiMessage(
+                            pluralRes = R.plurals.playlist_videos_removed,
+                            count = succeeded.size,
+                            args = listOf(succeeded.size),
+                            undo = QuickActionUndo.PlaylistRemoval(playlistId = playlistId, videos = succeeded),
+                        ),
+                    )
+                    // The Library card keeps the old count and thumbnail until the
+                    // account list is re-read (report 17: diwali showed "3 videos"
+                    // outside after all three were removed inside).
+                    accountPlaylists.refresh()
+                } finally {
+                    removingIds.removeAll(fresh)
+                    val unconfirmed = removed.filter { it.id !in succeededIds }
+                    if (unconfirmed.isNotEmpty()) {
+                        val unconfirmedIds = unconfirmed.map { it.id }.toSet()
+                        _uiState.update { state ->
+                            val restored = state.videos.toMutableList()
+                            before.forEachIndexed { index, video ->
+                                if (video.id in unconfirmedIds && restored.none { it.id == video.id }) {
+                                    restored.add(index.coerceAtMost(restored.size), video)
+                                }
+                            }
+                            state.copy(videos = restored)
+                        }
+                    }
+                    if (succeededIds.isNotEmpty()) {
+                        val remaining = _uiState.value.videos
+                        accountPlaylists.updateEntry(
+                            playlistId,
+                            videoCount = remaining.size,
+                            thumbnailUrl = remaining.firstOrNull()?.thumbnailUrl.orEmpty(),
+                        )
+                    }
+                }
             }
         }
 
@@ -261,8 +348,18 @@ class PlaylistDetailViewModel
 
         fun deletePlaylist() {
             viewModelScope.launch {
-                YouTube.deletePlaylist(playlistId)
-                accountPlaylists.refresh()
+                // The tombstone goes first and the server call follows: the
+                // playlist vanishes the moment Delete is tapped, instead of
+                // lingering in the list for the whole round trip. A refused
+                // delete puts it back, so a failure never looks like success.
+                accountPlaylists.removePlaylist(playlistId)
+                if (YouTube.deletePlaylist(playlistId).isSuccess) {
+                    accountPlaylists.refresh()
+                } else {
+                    accountPlaylists.unremovePlaylist(playlistId)
+                    accountPlaylists.refresh()
+                    _messages.send(PlaylistUiMessage(stringRes = R.string.toast_failed_to_delete_playlist))
+                }
             }
         }
 
@@ -277,10 +374,18 @@ class PlaylistDetailViewModel
         fun createAndMerge(
             name: String,
             description: String,
+            onDone: () -> Unit = {},
         ) {
+            if (_isCreating.value) return
+            _isCreating.value = true
             viewModelScope.launch {
-                _messages.send(createVideoPlaylistAndMerge(_uiState.value.videos, name))
-                accountPlaylists.refresh()
+                try {
+                    _messages.send(createVideoPlaylistAndMerge(accountPlaylists, _uiState.value.videos, name))
+                    accountPlaylists.refresh()
+                } finally {
+                    _isCreating.value = false
+                    onDone()
+                }
             }
         }
 
@@ -330,6 +435,9 @@ class PlaylistDetailViewModel
                 )
             }
             if (isWatchLater) sweepWatched(videos)
+            // The page's own rows are the truth for this list: the aggregation
+            // can carry a stale 0 for it, which is what the card showed.
+            accountPlaylists.updateEntry(playlistId, _uiState.value.videos.size, _uiState.value.videos.firstOrNull()?.thumbnailUrl.orEmpty())
         }
 
         private suspend fun sweepWatched(videos: List<Video>) {
@@ -361,6 +469,9 @@ class PlaylistDetailViewModel
                         thumbnailUrl = page.thumbnailUrl,
                         isLocalPlaylist = inLibrary,
                         isSaved = inLibrary,
+                        likeParams = page.likeParams,
+                        removeLikeParams = page.removeLikeParams,
+                        hasSaveButton = page.likeParams != null || page.removeLikeParams != null,
                         isWatchLater = false,
                         isLoading = false,
                         isLoadingMore = page.continuation != null,
@@ -368,6 +479,10 @@ class PlaylistDetailViewModel
                         errorMessage = null,
                     )
                 }
+                // The page's own count is the truth for this playlist: the
+                // aggregation can carry a stale 0 for it, which is what the
+                // Library card showed while the page listed videos.
+                accountPlaylists.updateEntry(playlistId, page.videoCount ?: page.videos.size, page.thumbnailUrl)
                 page.continuation?.let { loadRemainingPages(page, it) }
                 return
             }
