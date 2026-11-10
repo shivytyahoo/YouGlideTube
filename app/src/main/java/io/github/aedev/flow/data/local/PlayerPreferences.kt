@@ -406,6 +406,19 @@ class PlayerPreferences(
         // Show app logo icon in home screen top bar
         val SHOW_APP_LOGO_ICON = booleanPreferencesKey("show_app_logo_icon")
 
+        // Diwali diyas floating over the background (kept only as the migration source
+        // for the animated-background choice below; the switch itself is gone)
+        val DIWALI_DIYAS_ENABLED = booleanPreferencesKey("diwali_diyas_enabled")
+
+        // Animated background over the Morphe circles (a festival id, or "none")
+        val ANIMATED_BACKGROUND = stringPreferencesKey("animated_background")
+
+        // Full battery saver: animations, glass, previews and prefetch off
+        val BATTERY_SAVER_ENABLED = booleanPreferencesKey("battery_saver_enabled")
+
+        // Last measured bandwidth estimate in bps, seeded into the player's meter on start
+        val BANDWIDTH_ESTIMATE_BPS = longPreferencesKey("bandwidth_estimate_bps")
+
         // Player comments preview
         val COMMENTS_ENABLED = booleanPreferencesKey("comments_enabled")
         val LIVE_CHAT_ENABLED = booleanPreferencesKey("live_chat_enabled")
@@ -1373,16 +1386,19 @@ class PlayerPreferences(
     }
 
     // Quality preferences
+    // Video defaults are Auto: a fixed height pins every video to that height with adaptive
+    // off, so mobile data played everything at 480p and never climbed. Auto leaves the pick
+    // to the live bandwidth meter and the ABR.
     val defaultQualityWifi: Flow<VideoQuality> =
         context.playerPreferencesDataStore.data
             .map { preferences ->
-                VideoQuality.fromString(preferences[Keys.DEFAULT_QUALITY_WIFI] ?: "1080p")
+                VideoQuality.fromString(preferences[Keys.DEFAULT_QUALITY_WIFI] ?: "Auto")
             }
 
     val defaultQualityCellular: Flow<VideoQuality> =
         context.playerPreferencesDataStore.data
             .map { preferences ->
-                VideoQuality.fromString(preferences[Keys.DEFAULT_QUALITY_CELLULAR] ?: "480p")
+                VideoQuality.fromString(preferences[Keys.DEFAULT_QUALITY_CELLULAR] ?: "Auto")
             }
 
     suspend fun setDefaultQualityWifi(quality: VideoQuality) {
@@ -3005,6 +3021,44 @@ class PlayerPreferences(
         }
     }
 
+    // Animated background over the Morphe circles (default Diwali, which is what the
+    // old diyas switch showed; a user who had turned the diyas off gets "none").
+    val animatedBackground: Flow<String> =
+        context.playerPreferencesDataStore.data
+            .map { preferences ->
+                preferences[Keys.ANIMATED_BACKGROUND]
+                    ?: if (preferences[Keys.DIWALI_DIYAS_ENABLED] != false) "diwali" else "none"
+            }
+
+    suspend fun setAnimatedBackground(id: String) {
+        context.playerPreferencesDataStore.edit { preferences ->
+            preferences[Keys.ANIMATED_BACKGROUND] = id
+        }
+    }
+
+    // Full battery saver: animations, glass, previews and prefetch off (default off)
+    val batterySaverEnabled: Flow<Boolean> =
+        context.playerPreferencesDataStore.data
+            .map { preferences -> preferences[Keys.BATTERY_SAVER_ENABLED] ?: false }
+
+    suspend fun setBatterySaverEnabled(enabled: Boolean) {
+        context.playerPreferencesDataStore.edit { preferences ->
+            preferences[Keys.BATTERY_SAVER_ENABLED] = enabled
+        }
+    }
+
+    // Last measured bandwidth estimate (bps). Null until the player has measured one; the
+    // meter seeds from it on start so the ABR ladder does not re-walk after every restart.
+    val bandwidthEstimateBps: Flow<Long?> =
+        context.playerPreferencesDataStore.data
+            .map { preferences -> preferences[Keys.BANDWIDTH_ESTIMATE_BPS] }
+
+    suspend fun setBandwidthEstimateBps(bps: Long) {
+        context.playerPreferencesDataStore.edit { preferences ->
+            preferences[Keys.BANDWIDTH_ESTIMATE_BPS] = bps.coerceIn(100_000L, 50_000_000L)
+        }
+    }
+
     // Screen-level view mode toggles
     val searchIsGridMode: Flow<Boolean> =
         context.playerPreferencesDataStore.data
@@ -3878,7 +3932,7 @@ enum class BufferProfile(
     AGGRESSIVE("Fast Start", 5_000, 30_000, 500, 2_500),
 
     // Balanced: Good default for most connections
-    STABLE("Balanced", 30_000, 50_000, 2_500, 5_000),
+    STABLE("Balanced", 50_000, 75_000, 1_000, 2_000),
 
     // Data Saver: Minimize data usage with smaller buffers
     DATASAVER("Data Saver", 12_000, 25_000, 1_500, 3_000),
