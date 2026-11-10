@@ -187,7 +187,12 @@ data class PlayerResponse(
             val itag: Int,
             val url: String?,
             val mimeType: String,
-            val bitrate: Int,
+            // Report 35: a live /player carries adaptiveFormats entries
+            // with no bitrate at all — a required field kills the whole
+            // response (and with it the live manifest). 0 sorts last and
+            // is filtered out by the quality budget, so a missing bitrate
+            // costs nothing downstream.
+            val bitrate: Int = 0,
             val width: Int?,
             val height: Int?,
             val contentLength: Long?,
