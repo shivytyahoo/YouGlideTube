@@ -16,9 +16,9 @@ import kotlinx.serialization.json.JsonObject
 private const val LOCKUP_CONTENT_TYPE_COURSE = "LOCKUP_CONTENT_TYPE_COURSE"
 
 internal fun JsonObject.toLockupItem(owner: FeedItemOwner): FeedItem? {
-    val contentId = this["contentId"].stringOrNull()?.takeIf(String::isNotBlank) ?: return null
+    val contentId = lockupContentId() ?: return null
     val metadata = this["metadata"].objectOrNull()?.get("lockupMetadataViewModel").objectOrNull()
-    val title = metadata?.get("title").youtubeText()?.takeIf(String::isNotBlank) ?: return null
+    val title = metadata?.lockupTitle() ?: return null
     // Outside a channel's own tabs (a playlist, for one) each lockup names its channel as the
     // first metadata part, linked to it; that part is the byline, not an upload date.
     val collaborators = metadata?.get("image").collaboratorDialog()
@@ -29,25 +29,41 @@ internal fun JsonObject.toLockupItem(owner: FeedItemOwner): FeedItem? {
     val membersOnly = metadata.membersOnlyBadge()
 
     val contentType = this["contentType"].stringOrNull()
-    return when (contentType) {
-        "LOCKUP_CONTENT_TYPE_PLAYLIST",
-        "LOCKUP_CONTENT_TYPE_PODCAST",
-        "LOCKUP_CONTENT_TYPE_ALBUM",
-        LOCKUP_CONTENT_TYPE_COURSE,
-        -> {
+    // A lockup with no contentType whose id is a playlist id is a playlist, not a video:
+    // video ids are 11 chars, playlist ids are PL plus 32.
+    val isPlaylist =
+        contentType in
+            setOf(
+                "LOCKUP_CONTENT_TYPE_PLAYLIST",
+                "LOCKUP_CONTENT_TYPE_PODCAST",
+                "LOCKUP_CONTENT_TYPE_ALBUM",
+                LOCKUP_CONTENT_TYPE_COURSE,
+            ) ||
+            (contentType == null && contentId.startsWith("PL") && contentId.length > 11)
+    return when {
+        isPlaylist -> {
             FeedItem.PlaylistItem(
                 Playlist(
                     id = contentId,
                     name = title,
                     thumbnailUrl = lockupThumbnailUrl().orEmpty(),
-                    videoCount = badges.firstNotNullOfOrNull { it.leadingCount() } ?: 0,
+                    // The count badge is missing from some lockups' thumbnails; the
+                    // same "N videos" text sits in the metadata rows instead, so
+                    // the card shows 0 while the page lists videos without it.
+                    videoCount =
+                        badges.firstNotNullOfOrNull { it.leadingCount() }
+                            ?: parts.firstNotNullOfOrNull { part ->
+                                part.takeIf { it.contains("video", ignoreCase = true) || it.contains("song", ignoreCase = true) }
+                                    ?.leadingCount()
+                            }
+                            ?: 0,
                     isLocal = false,
                     isCourse = contentType == LOCKUP_CONTENT_TYPE_COURSE,
                 ),
             )
         }
 
-        "LOCKUP_CONTENT_TYPE_CHANNEL" -> {
+        contentType == "LOCKUP_CONTENT_TYPE_CHANNEL" -> {
             FeedItem.RelatedChannelItem(
                 Channel(
                     id = contentId,
@@ -58,7 +74,7 @@ internal fun JsonObject.toLockupItem(owner: FeedItemOwner): FeedItem? {
             )
         }
 
-        "LOCKUP_CONTENT_TYPE_SHORTS" -> {
+        contentType == "LOCKUP_CONTENT_TYPE_SHORTS" -> {
             FeedItem.ShortItem(
                 lockupVideo(contentId, title, parts, badges, itemOwner, collaborators).copy(isShort = true, duration = 0),
             )
@@ -71,6 +87,35 @@ internal fun JsonObject.toLockupItem(owner: FeedItemOwner): FeedItem? {
         }
     }
 }
+
+/** The playlist id behind a lockup's tap target, for lockups that carry no contentId. */
+private fun JsonObject.lockupContentId(): String? =
+    this["contentId"].stringOrNull()?.takeIf(String::isNotBlank)
+        ?: this["rendererContext"]
+            .objectOrNull()
+            ?.get("commandContext")
+            .objectOrNull()
+            ?.get("onTap")
+            .objectOrNull()
+            ?.get("innertubeCommand")
+            .objectOrNull()
+            ?.get("browseEndpoint")
+            .objectOrNull()
+            ?.get("browseId")
+            .stringOrNull()
+            ?.removePrefix("VL")
+            ?.takeIf(String::isNotBlank)
+
+/** A lockup's title, tolerating the dynamic-text wrapper the newer surfaces use. */
+private fun JsonObject.lockupTitle(): String? =
+    this["title"].youtubeText()?.takeIf(String::isNotBlank)
+        ?: this["title"]
+            .objectOrNull()
+            ?.get("dynamicTextViewModel")
+            .objectOrNull()
+            ?.get("text")
+            .youtubeText()
+            ?.takeIf(String::isNotBlank)
 
 private fun JsonObject.lockupVideo(
     videoId: String,
