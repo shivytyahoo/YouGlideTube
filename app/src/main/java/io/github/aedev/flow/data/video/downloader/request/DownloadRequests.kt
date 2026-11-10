@@ -5,16 +5,20 @@ import io.github.aedev.flow.data.music.model.MusicArtist
 import io.github.aedev.flow.data.music.model.MusicTrack
 import io.github.aedev.flow.data.video.downloader.tags.DownloadKind
 import io.github.aedev.flow.data.video.downloader.tags.DownloadTags
+import io.github.aedev.flow.utils.formatDurationMillis
 
 /** The request for a video, from what the card or player already knows about it. */
 fun Video.toDownloadRequest(
     audioOnly: Boolean = false,
     targetHeight: Int? = null,
+    clipStartMs: Long? = null,
+    clipEndMs: Long? = null,
     videoCodec: String? = null,
     videoItag: Int? = null,
     audioItag: Int? = null,
     audioTrackId: String? = null,
     audioLanguage: String? = null,
+    audioTrackKeys: List<String> = emptyList(),
     collectionId: String? = null,
     threads: Int? = null,
     subtitle: DownloadSubtitle? = null,
@@ -25,12 +29,19 @@ fun Video.toDownloadRequest(
             isShort -> DownloadKind.SHORT
             else -> DownloadKind.VIDEO
         }
+    // A clip is the video's download, titled with its range so the file and the list show it.
+    val displayTitle =
+        if (clipStartMs != null && clipEndMs != null && clipEndMs > clipStartMs) {
+            "$title (${formatDurationMillis(clipStartMs)}–${formatDurationMillis(clipEndMs)})"
+        } else {
+            title
+        }
     return DownloadRequest(
         tags =
             DownloadTags(
                 kind = kind,
                 videoId = id,
-                title = title,
+                title = displayTitle,
                 channelId = channelId.takeIf { it.isNotBlank() },
                 channelName = channelName.takeIf { it.isNotBlank() },
                 description = description.takeIf { it.isNotBlank() },
@@ -46,10 +57,13 @@ fun Video.toDownloadRequest(
         audioItag = audioItag,
         audioTrackId = audioTrackId,
         audioLanguage = audioLanguage,
+        audioTrackKeys = audioTrackKeys,
         collectionId = collectionId,
         threads = threads,
         durationSeconds = duration,
         subtitle = subtitle,
+        clipStartMs = clipStartMs,
+        clipEndMs = clipEndMs,
     )
 }
 
