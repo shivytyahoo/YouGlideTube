@@ -16,11 +16,27 @@ internal class DownloadStaging(
     val audioPart = File("$stem.audio.part")
     val state = File("$stem.state.json")
 
+    /**
+     * One part file per audio track in a multi-audio download: index 0 is the primary
+     * [audioPart]; the rest are `$stem.audio1.part`, `$stem.audio2.part`, … — so every
+     * ticked language has its own file and the remux can write one track per language.
+     */
+    fun audioPart(index: Int): File = if (index == 0) audioPart else File("$stem.audio$index.part")
+
+    fun audioParts(count: Int): List<File> = (0 until count).map { audioPart(it) }
+
+    /** Every audio part file this download (or an earlier attempt) left behind. */
+    private fun audioPartFiles(): List<File> {
+        val dir = File(stem).parentFile ?: return listOf(audioPart)
+        val prefix = File(stem).name + ".audio"
+        return dir.listFiles { file -> file.name.startsWith(prefix) }?.toList().orEmpty().ifEmpty { listOf(audioPart) }
+    }
+
     fun output(extension: String) = File("$stem.out.$extension")
 
     /** Everything this download wrote to staging, including a half-made output. */
     fun clear() {
-        listOf(videoPart, audioPart, state, File("${state.path}.tmp"), output("mp4"), output("m4a"), output("webm"))
+        (listOf(videoPart, state, File("${state.path}.tmp"), output("mp4"), output("m4a"), output("webm")) + audioPartFiles())
             .forEach { it.delete() }
     }
 
@@ -31,7 +47,7 @@ internal class DownloadStaging(
 
     /** The part files only, for a transfer that has to start over rather than resume. */
     fun clearParts() {
-        listOf(videoPart, audioPart, state).forEach { it.delete() }
+        (listOf(videoPart, state) + audioPartFiles()).forEach { it.delete() }
     }
 
     private companion object {
