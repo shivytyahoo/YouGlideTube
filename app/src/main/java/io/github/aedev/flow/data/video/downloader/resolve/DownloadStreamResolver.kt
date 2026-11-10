@@ -1,5 +1,6 @@
 package io.github.aedev.flow.data.video.downloader.resolve
 
+import android.util.Log
 import io.github.aedev.flow.data.local.MusicAudioQuality
 import io.github.aedev.flow.data.local.PlayerPreferences
 import io.github.aedev.flow.data.local.VideoCodec
@@ -21,6 +22,8 @@ data class ResolvedStreams(
     val video: Format?,
     val audio: Format,
     val durationMs: Long,
+    /** Every audio track the download keeps, primary first; a single-audio download is just [audio]. */
+    val audioTracks: List<Format> = emptyList(),
     /** The video's caption tracks as WebVTT, from the same response, for the files kept beside it. */
     val captions: List<ResolvedCaption> = emptyList(),
 )
@@ -88,6 +91,8 @@ class DownloadStreamResolver
         )
 
         internal companion object {
+            private const val TAG = "DownloadStreamResolver"
+
             /** The pure choice, separate from extraction so every rule is unit tested. */
             fun select(
                 request: DownloadRequest,
@@ -104,10 +109,18 @@ class DownloadStreamResolver
                 // A song is only its audio, so it is the one download the song quality setting shapes.
                 val quality = if (request.wantsAudioOnly) defaults.musicQuality else MusicAudioQuality.HIGH
 
+                // The dialog's pick is named by itag + track id: an itag alone cannot name
+                // a track, because Hindi and its English dub share itag 140 — the old
+                // itag-only lookup returned the dub even when the dialog picked Hindi
+                // (device report 10: ticking Hindi ticked English too, and only English
+                // downloaded). The track id names the language.
                 val audio =
                     request.audioItag
-                        ?.let { itag -> audioFormats.firstOrNull { it.itag == itag } }
-                        ?.takeIf { DownloadStreamPolicy.isAacFormat(it) }
+                        ?.let { itag ->
+                            val byItag = audioFormats.filter { it.itag == itag }
+                            request.audioTrackId?.let { id -> byItag.firstOrNull { it.audioTrack?.id == id } }
+                                ?: byItag.firstOrNull()
+                        }?.takeIf { DownloadStreamPolicy.isAacFormat(it) }
                         ?: request.audioTrackId?.let { id ->
                             DownloadStreamPolicy.pickAacAudio(audioFormats.filter { it.audioTrack?.id == id }, language, quality)
                         }
@@ -117,9 +130,37 @@ class DownloadStreamResolver
                         } else {
                             ResolveOutcome.Unavailable
                         }
+                // Multi-audio: the dialog's ticked tracks, primary first, so the file keeps
+                // every language the user asked for. The keys name each track fully (itag +
+                // track id + bitrate), so two languages sharing one itag both survive. An
+                // audio-only download is one track, and a caller that ticked nothing gets
+                // just the pick (the default audio).
+                val audioTracks =
+                    if (request.wantsAudioOnly) {
+                        listOf(audio)
+                    } else {
+                        val ticked = request.audioTrackKeys.mapNotNull { key -> audioFormats.firstOrNull { DownloadStreamPolicy.audioTrackKey(it) == key } }
+                        (listOf(audio) + ticked).distinctBy { DownloadStreamPolicy.audioTrackKey(it) }
+                    }
+                // The pick itself, with every AAC candidate: a wrong-language download is
+                // otherwise invisible (user report 2026-11-08: a clip came out with the English
+                // auto-dub while Hindi is the default), and this line names the track that won.
+                Log.w(
+                    TAG,
+                    "${request.videoId}: audio pick lang=$language chosenItag=${audio.itag} " +
+                        "lang=${audio.audioLanguageTag} original=${audio.isOriginal} " +
+                        "default=${audio.audioTrack?.audioIsDefault} tracks=[" +
+                        audioTracks.joinToString(";") { "key=${DownloadStreamPolicy.audioTrackKey(it)} lang=${it.audioLanguageTag}" } +
+                        "] candidates=[" +
+                        audioFormats.filter { DownloadStreamPolicy.isAacFormat(it) }.joinToString(";") {
+                            "key=${DownloadStreamPolicy.audioTrackKey(it)} br=${DownloadStreamPolicy.audioBitrateKbps(it)} " +
+                                "track=${it.audioTrack?.id} default=${it.audioTrack?.audioIsDefault} " +
+                                "original=${it.isOriginal} lang=${it.audioLanguageTag}"
+                        } + "]",
+                )
 
                 if (request.wantsAudioOnly) {
-                    return ResolveOutcome.Resolved(ResolvedStreams(video = null, audio = audio, durationMs = durationMs))
+                    return ResolveOutcome.Resolved(ResolvedStreams(video = null, audio = audio, durationMs = durationMs, audioTracks = audioTracks))
                 }
 
                 val videoFormats =
@@ -128,7 +169,7 @@ class DownloadStreamResolver
                         .filterNot { it.itag in avoidItags }
                 request.videoItag
                     ?.let { itag -> videoFormats.firstOrNull { it.itag == itag } }
-                    ?.let { return ResolveOutcome.Resolved(ResolvedStreams(it, audio, durationMs)) }
+                    ?.let { return ResolveOutcome.Resolved(ResolvedStreams(it, audio, durationMs, audioTracks = audioTracks)) }
 
                 val height =
                     DefaultDownloadSelection.pickHeight(
@@ -141,7 +182,7 @@ class DownloadStreamResolver
                         .rankCodecs(atHeight.map(DownloadStreamPolicy::videoCodecKey), request.videoCodec ?: defaults.codec)
                         .firstOrNull() ?: return ResolveOutcome.Unavailable
                 val video = atHeight.first { DownloadStreamPolicy.videoCodecKey(it) == codec }
-                return ResolveOutcome.Resolved(ResolvedStreams(video, audio, durationMs))
+                return ResolveOutcome.Resolved(ResolvedStreams(video, audio, durationMs, audioTracks = audioTracks))
             }
 
             private fun VideoExtractionResult.durationMs(): Long =
