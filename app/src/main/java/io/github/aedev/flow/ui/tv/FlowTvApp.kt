@@ -28,6 +28,7 @@ import io.github.aedev.flow.ui.components.music.common.ProvideMusicPlaybackState
 import io.github.aedev.flow.ui.components.music.sheet.LocalMusicMenus
 import io.github.aedev.flow.ui.components.music.sheet.MusicMenuSheets
 import io.github.aedev.flow.ui.components.music.sheet.rememberMusicMenus
+import io.github.aedev.flow.ui.components.shared.LocalBatterySaver
 import io.github.aedev.flow.ui.components.shared.LocalFlowSheetPresenter
 import io.github.aedev.flow.ui.screens.home.HomeViewModel
 import io.github.aedev.flow.ui.screens.music.MusicPlayerViewModel
@@ -35,6 +36,9 @@ import io.github.aedev.flow.ui.screens.music.MusicViewModel
 import io.github.aedev.flow.ui.screens.player.VideoPlayerViewModel
 import io.github.aedev.flow.ui.screens.search.SearchViewModel
 import io.github.aedev.flow.ui.screens.subscriptions.SubscriptionsViewModel
+import io.github.aedev.flow.ui.theme.FestivalBackground
+import io.github.aedev.flow.ui.theme.FestivalBackgroundLayer
+import io.github.aedev.flow.ui.theme.MorpheCirclesBackground
 import io.github.aedev.flow.ui.tv.components.TvSheetPresenter
 import io.github.aedev.flow.ui.tv.music.TvMusicNowPlaying
 import io.github.aedev.flow.ui.tv.navigation.TvMediaNavigator
@@ -61,6 +65,8 @@ fun FlowTvApp(
     val navigation by shellViewModel.navigation.collectAsStateWithLifecycle()
     val navController = rememberNavController()
     val preferences = remember { PlayerPreferences(context) }
+    val animatedBackground by preferences.animatedBackground.collectAsStateWithLifecycle(initialValue = "diwali")
+    val batterySaver by preferences.batterySaverEnabled.collectAsStateWithLifecycle(initialValue = false)
     var needsOnboarding by remember { mutableStateOf<Boolean?>(null) }
     LaunchedEffect(Unit) {
         needsOnboarding = !preferences.onboardingDone.first()
@@ -143,6 +149,7 @@ fun FlowTvApp(
             LocalMediaNavigator provides mediaNavigator,
             LocalFlowSheetPresenter provides TvSheetPresenter,
             LocalMusicMenus provides musicMenus,
+            LocalBatterySaver provides batterySaver,
         ) {
             ProvideMusicPlaybackState(surfacesVisible = !musicExpanded && activeVideo == null) {
                 Surface(
@@ -152,6 +159,20 @@ fun FlowTvApp(
                 ) {
                     val video = activeVideo
                     val visibleMusicTrack = activeMusicTrack.takeIf { musicSessionActive }
+                    // The TV screens draw no background of their own, so the root layers
+                    // show through on every tab — frozen while the full-screen player
+                    // or full-screen music covers them, like the phone root does.
+                    val backgroundsAnimated =
+                        video == null && !(musicExpanded && visibleMusicTrack != null)
+                    MorpheCirclesBackground(
+                        modifier = Modifier.fillMaxSize(),
+                        animated = backgroundsAnimated,
+                    )
+                    FestivalBackgroundLayer(
+                        background = FestivalBackground.byId(animatedBackground),
+                        modifier = Modifier.fillMaxSize(),
+                        animated = backgroundsAnimated,
+                    )
                     if (video == null && musicExpanded && visibleMusicTrack != null) {
                         TvMusicNowPlaying(
                             track = visibleMusicTrack,
