@@ -15,8 +15,8 @@ class QualitySettingsViewModel
     constructor(
         private val preferences: PlayerPreferences,
     ) : SettingsViewModel() {
-        val videoWifi = preferences.defaultQualityWifi.asState(VideoQuality.Q_1080P)
-        val videoMobile = preferences.defaultQualityCellular.asState(VideoQuality.Q_480P)
+        val videoWifi = preferences.defaultQualityWifi.asState(VideoQuality.AUTO)
+        val videoMobile = preferences.defaultQualityCellular.asState(VideoQuality.AUTO)
         val shortsWifi = preferences.shortsQualityWifi.asState(VideoQuality.Q_720P)
         val shortsMobile = preferences.shortsQualityCellular.asState(VideoQuality.Q_480P)
         val music = preferences.musicAudioQuality.asState(MusicAudioQuality.AUTO)
