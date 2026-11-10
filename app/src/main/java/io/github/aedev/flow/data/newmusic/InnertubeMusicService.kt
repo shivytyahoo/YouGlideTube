@@ -408,17 +408,19 @@ object InnertubeMusicService {
     suspend fun fetchPlaylistContinuation(
         playlistId: String,
         continuation: String,
-    ): Pair<List<MusicTrack>, String?> =
+    ): Pair<List<MusicTrack>, String?>? =
         withContext(Dispatchers.IO) {
             try {
                 val result = YouTube.playlistContinuation(continuation)
-                val page = result.getOrNull() ?: return@withContext emptyList<MusicTrack>() to null
+                // Null means the fetch itself failed (retryable); an empty list with no
+                // next token means the continuation is genuinely exhausted.
+                val page = result.getOrNull() ?: return@withContext null
 
                 val tracks = page.songs.mapNotNull { convertToMusicTrack(it) }
                 tracks to page.continuation
             } catch (e: Exception) {
                 e.printStackTrace()
-                emptyList<MusicTrack>() to null
+                null
             }
         }
 
