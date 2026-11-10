@@ -198,6 +198,8 @@ class EnhancedPlayerManager private constructor() {
 
     private val audioOnlyMode = AudioOnlyMode()
     private var currentLocalFilePath: String? = null
+    /** The audio track group of the local file that is playing, for multi-audio switching. */
+    private var localAudioTrackGroup: Tracks.Group? = null
     private val clearedMediaRecoveryState = ClearedMediaRecoveryState()
     private var pendingSurfaceFirstFrameStartedAtMs = 0L
     private var surfaceFirstFrameWatchdog: Job? = null
@@ -1028,6 +1030,7 @@ class EnhancedPlayerManager private constructor() {
                     if (subtitleTracks.onTracksChanged(tracks)) publishSubtitles()
                     applySubtitleTrackSelection()
                     if (currentIsLiveStream) updateLiveQualityOptions(tracks)
+                    if (currentLocalFilePath != null) updateLocalAudioTracks(tracks)
                 }
             },
         )
@@ -1058,6 +1061,9 @@ class EnhancedPlayerManager private constructor() {
         resetPlaybackStateForNewVideo(videoId)
         updateLivePlaybackMode(isLive = false)
         configureTrackSelectorForLocalFile()
+        // The previous video's audio options must not linger until this file's tracks arrive.
+        localAudioTrackGroup = null
+        _playerState.value = _playerState.value.copy(availableAudioTracks = emptyList(), currentAudioTrack = 0)
         currentVideoId = videoId
         currentLocalFilePath = filePath
         subtitleTracks.load(videoId, StreamProcessor.processCaptions(subtitles), acceptsEmbedded = true)
@@ -1523,12 +1529,46 @@ class EnhancedPlayerManager private constructor() {
                 selector
                     .buildUponParameters()
                     .clearOverridesOfType(C.TRACK_TYPE_VIDEO)
+                    .clearOverridesOfType(C.TRACK_TYPE_AUDIO)
                     .setPreferredVideoMimeTypes(*emptyArray())
                     .clearVideoSizeConstraints()
                     .clearViewportSizeConstraints()
                     .build(),
             )
         }
+    }
+
+    /**
+     * A downloaded file can carry several audio tracks (a multi-audio download), but the
+     * stream-based audio menu is empty for a local file — so the options come from the
+     * file's own audio track group instead, and switching selects inside that group.
+     * Clearing the audio override above means every file starts on its default track.
+     */
+    private fun updateLocalAudioTracks(tracks: Tracks) {
+        val group = tracks.groups.firstOrNull { it.type == C.TRACK_TYPE_AUDIO }
+        localAudioTrackGroup = group
+        if (group == null || group.length == 0) {
+            _playerState.value = _playerState.value.copy(availableAudioTracks = emptyList(), currentAudioTrack = 0)
+            return
+        }
+        val options =
+            (0 until group.length).map { index ->
+                val format = group.getTrackFormat(index)
+                val tag = format.language?.takeIf { it.isNotBlank() } ?: ""
+                val display =
+                    when {
+                        tag.isBlank() || tag == "und" -> "Audio ${index + 1}"
+                        else -> java.util.Locale.forLanguageTag(tag).displayLanguage.takeIf { it.isNotBlank() } ?: tag
+                    }
+                AudioTrackOption(
+                    index = index,
+                    label = display,
+                    language = display,
+                    bitrate = format.averageBitrate.coerceAtLeast(0).toLong(),
+                )
+            }
+        val selected = (0 until group.length).firstOrNull { group.isTrackSelected(it) } ?: 0
+        _playerState.value = _playerState.value.copy(availableAudioTracks = options, currentAudioTrack = selected)
     }
 
     // ===== Queue Management =====
@@ -1874,7 +1914,12 @@ class EnhancedPlayerManager private constructor() {
     }
 
     private fun playNextCandidate(reason: String): Boolean {
-        while (autoplayCandidates.firstOrNull()?.id in playedVideoIds) {
+        // firstOrNull() is null once the list runs out, and `null in playedVideoIds`
+        // throws: the set is ConcurrentHashMap-backed and rejects null keys. An
+        // empty list must end the advance, not crash it (2026-11-10 crash report).
+        while (true) {
+            val first = autoplayCandidates.firstOrNull() ?: break
+            if (first.id !in playedVideoIds) break
             autoplayCandidates = autoplayCandidates.drop(1)
         }
         val nextVideo =
@@ -2892,6 +2937,20 @@ class EnhancedPlayerManager private constructor() {
     }
 
     fun switchAudioTrack(index: Int) {
+        // A local file's tracks live inside the file, not in a stream list: select inside
+        // its audio group instead of reloading the media with another stream URL.
+        val localGroup = localAudioTrackGroup
+        val selector = trackSelector
+        if (currentLocalFilePath != null && localGroup != null && selector != null && index in 0 until localGroup.length) {
+            selector.setParameters(
+                selector
+                    .buildUponParameters()
+                    .setOverrideForType(TrackSelectionOverride(localGroup.mediaTrackGroup, index))
+                    .build(),
+            )
+            _playerState.value = _playerState.value.copy(currentAudioTrack = index)
+            return
+        }
         if (index in availableAudioStreams.indices) {
             currentAudioStream = availableAudioStreams[index]
             val position = player?.currentPosition ?: 0L
@@ -3281,6 +3340,14 @@ class EnhancedPlayerManager private constructor() {
     fun logBandwidthInfo() {
         val mbps = getBandwidthEstimate() / 1_000_000.0
         Log.d(TAG, "Bandwidth: ${"%.2f".format(mbps)} Mbps")
+        // Into the in-app Diagnostics report too, so a stall's cause (throttled link vs
+        // thin buffer) can be read off the report instead of guessed.
+        val bufferedSec = (player?.totalBufferedDuration?.takeIf { it > 0L } ?: 0L) / 1000.0
+        val posSec = (player?.currentPosition?.coerceAtLeast(0L) ?: 0L) / 1000.0
+        PlayerDiagnostics.log(
+            TAG,
+            "rebuffer estimate=${"%.2f".format(mbps)} Mbps buffered=${"%.1f".format(bufferedSec)}s pos=${"%.1f".format(posSec)}s",
+        )
     }
 
     fun isVideoRendererAvailable(): Boolean {
@@ -3398,6 +3465,17 @@ class EnhancedPlayerManager private constructor() {
         surfaceManager?.release(player)
         audioSessionAnnouncer?.detach()
         audioSessionAnnouncer = null
+        // Persist the measured estimate so the next start seeds the ABR from the real
+        // link speed instead of the default.
+        val estimateToPersist = bandwidthMeter?.bitrateEstimate ?: 0L
+        val persistContext = appContext
+        if (estimateToPersist > 0L && persistContext != null) {
+            scope.launch {
+                runCatching {
+                    PlayerPreferences(persistContext).setBandwidthEstimateBps(estimateToPersist)
+                }
+            }
+        }
         player?.release()
         player = null
         trackSelector = null
