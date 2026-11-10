@@ -15,6 +15,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import io.github.aedev.flow.R
@@ -104,6 +105,7 @@ internal fun PlaylistDetailDialogs(
 
         PlaylistDialog.AddAll -> {
             var creating by remember { mutableStateOf(false) }
+            val isCreating by viewModel.isCreating.collectAsStateWithLifecycle()
             MergeIntoCollectionSheet(
                 targets =
                     remember(mergeTargets) {
@@ -123,10 +125,13 @@ internal fun PlaylistDetailDialogs(
                     title = stringResource(R.string.create_new_playlist),
                     confirmLabel = stringResource(R.string.create),
                     icon = Icons.AutoMirrored.Filled.PlaylistAdd,
+                    isBusy = isCreating,
                     onDismiss = { creating = false },
                     onConfirm = { name, description ->
-                        viewModel.createAndMerge(name, description)
-                        onDismiss()
+                        viewModel.createAndMerge(name, description) {
+                            creating = false
+                            onDismiss()
+                        }
                     },
                 )
             }
