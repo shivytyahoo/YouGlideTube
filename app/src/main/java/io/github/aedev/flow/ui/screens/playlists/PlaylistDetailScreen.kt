@@ -92,8 +92,12 @@ fun PlaylistDetailScreen(
 
     val isUserCreated = uiState.isLocalPlaylist && !uiState.isSaved
     val canReorder = false // Account playlists keep the account's order; there is no reorder API.
-    // A saved YouTube playlist mirrors the original; its next sync would bring removed videos back.
-    val canModify = uiState.isLocalPlaylist && !uiState.isSaved
+    // Any playlist in the account list is editable here, the same rule the music
+    // page uses (its OWN kind is "in the aggregation list"): the user's own
+    // playlists must offer remove. A playlist saved from someone else refuses the
+    // edit on the server and the row comes back (report 17: diwali showed no
+    // remove button at all, because isSaved is true for every library playlist).
+    val canModify = uiState.isLocalPlaylist
     val exitSelection = {
         selectionMode = false
         selectedIds = emptySet()
