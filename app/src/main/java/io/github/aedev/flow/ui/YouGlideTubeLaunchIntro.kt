@@ -36,6 +36,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import io.github.aedev.flow.R
+import io.github.aedev.flow.ui.components.shared.LocalBatterySaver
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -48,6 +49,8 @@ import kotlinx.coroutines.launch
  */
 @Composable
 internal fun YouGlideTubeLaunchIntro(modifier: Modifier = Modifier) {
+    // Battery saver: the intro is a brand animation — skip it and open straight into the app.
+    if (LocalBatterySaver.current) return
     var dismissed by remember { mutableStateOf(false) }
     var appeared by remember { mutableStateOf(false) }
     var fading by remember { mutableStateOf(false) }
