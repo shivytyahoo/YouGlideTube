@@ -3,6 +3,7 @@ package io.github.aedev.flow.innertube
 import io.github.aedev.flow.utils.ShivLog
 
 import android.util.Log
+import io.github.aedev.flow.data.account.AccountPlaylistIds
 import io.github.aedev.flow.data.model.LiveChatMessage
 import io.github.aedev.flow.data.model.VideoCollaborator
 import io.github.aedev.flow.data.repository.LiveChatSendStatus
@@ -28,6 +29,7 @@ import io.github.aedev.flow.innertube.models.YouTubeClient
 import io.github.aedev.flow.innertube.models.YouTubeClient.Companion.WEB
 import io.github.aedev.flow.innertube.models.YouTubeClient.Companion.WEB_REMIX
 import io.github.aedev.flow.innertube.models.YouTubeLocale
+import io.github.aedev.flow.innertube.models.body.Action
 import io.github.aedev.flow.innertube.models.body.BrowseBody
 import io.github.aedev.flow.innertube.models.getContinuation
 import io.github.aedev.flow.innertube.models.getItems
@@ -43,6 +45,7 @@ import io.github.aedev.flow.innertube.models.response.GetTranscriptResponse
 import io.github.aedev.flow.innertube.models.response.ImageUploadResponse
 import io.github.aedev.flow.innertube.models.response.NextResponse
 import io.github.aedev.flow.innertube.models.response.PlayerResponse
+import io.ktor.client.plugins.ClientRequestException
 import io.ktor.client.statement.HttpResponse
 import io.github.aedev.flow.innertube.models.response.ResolveUrlResponse
 import io.github.aedev.flow.innertube.models.response.SearchResponse
@@ -132,7 +135,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -944,9 +946,31 @@ object YouTube {
                     params = params.takeIf { continuation == null },
                     continuation = continuation,
                 )
-            val page = Json.parseToJsonElement(response.bodyAsText()).toVideoPlaylistPage()
+            val text = response.bodyAsText()
+            val page = Json.parseToJsonElement(text).toVideoPlaylistPage()
             ShivLog.i("playlistPage id=$playlistId videos=${page.videos.size} title=${page.title != null}",
             )
+            // The next report proves whether the Save button's tokens were
+            // found: a like without them 403s (report 24).
+            ShivLog.i("playlistLikeParams id=$playlistId like=${page.likeParams != null} remove=${page.removeLikeParams != null}")
+            if (page.videos.isEmpty()) {
+                // Watch Later still parses to zero while Liked Videos parses 55 (report 15).
+                // Count the shapes its rows could be hiding in so the next report pins it.
+                ShivLog.i("playlistPageProbe id=$playlistId playlistVideoR=${text.countOccurrences("playlistVideoRenderer")} " +
+                        "playlistVideoListR=${text.countOccurrences("playlistVideoListRenderer")} " +
+                        "lockup=${text.countOccurrences("lockupViewModel")} " +
+                        "videoR=${text.countOccurrences("videoRenderer")} " +
+                        "richGrid=${text.countOccurrences("richGridRenderer")} " +
+                        "itemSection=${text.countOccurrences("itemSectionRenderer")} " +
+                        "contVM=${text.countOccurrences("continuationItemViewModel")} " +
+                        "contR=${text.countOccurrences("continuationItemRenderer")} " +
+                        "onRespActions=${text.countOccurrences("onResponseReceivedActions")} " +
+                        "reloadCont=${text.countOccurrences("reloadContinuationItemsCommand")}",
+                )
+                // The full renderer census: the probe above counts only the shapes already
+                // suspected, while this shows everything the two itemSections actually hold.
+                ShivLog.i("playlistPageCensus id=$playlistId ${rendererKeyCensus(text)}")
+            }
             page
         }.onFailure { e ->
             ShivLog.i("playlistPage id=$playlistId FAILED ${e.message?.take(200)}",
@@ -2103,9 +2127,14 @@ object YouTube {
             channels
         }
 
-    /** The account's own playlists (FEplaylists). Empty when signed out. */
+    /**
+     * The account's own playlists. "FEplaylists" is not a real browseId — YouTube
+     * answers it with 400 INVALID_ARGUMENT every time (device reports 10 and 11), so
+     * the account list was always empty and no created playlist ever showed up in
+     * Save or Library. youtubei.js getPlaylists() uses "FEplaylist_aggregation".
+     */
     suspend fun serverPlaylists(continuation: String? = null): Result<ServerFeedPage> =
-        serverBrowse("FEplaylists", null, continuation)
+        serverBrowse("FEplaylist_aggregation", null, continuation)
 
     /** The account's watch history (FEhistory), newest first. Empty when signed out. */
     suspend fun serverHistory(continuation: String? = null): Result<ServerFeedPage> =
@@ -2169,6 +2198,54 @@ object YouTube {
                     "richGrid=${text.countOccurrences("richGridRenderer")} " +
                     "hasContents=${text.contains("\"contents\"")} hasError=${text.contains("\"error\"")}",
             )
+            if (browseId == "FEplaylist_aggregation" && continuation == null) {
+                // Report 15: the server sends 3-4 playlists where report 14 had 23, with
+                // no continuation the parser can see. Count the shapes the missing
+                // playlists or the next page could be hiding in (playlistR also counts
+                // gridPlaylistRenderer occurrences, so subtract gridPlaylistR from it).
+                ShivLog.i("aggProbe contVM=${text.countOccurrences("continuationItemViewModel")} " +
+                        "contR=${text.countOccurrences("continuationItemRenderer")} " +
+                        "playlistR=${text.countOccurrences("playlistRenderer")} " +
+                        "gridPlaylistR=${text.countOccurrences("gridPlaylistRenderer")} " +
+                        "shelf=${text.countOccurrences("shelfRenderer")} " +
+                        "grid=${text.countOccurrences("gridRenderer")}",
+                )
+            }
+            if (browseId == "FEhistory" && continuation == null) {
+                // Report 27: the Clear-all token never parses (historyTokens
+                // clear=false) and only 48 of 552 videos carry a remove token.
+                // Count the shapes either token could be hiding in, and list
+                // the button icons the feed actions actually use.
+                val rootProbe = Json.parseToJsonElement(text)
+                val buttonIcons = linkedSetOf<String>()
+                fun scanButtons(node: JsonElement) {
+                    when (node) {
+                        is JsonObject -> {
+                            (node["buttonRenderer"] as? JsonObject)
+                                ?.get("icon")?.let { it as? JsonObject }
+                                ?.get("iconType")?.let { it as? JsonPrimitive }
+                                ?.contentOrNull?.let { buttonIcons += it }
+                            node.values.forEach(::scanButtons)
+                        }
+                        is JsonArray -> node.forEach(::scanButtons)
+                        else -> Unit
+                    }
+                }
+                scanButtons(rootProbe)
+                ShivLog.i("historyProbe feedActions=${text.countOccurrences("browseFeedActionsRenderer")} " +
+                        "buttons=${text.countOccurrences("buttonRenderer")} " +
+                        "buttonIcons=${buttonIcons.take(12).joinToString("/")} " +
+                        "deleteIcons=${text.countOccurrences("\"DELETE\"")} " +
+                        "feedback=${text.countOccurrences("feedbackEndpoint")} " +
+                        "menuItems=${text.countOccurrences("menuServiceItemRenderer")} " +
+                        "listItems=${text.countOccurrences("listItemViewModel")} " +
+                        "listItemsOld=${text.countOccurrences("listItemRenderer")} " +
+                        "sheets=${text.countOccurrences("showSheetCommand")} " +
+                        "inline=${text.countOccurrences("inlineContent")} " +
+                        "dialogs=${text.countOccurrences("confirmDialogEndpoint")} " +
+                        "menus=${text.countOccurrences("multiPageMenuRenderer")}",
+                )
+            }
             val root = Json.parseToJsonElement(text)
             if (browseId == "FEwhat_to_watch" && continuation == null) {
                 // Where do this response's filter chips actually live? Log every chip-ish key
@@ -2200,36 +2277,33 @@ object YouTube {
                 ShivLog.i("chipscan keys=${chipKeys.take(10)} richHeader=$richHeader")
             }
             val strictPage = root.toServerFeedPage()
+            // Strict vs final, side by side in the report: the harvest below only runs
+            // when the strict page found nothing at all.
+            ShivLog.i("browse strict id=$browseId videos=${strictPage.videos.size} shorts=${strictPage.shorts.size} " +
+                    "channels=${strictPage.channels.size} playlists=${strictPage.playlists.size}",
+            )
             var page = strictPage
-            if (strictPage.videos.isEmpty()) {
-                // The strict parser found none of this response's long videos. Census the
+            if (strictPage.videos.isEmpty() && strictPage.shorts.isEmpty() && strictPage.channels.isEmpty() && strictPage.playlists.isEmpty()) {
+                // The strict parser found nothing at all in this response. Census the
                 // renderer keys so the real shape is on record, then harvest whatever video
-                // items the tree carries instead of settling for a page without them.
+                // items the tree carries instead of settling for an empty page. A page
+                // that parsed any playlists keeps them: the harvester only knows videos,
+                // so replacing a playlist page with its output would drop the list.
                 ShivLog.i("census id=$browseId keys=" + rendererKeyCensus(text))
+                root.lockupProbe()?.let { ShivLog.i("lockupProbe id=$browseId $it") }
                 val harvested = root.harvestFeedPage()
                 ShivLog.i("harvest id=$browseId videos=${harvested.videos.size} shorts=${harvested.shorts.size}",
                 )
                 page =
-                    if (strictPage.shorts.isEmpty() && strictPage.channels.isEmpty()) {
-                        harvested.copy(
-                            chips = strictPage.chips,
-                            continuation = harvested.continuation ?: strictPage.continuation,
-                        )
-                    } else {
-                        // A half-known shape (the TV home is one: its Shorts parse strictly,
-                        // its long videos ride renderers only the harvester reads). The
-                        // strict page keeps its shorts, channels and chips; the harvester
-                        // contributes the long videos it alone could see.
-                        val knownIds =
-                            (strictPage.videos + strictPage.shorts).mapTo(mutableSetOf()) { it.id }
-                        strictPage.copy(
-                            videos = harvested.videos.filterNot { it.id in knownIds },
-                            continuation = strictPage.continuation ?: harvested.continuation,
-                        )
-                    }
+                    harvested.copy(
+                        playlists = strictPage.playlists,
+                        channels = strictPage.channels,
+                        chips = strictPage.chips,
+                        continuation = harvested.continuation ?: strictPage.continuation,
+                    )
             }
             ShivLog.i("browse parsed id=$browseId videos=${page.videos.size} shorts=${page.shorts.size} " +
-                    "channels=${page.channels.size} chips=${page.chips.size} cont=${page.continuation != null}",
+                    "channels=${page.channels.size} playlists=${page.playlists.size} chips=${page.chips.size} cont=${page.continuation != null}",
             )
             page
         }.onFailure {
@@ -2249,6 +2323,52 @@ object YouTube {
             .sortedByDescending { it.value }
             .take(18)
             .joinToString(",") { "${it.key}:${it.value}" }
+
+    /**
+     * The first lockupViewModel in a browse response, described so a parse miss can be diagnosed
+     * from the report alone: which of the fields the lockup parser needs are actually there, and
+     * what shape the title node is.
+     */
+    private fun JsonElement.lockupProbe(): String? {
+        var found: JsonObject? = null
+        var foundPath = ""
+        fun walk(node: JsonElement?, path: String) {
+            if (found != null) return
+            when (node) {
+                is JsonObject -> {
+                    (node["lockupViewModel"] as? JsonObject)?.let { found = it; foundPath = path; return }
+                    node.entries.forEach { (key, value) -> walk(value, "$path.$key") }
+                }
+                is JsonArray -> node.forEachIndexed { index, element -> walk(element, "$path[$index]") }
+                else -> Unit
+            }
+        }
+        walk(this, "$")
+        val lockup = found ?: return null
+        val metadata =
+            (lockup["metadata"] as? JsonObject)?.get("lockupMetadataViewModel") as? JsonObject
+        val titleNode = metadata?.get("title")
+        val rendererContext = lockup["rendererContext"] as? JsonObject
+        val commandContext = rendererContext?.get("commandContext") as? JsonObject
+        val onTap = commandContext?.get("onTap") as? JsonObject
+        val innertubeCommand = onTap?.get("innertubeCommand") as? JsonObject
+        val browseEndpoint = innertubeCommand?.get("browseEndpoint") as? JsonObject
+        val tapBrowseId = (browseEndpoint?.get("browseId") as? JsonPrimitive)?.contentOrNull
+        val contentId = (lockup["contentId"] as? JsonPrimitive)?.contentOrNull
+        val titleText =
+            (titleNode as? JsonObject)?.let {
+                ((it["content"] as? JsonPrimitive)?.contentOrNull
+                    ?: (it["simpleText"] as? JsonPrimitive)?.contentOrNull)
+            }
+        return "path=${foundPath.split(".").takeLast(8).joinToString(".")} " +
+            "keys=${lockup.keys.take(12)} " +
+            "contentId=${contentId?.take(12)}:${contentId?.length} " +
+            "contentType=${(lockup["contentType"] as? JsonPrimitive)?.contentOrNull} " +
+            "metaKeys=${metadata?.keys?.take(8)} " +
+            "titleKeys=${(titleNode as? JsonObject)?.keys?.take(6)} " +
+            "titleText=$titleText " +
+            "tapBrowseId=$tapBrowseId"
+    }
 
     private suspend fun homeContinuation(continuation: String): Result<HomePage> =
         runCatching {
@@ -2614,13 +2734,53 @@ object YouTube {
     suspend fun likePlaylist(
         playlistId: String,
         like: Boolean,
+        params: String? = null,
     ) = runCatching {
-        if (like) {
-            innerTube.likePlaylist(WEB_REMIX, playlistId)
-        } else {
-            innerTube.unlikePlaylist(WEB_REMIX, playlistId)
+        // A playlist the main site owns answers the music host with 404, the
+        // way its edits do (report 20): a 4xx is safe to retry on the main
+        // site, where the like carries the session. 5xx and transport
+        // failures are not retried — the like may have applied.
+        try {
+            if (like) {
+                innerTube.likePlaylist(WEB_REMIX, playlistId, params)
+            } else {
+                innerTube.unlikePlaylist(WEB_REMIX, playlistId, params)
+            }
+        } catch (e: ClientRequestException) {
+            ShivLog.i("playlistLikeFallback id=$playlistId status=${e.response.status.value}")
+            innerTube.likePlaylistMainSite(sessionClient(), playlistId, like, params)
         }
-    }
+    }.onSuccess { ShivLog.i("${if (like) "playlistSave" else "playlistUnsave"} id=$playlistId status=${it.status.value} params=${params != null}") }
+        .onFailure { ShivLog.i("${if (like) "playlistSave" else "playlistUnsave"} id=$playlistId FAILED ${it.message?.take(200)}") }
+
+    /**
+     * History controls, told to the server: Clear-all and per-video removes
+     * are feedbackTokens the FEhistory page issued, posted to the main-site
+     * feedback endpoint (youtubei.js History.clearWatchHistory/removeVideo).
+     * True only when the server says the tokens were processed — a local-only
+     * clear brings the whole list back on the next refresh (report 26).
+     */
+    suspend fun sendHistoryFeedback(tokens: List<String>): Result<Boolean> =
+        runCatching {
+            val response = innerTube.feedbackMainSite(sessionClient(), tokens)
+            val status = response.status.value
+            val processed =
+                runCatching {
+                    val lenientJson =
+                        Json {
+                            ignoreUnknownKeys = true
+                            explicitNulls = false
+                        }
+                    val responses =
+                        lenientJson
+                            .decodeFromString<io.github.aedev.flow.innertube.models.response.FeedbackResponse>(
+                                response.bodyAsText(),
+                            ).feedbackResponses
+                    responses.isNotEmpty() && responses.all { it.isProcessed }
+                }.getOrDefault(false)
+            ShivLog.i("historyFeedback tokens=${tokens.size} status=$status processed=$processed")
+            processed
+        }.onFailure { ShivLog.i("historyFeedback tokens=${tokens.size} FAILED ${it.message?.take(200)}") }
 
     suspend fun subscribeChannel(
         channelId: String,
@@ -2640,12 +2800,54 @@ object YouTube {
         return ""
     }
 
+    /**
+     * A playlist the main site owns answers the music host with 404 (report 20:
+     * hiney removes) the way Watch Later answers with 401: the edit never applied
+     * there, so a 4xx is safe to retry on the main site. 5xx and transport
+     * failures are not retried — the edit may have applied.
+     */
+    private suspend fun editPlaylistWithFallback(
+        playlistId: String,
+        videoId: String,
+        setVideoId: String?,
+    ): HttpResponse {
+        try {
+            return if (setVideoId == null) {
+                innerTube.addToPlaylist(WEB_REMIX, playlistId, videoId)
+            } else {
+                innerTube.removeFromPlaylist(WEB_REMIX, playlistId, videoId, setVideoId)
+            }
+        } catch (e: ClientRequestException) {
+            ShivLog.i("playlistEditFallback id=$playlistId video=$videoId status=${e.response.status.value}")
+            return innerTube.editPlaylistMainSite(
+                sessionClient(),
+                playlistId,
+                listOf(
+                    if (setVideoId == null) {
+                        Action.AddVideoAction(addedVideoId = videoId)
+                    } else {
+                        Action.RemoveVideoAction(removedVideoId = videoId, setVideoId = setVideoId)
+                    },
+                ),
+            )
+        }
+    }
+
     suspend fun addToPlaylist(
         playlistId: String,
         videoId: String,
     ) = runCatching {
-        innerTube.addToPlaylist(WEB_REMIX, playlistId, videoId)
-    }
+        // Watch Later is a system playlist: the music host answers its edits with
+        // 401 "You are not authorized to edit this playlist" (device report 17),
+        // while user playlists get 200 on the same endpoint, so WL edits go to the
+        // main site with the session's own client instead.
+        if (playlistId == AccountPlaylistIds.WATCH_LATER) {
+            innerTube.editPlaylistMainSite(sessionClient(), playlistId, listOf(Action.AddVideoAction(addedVideoId = videoId)))
+        } else {
+            editPlaylistWithFallback(playlistId, videoId, null)
+        }
+    }.onSuccess { ShivLog.i("playlistAdd id=$playlistId video=$videoId status=${it.status.value}") }
+        .onFailure { ShivLog.i("playlistAdd id=$playlistId video=$videoId FAILED ${it.message?.take(200)}") }
 
     suspend fun addPlaylistToPlaylist(
         playlistId: String,
@@ -2659,7 +2861,72 @@ object YouTube {
         videoId: String,
         setVideoId: String,
     ) = runCatching {
-        innerTube.removeFromPlaylist(WEB_REMIX, playlistId, videoId, setVideoId)
+        // Same route as addToPlaylist: Watch Later edits go to the main site, the
+        // music host refuses them with 401 (device report 17).
+        if (playlistId == AccountPlaylistIds.WATCH_LATER) {
+            innerTube.editPlaylistMainSite(sessionClient(), playlistId, listOf(Action.RemoveVideoAction(removedVideoId = videoId, setVideoId = setVideoId)))
+        } else {
+            editPlaylistWithFallback(playlistId, videoId, setVideoId)
+        }
+    }.onSuccess { ShivLog.i("playlistRemove id=$playlistId video=$videoId status=${it.status.value}") }
+        .onFailure { ShivLog.i("playlistRemove id=$playlistId video=$videoId FAILED ${it.message?.take(200)}") }
+
+    /**
+     * The batch twin of [editPlaylistWithFallback]: one request carrying every
+     * action, retried on the main site on a 4xx. The single edit is kept for
+     * single taps; a multi-select goes through here so the server never sees
+     * N rapid edits to the same playlist.
+     */
+    private suspend fun editPlaylistBatchWithFallback(
+        playlistId: String,
+        actions: List<Action>,
+    ): HttpResponse {
+        try {
+            return innerTube.editPlaylist(WEB_REMIX, playlistId, actions)
+        } catch (e: ClientRequestException) {
+            ShivLog.i("playlistEditFallback id=$playlistId count=${actions.size} status=${e.response.status.value}")
+            return innerTube.editPlaylistMainSite(sessionClient(), playlistId, actions)
+        }
+    }
+
+    /** Adds every video in one edit_playlist call; the returned ids are the ones the server took. */
+    suspend fun addVideosToPlaylist(
+        playlistId: String,
+        videoIds: List<String>,
+    ): Set<String> {
+        if (videoIds.isEmpty()) return emptySet()
+        val actions = videoIds.map { Action.AddVideoAction(addedVideoId = it) }
+        return runCatching {
+            if (playlistId == AccountPlaylistIds.WATCH_LATER) {
+                innerTube.editPlaylistMainSite(sessionClient(), playlistId, actions)
+            } else {
+                editPlaylistBatchWithFallback(playlistId, actions)
+            }
+        }.onSuccess { ShivLog.i("playlistAddBatch id=$playlistId count=${videoIds.size} status=${it.status.value}") }
+            .onFailure { ShivLog.i("playlistAddBatch id=$playlistId count=${videoIds.size} FAILED ${it.message?.take(200)}") }
+            .fold(onSuccess = { videoIds.toSet() }, onFailure = { emptySet() })
+    }
+
+    /**
+     * Removes every video in one edit_playlist call. The caller supplies each
+     * video's setVideoId from a single playlist fetch — the server applies the
+     * whole action list, so no per-video re-fetch can go stale mid-batch.
+     */
+    suspend fun removeVideosFromPlaylist(
+        playlistId: String,
+        targets: List<Pair<String, String>>,
+    ): Set<String> {
+        if (targets.isEmpty()) return emptySet()
+        val actions = targets.map { (videoId, setVideoId) -> Action.RemoveVideoAction(removedVideoId = videoId, setVideoId = setVideoId) }
+        return runCatching {
+            if (playlistId == AccountPlaylistIds.WATCH_LATER) {
+                innerTube.editPlaylistMainSite(sessionClient(), playlistId, actions)
+            } else {
+                editPlaylistBatchWithFallback(playlistId, actions)
+            }
+        }.onSuccess { ShivLog.i("playlistRemoveBatch id=$playlistId count=${targets.size} status=${it.status.value}") }
+            .onFailure { ShivLog.i("playlistRemoveBatch id=$playlistId count=${targets.size} FAILED ${it.message?.take(200)}") }
+            .fold(onSuccess = { targets.map { it.first }.toSet() }, onFailure = { emptySet() })
     }
 
     suspend fun moveSongPlaylist(
@@ -2670,10 +2937,14 @@ object YouTube {
         innerTube.moveSongPlaylist(WEB_REMIX, playlistId, setVideoId, successorSetVideoId)
     }
 
-    fun createPlaylist(title: String) =
-        runBlocking {
-            innerTube.createPlaylist(WEB_REMIX, title).body<CreatePlaylistResponse>().playlistId
-        }
+    /**
+     * A plain suspend call now: the runBlocking version froze the main thread
+     * for the whole create round trip, so the Create button showed no press
+     * feedback at all and repeat taps queued the same playlist again and
+     * again. Every caller already runs in a coroutine.
+     */
+    suspend fun createPlaylist(title: String): String =
+        innerTube.createPlaylist(WEB_REMIX, title).body<CreatePlaylistResponse>().playlistId
 
     suspend fun renamePlaylist(
         playlistId: String,
@@ -2723,7 +2994,8 @@ object YouTube {
     suspend fun deletePlaylist(playlistId: String) =
         runCatching {
             innerTube.deletePlaylist(WEB_REMIX, playlistId)
-        }
+        }.onSuccess { ShivLog.i("playlistDelete id=$playlistId status=${it.status.value}") }
+            .onFailure { ShivLog.i("playlistDelete id=$playlistId FAILED ${it.message?.take(200)}") }
 
     suspend fun player(
         videoId: String,
