@@ -161,13 +161,13 @@ object YouTubeMusicService {
     suspend fun fetchPlaylistContinuation(
         playlistId: String,
         continuation: String,
-    ): Pair<List<MusicTrack>, String?> =
+    ): Pair<List<MusicTrack>, String?>? =
         withContext(Dispatchers.IO) {
             try {
                 InnertubeMusicService.fetchPlaylistContinuation(playlistId, continuation)
             } catch (e: Exception) {
                 Log.e(TAG, "Error fetching continuation for $playlistId", e)
-                emptyList<MusicTrack>() to null
+                null
             }
         }
 
