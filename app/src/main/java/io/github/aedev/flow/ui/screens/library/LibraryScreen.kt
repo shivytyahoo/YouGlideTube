@@ -25,6 +25,8 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.aedev.flow.R
 import io.github.aedev.flow.data.model.Video
@@ -70,6 +72,7 @@ fun LibraryScreen(
     val hiddenSections by viewModel.hiddenSections.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
     OnTabReselected(FlowTab.Library.route) { listState.animateScrollToItem(0) }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.refreshOnReturn() }
     val openSection: (LibrarySection) -> Unit = { section ->
         when (section) {
             LibrarySection.HISTORY -> onNavigateToHistory()
