@@ -1,8 +1,10 @@
 package io.github.aedev.flow.ui.components.shared.card
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -37,10 +39,10 @@ import io.github.aedev.flow.data.model.Video
 import io.github.aedev.flow.data.model.VideoCollaborator
 import io.github.aedev.flow.ui.components.layout.navigation.LocalMediaNavigator
 import io.github.aedev.flow.ui.components.shared.LocalDpadNavigation
+import io.github.aedev.flow.ui.components.shared.FocusLiftDefaults
 import io.github.aedev.flow.ui.components.shared.focusLift
 import io.github.aedev.flow.ui.components.shared.onMenuKey
 import io.github.aedev.flow.ui.components.shared.pressScale
-import io.github.aedev.flow.ui.components.shared.skipDpadFocus
 import io.github.aedev.flow.ui.theme.extendedColors
 import io.github.aedev.flow.utils.avatarImageIdentityKey
 
@@ -111,8 +113,20 @@ internal fun Modifier.videoCardClickable(
     onClick: () -> Unit,
 ): Modifier {
     val interactionSource = remember { MutableInteractionSource() }
+    val isFocused by interactionSource.collectIsFocusedAsState()
     return pressScale(interactionSource)
         .focusLift(interactionSource)
+        // The lift alone is too quiet across a room: on TV the focused card also gets a
+        // primary-colour ring, so the remote's pointer is unmistakable. No border at all
+        // off TV — a 0.dp border still draws a 1px hairline, which is how every card on
+        // the phone got an outline it never asked for.
+        .then(
+            if (isFocused && LocalDpadNavigation.current) {
+                Modifier.border(2.dp, MaterialTheme.colorScheme.primary, MaterialTheme.shapes.large)
+            } else {
+                Modifier
+            },
+        )
         .onMenuKey { state.sheets.showQuickActions = true }
         .combinedClickable(
             interactionSource = interactionSource,
@@ -124,14 +138,23 @@ internal fun Modifier.videoCardClickable(
         )
 }
 
-/** The channel as a tap target: the avatar on a stacked card, the name on a row. */
+/**
+ * The channel as a tap target: the avatar on a stacked card, the name on a row. It is a focus
+ * stop of its own on TV too, so the remote can reach the channel — the old skip kept one stop
+ * per card, which left the remote with no way to a channel at all. On a phone nothing changes:
+ * this is still just a tap.
+ */
 @Composable
 internal fun Modifier.videoCardChannelClickable(state: VideoCardState): Modifier {
     val navigator = LocalMediaNavigator.current
-    return skipDpadFocus().clickable(
-        role = Role.Button,
-        onClickLabel = stringResource(R.string.go_to_channel),
-    ) { state.openChannel(navigator) }
+    val interactionSource = remember { MutableInteractionSource() }
+    return focusLift(interactionSource, FocusLiftDefaults.SMALL_SCALE)
+        .clickable(
+            interactionSource = interactionSource,
+            indication = ripple(),
+            role = Role.Button,
+            onClickLabel = stringResource(R.string.go_to_channel),
+        ) { state.openChannel(navigator) }
 }
 
 /**
