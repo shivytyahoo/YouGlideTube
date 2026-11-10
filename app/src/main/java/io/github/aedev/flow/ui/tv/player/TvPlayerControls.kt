@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -50,15 +51,18 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.aedev.flow.R
 import io.github.aedev.flow.data.model.SponsorBlockSegment
 import io.github.aedev.flow.data.model.Video
 import io.github.aedev.flow.ui.components.shared.ChannelAvatarImage
+import io.github.aedev.flow.ui.components.shared.FocusLiftDefaults
 import io.github.aedev.flow.ui.components.shared.MediaPlaybackControls
 import io.github.aedev.flow.ui.components.shared.MediaSeekBar
 import io.github.aedev.flow.ui.components.shared.connectedButtonShapes
+import io.github.aedev.flow.ui.components.shared.focusLift
 import io.github.aedev.flow.ui.components.shared.videoMetadataLine
 import io.github.aedev.flow.ui.components.videoplayer.controls.PlayerControlActions
 import io.github.aedev.flow.ui.components.videoplayer.controls.ScrimEdge
@@ -116,6 +120,7 @@ internal fun BoxScope.TvPlayerControls(
     sponsorColors: Map<String, Color>,
     playActions: PlayerControlActions,
     utilityActions: TvPlayerUtilityActions,
+    onOpenChannel: (String) -> Unit,
     seekBarFocusRequester: FocusRequester,
     playPauseFocusRequester: FocusRequester,
     onSeekBarFocusChanged: (Boolean) -> Unit,
@@ -146,7 +151,7 @@ internal fun BoxScope.TvPlayerControls(
                     ),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            if (!upNextShown) TvPlayerTitle(video = video, isLive = isLive)
+            if (!upNextShown) TvPlayerTitle(video = video, isLive = isLive, onOpenChannel = onOpenChannel)
             val displayedPositionMs = { scrubTargetMs ?: positionMs() }
             val chapterTitle by remember(chapters) {
                 derivedStateOf {
@@ -222,18 +227,28 @@ internal fun BoxScope.TvPlayerControls(
 private fun TvPlayerTitle(
     video: Video,
     isLive: Boolean,
+    onOpenChannel: (String) -> Unit,
 ) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        // The channel's own button: the avatar is a focus stop, so the remote can visit
+        // the channel straight from the player instead of hunting through the sheets.
+        val avatarInteraction = remember { MutableInteractionSource() }
         ChannelAvatarImage(
             url = video.channelThumbnailUrl,
-            contentDescription = null,
+            contentDescription = video.channelName,
             modifier =
                 Modifier
                     .size(AvatarSize)
-                    .clip(CircleShape),
+                    .clip(CircleShape)
+                    .focusLift(avatarInteraction, FocusLiftDefaults.SMALL_SCALE)
+                    .clickable(
+                        interactionSource = avatarInteraction,
+                        role = Role.Button,
+                        onClickLabel = stringResource(R.string.go_to_channel),
+                    ) { onOpenChannel(video.channelId) },
         )
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
