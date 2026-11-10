@@ -34,6 +34,8 @@ import io.github.aedev.flow.ui.components.home.ContinueWatchingShelfDefaults
 import io.github.aedev.flow.ui.components.layout.flowBottomContentPadding
 import io.github.aedev.flow.ui.components.shared.FeedPreviewSurface
 import io.github.aedev.flow.ui.components.shared.FlowFeedProgress
+import io.github.aedev.flow.ui.components.shared.LocalBatterySaver
+import io.github.aedev.flow.ui.components.shared.LocalDpadNavigation
 import io.github.aedev.flow.ui.components.shared.MediaShortsShelf
 import io.github.aedev.flow.ui.components.shared.card.MediaVideoCard
 import io.github.aedev.flow.ui.components.shared.card.VideoCardLayout
@@ -115,8 +117,20 @@ internal fun HomeFeedGrid(
     // visible-ids report, so the shelf is no longer the one row that never previews. The
     // effect restarts when that id changes, so a horizontal shelf swipe re-targets the
     // preview without waiting for a vertical scroll.
+    // On TV there is no scroll to settle: the remote moves focus, so the preview follows
+    // the focused card instead of the top-most visible one — otherwise the first video of
+    // the top row would keep previewing no matter which card the pointer sits on.
+    val isDpad = LocalDpadNavigation.current
+    val batterySaver = LocalBatterySaver.current
+    var focusedVideoId by remember { mutableStateOf<String?>(null) }
     var shelfFirstVisibleShortId by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(gridState, rows, shelfFirstVisibleShortId) {
+    LaunchedEffect(gridState, rows, shelfFirstVisibleShortId, focusedVideoId, batterySaver) {
+        // Battery saver: no feed previews at all — stop any playing one and stay stopped
+        // until the saver is off again (the key change restarts the effect then).
+        if (batterySaver) {
+            FeedPreviewController.stop()
+            return@LaunchedEffect
+        }
         snapshotFlow { gridState.isScrollInProgress }.collect { scrolling ->
             if (scrolling) return@collect
             delay(PREVIEW_DWELL_MS)
@@ -132,13 +146,14 @@ internal fun HomeFeedGrid(
                 info.visibleItemsInfo.firstOrNull { item ->
                     item.offset.y >= 0 && item.offset.y + item.size.height <= viewportHeight
                 }?.let { rows.getOrNull(it.index) }
-            val target =
+            val viewportTarget =
                 when (firstFullyVisible) {
                     is HomeFeedRow.Shorts -> shelfFirstVisibleShortId
                     is HomeFeedRow.VideoCard ->
                         firstFullyVisible.video.takeIf { !it.isLive && !it.isUpcoming }?.id ?: fallback
                     else -> fallback
                 }
+            val target = if (isDpad && focusedVideoId != null) focusedVideoId else viewportTarget
             if (target != null) FeedPreviewController.play(context, target) else FeedPreviewController.stop()
         }
     }
@@ -180,6 +195,9 @@ internal fun HomeFeedGrid(
                             } else {
                                 null
                             },
+                        onFocusChanged = { focused ->
+                            if (isDpad) focusedVideoId = if (focused) row.video.id else null
+                        },
                     )
                 }
 
