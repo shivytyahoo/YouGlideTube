@@ -48,6 +48,15 @@ internal object HomeIndex {
             section = R.string.settings_flow_engine_header,
             destination = home,
         )
+    val batterySaver =
+        SettingEntry(
+            key = "home.battery_saver",
+            title = R.string.settings_battery_saver_title,
+            summary = R.string.settings_battery_saver_subtitle,
+            keywords = R.string.settings_keywords_battery_saver,
+            section = R.string.settings_battery_saver_title,
+            destination = home,
+        )
     val checkForUpdates =
         SettingEntry(
             key = "home.updates",
@@ -58,5 +67,5 @@ internal object HomeIndex {
             availability = SettingAvailability.GithubOnly,
         )
     /** The persona card is found through Your taste's own destination entry, not listed twice. */
-    val all = listOf(deepFlow, deepFlowDuration, deepFlowHistory, deepFlowScrobble, deepFlowOnSearch, checkForUpdates)
+    val all = listOf(batterySaver, deepFlow, deepFlowDuration, deepFlowHistory, deepFlowScrobble, deepFlowOnSearch, checkForUpdates)
 }
