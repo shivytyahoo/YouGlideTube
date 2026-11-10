@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import io.github.aedev.flow.ui.components.shared.LocalBatterySaver
 import kotlin.math.PI
 import kotlin.math.sin
 
@@ -35,6 +36,8 @@ fun MorpheCirclesBackground(
     modifier: Modifier = Modifier,
     animated: Boolean = true,
 ) {
+    // Battery saver: no decorative layer at all — not even a frozen pose.
+    if (LocalBatterySaver.current) return
     val scheme = MaterialTheme.colorScheme
     val drift1 = animatedProgress(animated, 8000, "drift-1")
     val drift2 = animatedProgress(animated, 9000, "drift-2")
