@@ -9,6 +9,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.platform.LocalContext
 import io.github.aedev.flow.data.local.PlayerPreferences
+import io.github.aedev.flow.ui.components.shared.LocalBatterySaver
 import io.github.aedev.flow.data.model.ShortVideo
 import io.github.aedev.flow.player.shorts.ShortsPlayerPool
 import kotlinx.coroutines.delay
@@ -36,8 +37,9 @@ internal fun ShortsPagerPlaybackEffects(
     val settledPage = pagerState.settledPage
     val settledShortId = shorts.getOrNull(settledPage)?.id
     val preparedShortId = remember { mutableStateOf<String?>(null) }
+    val batterySaver = LocalBatterySaver.current
 
-    LaunchedEffect(settledPage, settledShortId, targetHeight) {
+    LaunchedEffect(settledPage, settledShortId, targetHeight, batterySaver) {
         val height = targetHeight ?: return@LaunchedEffect
         val current = shorts.getOrNull(settledPage) ?: return@LaunchedEffect
         preparedShortId.value = null
@@ -85,13 +87,17 @@ internal fun ShortsPagerPlaybackEffects(
         // Two to four ahead: resolved, and the progressive ones' first bytes warmed into the
         // shared cache — never handed to a player (the 3 slots already hold current, next and
         // previous). Sequential and last, so warming never competes with the visible short; the
-        // effect's cancellation on the next settle stops the queue mid-flight.
-        launch {
-            for (offset in 2..4) {
-                val ahead = shorts.getOrNull(settled + offset) ?: continue
-                val streams = runCatching { viewModel.getPlaybackStreams(ahead.id, height, preferredLang) }.getOrNull() ?: continue
-                if (streams.videoDashManifest == null) {
-                    runCatching { playerPool.warmAhead(streams.videoUrl) }
+        // effect's cancellation on the next settle stops the queue mid-flight. Battery saver:
+        // speculative warming is the first thing to go — current, next and previous are the
+        // pool's own slots and stay, so swiping never stalls.
+        if (!batterySaver) {
+            launch {
+                for (offset in 2..4) {
+                    val ahead = shorts.getOrNull(settled + offset) ?: continue
+                    val streams = runCatching { viewModel.getPlaybackStreams(ahead.id, height, preferredLang) }.getOrNull() ?: continue
+                    if (streams.videoDashManifest == null) {
+                        runCatching { playerPool.warmAhead(streams.videoUrl) }
+                    }
                 }
             }
         }
