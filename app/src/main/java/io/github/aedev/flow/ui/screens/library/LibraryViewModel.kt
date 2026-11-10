@@ -22,6 +22,7 @@ import io.github.aedev.flow.ui.components.library.LibraryMediaItem
 import io.github.aedev.flow.ui.components.library.LibrarySection
 import io.github.aedev.flow.ui.components.library.toLibraryMediaItem
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -61,8 +62,8 @@ internal data class LibraryCounts(
 class LibraryViewModel
     @Inject
     constructor(
-        accountPlaylists: AccountPlaylists,
-        youTubePlaylistRepository: YouTubePlaylistRepository,
+        private val accountPlaylists: AccountPlaylists,
+        private val youTubePlaylistRepository: YouTubePlaylistRepository,
         sessionLikes: SessionLikeState,
         sessionHistory: SessionHistory,
         accountHistoryCapture: AccountHistoryCapture,
@@ -114,7 +115,7 @@ class LibraryViewModel
             }
         private val playlistOrder = playerPreferences.playlistListOrder
 
-        // Library playlists are the account's own (FEplaylists) — there is no local store.
+        // Library playlists are the account's own (FEplaylist_aggregation) — there is no local store.
         private val allVideoPlaylists =
             combine(accountPlaylists.playlists, playlistOrder) { playlists, order ->
                 playlists.map { it.toPlaylistInfo() }.sortedFor(order)
@@ -129,50 +130,73 @@ class LibraryViewModel
 
         init {
             accountPlaylists.ensureLoaded()
-            if (io.github.aedev.flow.innertube.YouTube.isSignedIn()) {
+            viewModelScope.launch { loadAccountLikes() }
+            viewModelScope.launch { loadWatchLater() }
+        }
+
+        /**
+         * Re-reads the account lists whenever the Library becomes visible: the
+         * shelves are loaded once in init, so a playlist edit made on another
+         * screen never reached them until the process died.
+         */
+        internal fun refreshOnReturn() {
+            if (refreshJob?.isActive == true) return
+            refreshJob =
                 viewModelScope.launch {
-                    val likedVideos =
-                        youTubePlaylistRepository.complete(io.github.aedev.flow.data.account.AccountPlaylistIds.LIKED_VIDEOS)?.videos.orEmpty()
-                    val likedMusic =
-                        youTubePlaylistRepository.complete(io.github.aedev.flow.data.account.AccountPlaylistIds.LIKED_MUSIC)?.videos.orEmpty()
-                    // LM is the account's liked list, not a content filter: a Short
-                    // or live stream liked in this app lands there too. Only genuine
-                    // songs stay music; the rest are liked videos.
-                    val musicVideos = likedMusic.filterNot { it.isShort || it.isLive }
-                    val routedVideos = likedMusic.filter { it.isShort || it.isLive }
-                    val videoInfos =
-                        (likedVideos + routedVideos).distinctBy { it.id }.map {
-                            io.github.aedev.flow.data.local.LikedVideoInfo(
-                                videoId = it.id,
-                                title = it.title,
-                                thumbnail = it.thumbnailUrl,
-                                channelName = it.channelName,
-                                channelId = it.channelId.takeIf(String::isNotBlank),
-                                durationSeconds = it.duration,
-                            )
-                        }
-                    accountLikes.value =
-                        videoInfos +
-                            musicVideos.map {
-                                io.github.aedev.flow.data.local.LikedVideoInfo(
-                                    videoId = it.id,
-                                    title = it.title,
-                                    thumbnail = it.thumbnailUrl,
-                                    channelName = it.channelName,
-                                    channelId = it.channelId.takeIf(String::isNotBlank),
-                                    durationSeconds = it.duration,
-                                    isMusic = true,
-                                )
-                            }
+                    accountPlaylists.refresh()
+                    loadWatchLater()
+                    loadAccountLikes()
                 }
-            }
-            viewModelScope.launch {
-                allWatchLater.value =
-                    if (io.github.aedev.flow.innertube.YouTube.isSignedIn()) {
-                        youTubePlaylistRepository.firstPage(AccountPlaylistIds.WATCH_LATER)?.videos.orEmpty()
-                    } else {
-                        emptyList()
+        }
+
+        private var refreshJob: Job? = null
+
+        private suspend fun loadAccountLikes() {
+            if (!io.github.aedev.flow.innertube.YouTube.isSignedIn()) return
+            // A failed walk leaves the last good list in place: blanking the
+            // shelf on a transient failure looks exactly like videos vanishing.
+            val likedVideos =
+                youTubePlaylistRepository.complete(io.github.aedev.flow.data.account.AccountPlaylistIds.LIKED_VIDEOS)?.videos ?: return
+            val likedMusic =
+                youTubePlaylistRepository.complete(io.github.aedev.flow.data.account.AccountPlaylistIds.LIKED_MUSIC)?.videos ?: return
+            // LM is the account's liked list, not a content filter: a Short
+            // or live stream liked in this app lands there too. Only genuine
+            // songs stay music; the rest are liked videos.
+            val musicVideos = likedMusic.filterNot { it.isShort || it.isLive }
+            val routedVideos = likedMusic.filter { it.isShort || it.isLive }
+            val videoInfos =
+                (likedVideos + routedVideos).distinctBy { it.id }.map {
+                    io.github.aedev.flow.data.local.LikedVideoInfo(
+                        videoId = it.id,
+                        title = it.title,
+                        thumbnail = it.thumbnailUrl,
+                        channelName = it.channelName,
+                        channelId = it.channelId.takeIf(String::isNotBlank),
+                        durationSeconds = it.duration,
+                    )
+                }
+            accountLikes.value =
+                videoInfos +
+                    musicVideos.map {
+                        io.github.aedev.flow.data.local.LikedVideoInfo(
+                            videoId = it.id,
+                            title = it.title,
+                            thumbnail = it.thumbnailUrl,
+                            channelName = it.channelName,
+                            channelId = it.channelId.takeIf(String::isNotBlank),
+                            durationSeconds = it.duration,
+                            isMusic = true,
+                        )
                     }
+        }
+
+        private suspend fun loadWatchLater() {
+            if (!io.github.aedev.flow.innertube.YouTube.isSignedIn()) {
+                allWatchLater.value = emptyList()
+                return
+            }
+            youTubePlaylistRepository.firstPage(AccountPlaylistIds.WATCH_LATER)?.videos?.let {
+                allWatchLater.value = it
             }
         }
 
