@@ -3,6 +3,7 @@ package io.github.aedev.flow.ui.components.shared.card
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.aedev.flow.data.model.Video
@@ -49,7 +50,16 @@ fun MediaVideoCard(
     reason: String? = null,
     whyShown: String? = null,
     previewContent: (@Composable BoxScope.() -> Unit)? = null,
+    onFocusChanged: ((Boolean) -> Unit)? = null,
 ) {
+    // hasFocus, not isFocused: the card's own clickable holds focus, and its avatar and
+    // the preview's mute button are focus stops inside it — the card still has focus then.
+    val focusModifier =
+        if (onFocusChanged == null) {
+            modifier
+        } else {
+            modifier.onFocusChanged { onFocusChanged(it.hasFocus) }
+        }
     when (layout) {
         VideoCardLayout.Stacked -> {
             VideoCardStacked(
@@ -59,7 +69,7 @@ fun MediaVideoCard(
                 useInternalPadding = useInternalPadding,
                 reason = reason,
                 whyShown = whyShown,
-                modifier = modifier,
+                modifier = focusModifier,
                 previewContent = previewContent,
             )
         }
@@ -72,7 +82,7 @@ fun MediaVideoCard(
                 thumbnailWidth = thumbnailWidth,
                 reason = reason,
                 whyShown = whyShown,
-                modifier = modifier,
+                modifier = focusModifier,
             )
         }
     }
