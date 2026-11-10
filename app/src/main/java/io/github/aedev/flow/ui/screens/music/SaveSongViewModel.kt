@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.aedev.flow.data.account.AccountPlaylists
 import io.github.aedev.flow.data.account.toPlaylistInfo
+import io.github.aedev.flow.data.model.Playlist
 import io.github.aedev.flow.data.model.PlaylistInfo
 import io.github.aedev.flow.data.music.model.MusicTrack
 import io.github.aedev.flow.data.repository.YouTubePlaylistRepository
@@ -39,6 +40,9 @@ class SaveSongViewModel
 
         private val _savedIds = MutableStateFlow<Set<String>>(emptySet())
         val savedIds: StateFlow<Set<String>> = _savedIds.asStateFlow()
+
+        private val _isCreating = MutableStateFlow(false)
+        val isCreating: StateFlow<Boolean> = _isCreating.asStateFlow()
 
         private val membershipLoaded = MutableStateFlow(false)
 
@@ -86,14 +90,30 @@ class SaveSongViewModel
             track: MusicTrack,
             name: String,
             description: String,
+            onDone: () -> Unit = {},
         ) {
-            if (!YouTube.isSignedIn()) return
+            if (!YouTube.isSignedIn() || _isCreating.value) return
+            _isCreating.value = true
             viewModelScope.launch {
-                val playlistId = runCatching { YouTube.createPlaylist(name) }.getOrNull()?.removePrefix("VL")
-                if (playlistId.isNullOrBlank()) return@launch
-                youTubePlaylists.addVideo(playlistId, track.videoId)
-                accountPlaylists.refresh()
-                _savedIds.update { it + playlistId }
+                try {
+                    val playlistId = runCatching { YouTube.createPlaylist(name) }.getOrNull()?.removePrefix("VL")
+                    if (playlistId.isNullOrBlank()) return@launch
+                    accountPlaylists.addEntry(
+                        Playlist(
+                            id = playlistId,
+                            name = name,
+                            thumbnailUrl = "",
+                            videoCount = 0,
+                            isLocal = false,
+                        ),
+                    )
+                    youTubePlaylists.addVideo(playlistId, track.videoId)
+                    accountPlaylists.refresh()
+                    _savedIds.update { it + playlistId }
+                } finally {
+                    _isCreating.value = false
+                    onDone()
+                }
             }
         }
     }
