@@ -1,10 +1,12 @@
 package io.github.aedev.flow.data.repository
 
 import android.util.Log
+import io.github.aedev.flow.data.account.AccountPlaylists
 import io.github.aedev.flow.data.model.Video
 import io.github.aedev.flow.innertube.YouTube
 import io.github.aedev.flow.innertube.pages.VideoPlaylistPage
 import io.github.aedev.flow.utils.PerformanceDispatcher
+import io.github.aedev.flow.utils.ShivLog
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withContext
 import java.util.concurrent.ConcurrentHashMap
@@ -27,6 +29,9 @@ data class RemotePlaylistPage(
     val isCourse: Boolean = false,
     /** The header's count, unavailable videos included. */
     val videoCount: Int? = null,
+    /** The Save button's like tokens, when the page carries one. */
+    val likeParams: String? = null,
+    val removeLikeParams: String? = null,
 ) {
     /** The whole list is shorter than the header's count: YouTube leaves out unavailable videos. */
     fun hidesUnavailable(loaded: Int = videos.size): Boolean = videoCount != null && videoCount > loaded
@@ -40,7 +45,9 @@ data class RemotePlaylistPage(
 @Singleton
 class YouTubePlaylistRepository
     @Inject
-    constructor() {
+    constructor(
+        private val accountPlaylists: AccountPlaylists,
+    ) {
         private data class CachedList(
             val page: RemotePlaylistPage,
             val loadedAtMs: Long,
@@ -89,6 +96,8 @@ class YouTubePlaylistRepository
                 continuation = list.continuation,
                 isCourse = page.isCourse,
                 videoCount = page.videoCount ?: list.videoCount,
+                likeParams = list.likeParams ?: page.likeParams,
+                removeLikeParams = list.removeLikeParams ?: page.removeLikeParams,
             )
         }
 
@@ -119,8 +128,25 @@ class YouTubePlaylistRepository
         ): Boolean {
             if (!YouTube.isSignedIn()) return false
             val ok = YouTube.addToPlaylist(playlistId, videoId).isSuccess
-            if (ok) completeLists.remove(playlistId)
+            if (ok) {
+                completeLists.remove(playlistId)
+                accountPlaylists.bumpEntry(playlistId, 1)
+            }
             return ok
+        }
+
+        /** Adds every video in one edit_playlist call; the returned ids are the ones the server took. */
+        suspend fun addVideos(
+            playlistId: String,
+            videoIds: List<String>,
+        ): Set<String> {
+            if (!YouTube.isSignedIn() || videoIds.isEmpty()) return emptySet()
+            val succeeded = YouTube.addVideosToPlaylist(playlistId, videoIds)
+            if (succeeded.isNotEmpty()) {
+                completeLists.remove(playlistId)
+                accountPlaylists.bumpEntry(playlistId, succeeded.size)
+            }
+            return succeeded
         }
 
         /**
@@ -132,11 +158,57 @@ class YouTubePlaylistRepository
             videoId: String,
         ): Boolean {
             if (!YouTube.isSignedIn()) return false
-            val page = complete(playlistId) ?: return false
-            val setVideoId = page.videos.firstOrNull { it.id == videoId }?.playlistSetVideoId ?: return false
+            val page =
+                complete(playlistId) ?: run {
+                    ShivLog.i("playlistRemove id=$playlistId video=$videoId noPage")
+                    return false
+                }
+            val setVideoId =
+                page.videos.firstOrNull { it.id == videoId }?.playlistSetVideoId ?: run {
+                    ShivLog.i("playlistRemove id=$playlistId video=$videoId noSetVideoId videos=${page.videos.size}")
+                    return false
+                }
             val ok = YouTube.removeFromPlaylist(playlistId, videoId, setVideoId).isSuccess
-            if (ok) completeLists.remove(playlistId)
+            if (ok) {
+                completeLists.remove(playlistId)
+                accountPlaylists.bumpEntry(playlistId, -1)
+            }
             return ok
+        }
+
+        /**
+         * Removes every video in one edit_playlist call: one playlist fetch for
+         * all setVideoIds, then one request. The old per-video loop re-fetched
+         * the page before each remove and the server refused the later edits
+         * (report 15's 400s), so only the first of a multi-select ever left.
+         */
+        suspend fun removeVideos(
+            playlistId: String,
+            videoIds: Set<String>,
+        ): Set<String> {
+            if (!YouTube.isSignedIn() || videoIds.isEmpty()) return emptySet()
+            val page =
+                complete(playlistId) ?: run {
+                    ShivLog.i("playlistRemove id=$playlistId noPage")
+                    return emptySet()
+                }
+            val targets =
+                videoIds.mapNotNull { videoId ->
+                    val setVideoId = page.videos.firstOrNull { it.id == videoId }?.playlistSetVideoId
+                    if (setVideoId == null) {
+                        ShivLog.i("playlistRemove id=$playlistId video=$videoId noSetVideoId videos=${page.videos.size}")
+                        null
+                    } else {
+                        videoId to setVideoId
+                    }
+                }
+            if (targets.isEmpty()) return emptySet()
+            val succeeded = YouTube.removeVideosFromPlaylist(playlistId, targets)
+            if (succeeded.isNotEmpty()) {
+                completeLists.remove(playlistId)
+                accountPlaylists.bumpEntry(playlistId, -succeeded.size)
+            }
+            return succeeded
         }
 
         private suspend fun fetch(block: suspend () -> Result<VideoPlaylistPage>): VideoPlaylistPage? =
