@@ -26,6 +26,7 @@ fun SaveVideoSheet(
     val playlists by viewModel.playlists.collectAsStateWithLifecycle()
     val watchLaterVideos by viewModel.watchLaterVideos.collectAsStateWithLifecycle()
     val savedIds by viewModel.savedIds.collectAsStateWithLifecycle()
+    val isCreating by viewModel.isCreating.collectAsStateWithLifecycle()
     var showCreateDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(video.id) { viewModel.loadMembership(video.id) }
@@ -45,7 +46,17 @@ fun SaveVideoSheet(
         )
     val entries =
         listOf(watchLaterEntry) +
-            playlists.map { playlist ->
+            // The aggregation carries Watch Later too, and this sheet already renders its own
+            // row for it — two rows with id WL crash the keyed list below. Liked videos and
+            // Liked music are system collections, not playlists to save to: a liked video
+            // would otherwise show a filled bookmark here as if it were saved.
+            playlists
+                .filterNot {
+                    it.id == AccountPlaylistIds.WATCH_LATER ||
+                        it.id == AccountPlaylistIds.LIKED_VIDEOS ||
+                        it.id == AccountPlaylistIds.LIKED_MUSIC
+                }
+                .map { playlist ->
                 CollectionSheetEntry(
                     id = playlist.id,
                     name = playlist.name,
@@ -76,10 +87,10 @@ fun SaveVideoSheet(
             title = stringResource(R.string.create_new_playlist),
             confirmLabel = stringResource(R.string.create),
             icon = Icons.Default.PlaylistAdd,
+            isBusy = isCreating,
             onDismiss = { showCreateDialog = false },
             onConfirm = { name, description ->
-                viewModel.createAndAdd(video, name, description)
-                showCreateDialog = false
+                viewModel.createAndAdd(video, name, description) { showCreateDialog = false }
             },
         )
     }
