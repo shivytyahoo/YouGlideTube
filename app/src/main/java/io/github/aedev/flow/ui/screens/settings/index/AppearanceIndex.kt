@@ -74,6 +74,14 @@ internal object AppearanceIndex {
             section = R.string.settings_section_layout,
             destination = page,
         )
+    val animatedBackgrounds =
+        SettingEntry(
+            key = "appearance.animated_backgrounds",
+            title = R.string.animated_backgrounds_title,
+            summary = R.string.animated_backgrounds_subtitle,
+            section = R.string.settings_section_layout,
+            destination = page,
+        )
     val cardLikeButtons =
         SettingEntry(
             key = "appearance.card_like_buttons",
@@ -109,6 +117,7 @@ internal object AppearanceIndex {
             libraryPreviews,
             separatePlaylists,
             appLogo,
+            animatedBackgrounds,
             cardLikeButtons,
             cardWatchProgress,
             cardMarkWatched,
