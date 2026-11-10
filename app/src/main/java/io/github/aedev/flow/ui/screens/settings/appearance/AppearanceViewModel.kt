@@ -50,6 +50,7 @@ class AppearanceViewModel
         val libraryPreviews = preferences.libraryShelfPreviewsEnabled.asState(true)
         val separatePlaylists = preferences.separatePlaylistKinds.asState(false)
         val appLogo = preferences.showAppLogoIcon.asState(true)
+        val animatedBackground = preferences.animatedBackground.asState("diwali")
         val cardLikeButtons = preferences.videoCardActionsEnabled.asState(false)
         val cardMarkWatched = preferences.videoCardMarkWatchedEnabled.asState(false)
         val cardWatchProgress = preferences.showWatchProgress.asState(true)
@@ -94,6 +95,8 @@ class AppearanceViewModel
         fun setSeparatePlaylists(enabled: Boolean) = write { preferences.setSeparatePlaylistKinds(enabled) }
 
         fun setAppLogo(enabled: Boolean) = write { preferences.setShowAppLogoIcon(enabled) }
+
+        fun setAnimatedBackground(id: String) = write { preferences.setAnimatedBackground(id) }
 
 
         fun setCardLikeButtons(enabled: Boolean) = write { preferences.setVideoCardActionsEnabled(enabled) }
