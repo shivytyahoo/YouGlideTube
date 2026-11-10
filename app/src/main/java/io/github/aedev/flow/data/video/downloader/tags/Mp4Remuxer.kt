@@ -33,6 +33,8 @@ class Mp4Remuxer
                 val containerMimeType: String,
                 val videoMimeType: String?,
                 val audioMimeType: String,
+                /** Timestamp the output was shifted by: the snapped start for a clip, 0 otherwise. */
+                val firstSampleTimeUs: Long = 0L,
             ) : Result
 
             data class Failure(
@@ -43,6 +45,18 @@ class Mp4Remuxer
 
         enum class Reason { INPUT_MISSING, NO_TRACK, UNSUPPORTED_AUDIO, UNSUPPORTED_VIDEO, CANCELLED, MUX_FAILED }
 
+        /**
+         * One audio track to write: its part file, its timebase shift (its own first
+         * segment start for a segment-only clip, 0 for a full download), and its BCP-47
+         * language tag (e.g. "hi", "en"), so the player can name the track and switch
+         * between the languages in the file.
+         */
+        data class AudioInput(
+            val path: String,
+            val baseUs: Long = 0L,
+            val language: String? = null,
+        )
+
         private class Input(
             val extractor: MediaExtractor,
             val format: MediaFormat,
@@ -51,6 +65,18 @@ class Mp4Remuxer
         ) {
             var muxerTrack = C.INDEX_UNSET
             var done = false
+            var written = 0L
+            var readFailures = 0
+            /**
+             * Absolute time of this input's reported time zero. WebM reports absolute stream
+             * times (base 0); the fragmented-MP4 extractor reports times relative to the
+             * part's first segment (device report 9: audio firstSampleTime=0 on a clip
+             * starting at 44:30). Without the shift, every audio sample falls below the
+             * snapped offset and is skipped, leaving a video-only file.
+             */
+            var baseUs: Long = 0L
+            /** BCP-47 language tag for this audio track, written into the file so the player can switch languages. */
+            var language: String? = null
             val durationUs: Long =
                 if (format.containsKey(MediaFormat.KEY_DURATION)) format.getLong(MediaFormat.KEY_DURATION) else C.TIME_UNSET
         }
@@ -61,24 +87,86 @@ class Mp4Remuxer
 
         fun remux(
             videoPath: String?,
-            audioPath: String,
+            audioInputs: List<AudioInput>,
             outputPath: String,
             tags: DownloadTags? = null,
             isCancelled: () -> Boolean = { false },
             onProgress: ((Float) -> Unit)? = null,
+            clipStartUs: Long = 0L,
+            clipEndUs: Long = C.TIME_UNSET,
+            /**
+             * True when the inputs are segment-only clip parts (init + selected segments). Their
+             * indexes describe the original stream, not the part files, so seeking in them lands
+             * on the wrong bytes and the merge fails — and the parts already start at the snapped
+             * clip start, so the timestamp trim in [copyInterleaved] does the job instead.
+             */
+            skipSeeks: Boolean = false,
+            /**
+             * The clip's snapped start in microseconds, straight from the segment index. It is
+             * the offset the output is shifted by — preferred over the first sample time, which
+             * proved unreadable right after opening a segment-only part (device report 7:
+             * trimmedStartMs=0 for a clip starting at 44:30, so the validator expected the
+             * clip's end time as its length and rejected a good file).
+             */
+            snappedStartUs: Long? = null,
+            /**
+             * Absolute time of the video input's reported time zero, from the segment index:
+             * the video's own first-selected segment start when its extractor reports
+             * relative times (MP4; 0 for WebM, whose times are already absolute). 0 for full
+             * downloads, where the part starts at the stream start and needs no shift. Each
+             * audio input carries its own base in [AudioInput.baseUs].
+             */
+            videoBaseUs: Long = 0L,
         ): Result {
             val inputs = mutableListOf<Input>()
             val output = File(outputPath)
             var completed = false
+            var firstSampleTimeUs = 0L
             return try {
-                videoPath?.let { inputs += open(it, isVideo = true) }
-                inputs += open(audioPath, isVideo = false)
+                videoPath?.let { inputs += open(it, isVideo = true, skipSeeks) }
+                audioInputs.forEach { inputs += open(it.path, isVideo = false, skipSeeks) }
+                var audioIndex = 0
+                inputs.forEach {
+                    if (it.isVideo) {
+                        it.baseUs = videoBaseUs
+                    } else {
+                        val audio = audioInputs.getOrNull(audioIndex++)
+                        it.baseUs = audio?.baseUs ?: 0L
+                        it.language = audio?.language
+                    }
+                }
+                if (clipStartUs > 0L) {
+                    // Video must start on a keyframe, so it snaps to the keyframe at or just
+                    // before the requested start; audio starts on its nearest sample. Every
+                    // timestamp is shifted by the earliest first sample, so A/V stay in sync.
+                    // Skipped for segment-only parts: they already start at the snapped start.
+                    if (!skipSeeks) {
+                        inputs.forEach {
+                            it.extractor.seekTo(
+                                clipStartUs,
+                                if (it.isVideo) MediaExtractor.SEEK_TO_PREVIOUS_SYNC else MediaExtractor.SEEK_TO_CLOSEST_SYNC,
+                            )
+                        }
+                    }
+                    firstSampleTimeUs =
+                        snappedStartUs
+                            ?: inputs.mapNotNull {
+                                val time = it.extractor.sampleTime
+                                if (time >= 0L) time + it.baseUs else null
+                            }.minOrNull() ?: 0L
+                }
                 output.parentFile?.mkdirs()
                 FileOutputStream(output).use { stream ->
                     val muxer = Mp4Muxer.Builder(SeekableMuxerOutput.of(stream)).setAttemptStreamableOutputEnabled(false).build()
                     var closed = false
                     try {
-                        inputs.forEach { it.muxerTrack = muxer.addTrack(MediaFormatUtil.createFormatFromMediaFormat(it.format)) }
+                        inputs.forEach {
+                            val format = MediaFormatUtil.createFormatFromMediaFormat(it.format)
+                            it.muxerTrack =
+                                muxer.addTrack(
+                                    if (!it.isVideo && it.language != null) format.buildUpon().setLanguage(it.language).build() else format,
+                                )
+                        }
                         tags?.let { FlowTagFields.encode(it) }?.forEach { (field, value) ->
                             muxer.addMetadataEntry(
                                 MdtaMetadataEntry(
@@ -88,7 +176,9 @@ class Mp4Remuxer
                                 ),
                             )
                         }
-                        val written = copyInterleaved(inputs, muxer, isCancelled, onProgress)
+                        val written = copyInterleaved(inputs, muxer, isCancelled, onProgress, clipEndUs, firstSampleTimeUs)
+                        var audioNumber = 0
+                        Log.w(TAG, "Copied $written samples: ${inputs.joinToString { if (it.isVideo) "video=${it.written} readFailures=${it.readFailures}" else "audio${audioNumber++}=${it.written} readFailures=${it.readFailures}" }}")
                         if (written == 0L) throw Rejection(Result.Failure(Reason.NO_TRACK, "No samples to write"))
                         muxer.close()
                         closed = true
@@ -104,6 +194,7 @@ class Mp4Remuxer
                     containerMimeType = if (videoMime == null) MimeTypes.AUDIO_MP4 else MimeTypes.VIDEO_MP4,
                     videoMimeType = videoMime,
                     audioMimeType = audioMime,
+                    firstSampleTimeUs = firstSampleTimeUs,
                 )
             } catch (rejection: Rejection) {
                 rejection.failure
@@ -119,6 +210,7 @@ class Mp4Remuxer
         private fun open(
             path: String,
             isVideo: Boolean,
+            skipSeeks: Boolean = false,
         ): Input {
             val file = File(path)
             if (!file.isFile || file.length() == 0L) throw Rejection(Result.Failure(Reason.INPUT_MISSING, "Missing or empty input: $path"))
@@ -139,7 +231,14 @@ class Mp4Remuxer
                     throw Rejection(Result.Failure(Reason.UNSUPPORTED_AUDIO, "Audio codec $mime is not AAC"))
                 }
                 extractor.selectTrack(index)
-                extractor.seekTo(0L, MediaExtractor.SEEK_TO_CLOSEST_SYNC)
+                // After setDataSource the extractor already sits on the first sample; the seek
+                // only positions it, and on a segment-only part it would seek by a stale index.
+                // Audio still seeks to 0: the fragmented-MP4 extractor reports its first sample
+                // at time 0 (device report 9), so seeking to 0 lands exactly on it. The
+                // clip-start seek stays skipped, and the relative timebase is corrected by
+                // baseUs in copyInterleaved.
+                if (!skipSeeks || !isVideo) extractor.seekTo(0L, MediaExtractor.SEEK_TO_CLOSEST_SYNC)
+                if (skipSeeks) Log.w(TAG, "Opened $path mime=$mime firstSampleTime=${extractor.sampleTime}")
                 return Input(extractor, format, mime, isVideo)
             } catch (e: Exception) {
                 extractor.release()
@@ -152,8 +251,16 @@ class Mp4Remuxer
             muxer: Mp4Muxer,
             isCancelled: () -> Boolean,
             onProgress: ((Float) -> Unit)?,
+            clipEndUs: Long = C.TIME_UNSET,
+            offsetUs: Long = 0L,
         ): Long {
             val totalUs = inputs.maxOf { it.durationUs }.takeIf { it > 0 }
+            val progressTotalUs =
+                if (clipEndUs != C.TIME_UNSET) {
+                    (clipEndUs - offsetUs).takeIf { it > 0 } ?: totalUs
+                } else {
+                    totalUs
+                }
             var buffer = ByteBuffer.allocateDirect(INITIAL_BUFFER_BYTES)
             var samples = 0L
             var lastReported = -1
@@ -166,27 +273,44 @@ class Mp4Remuxer
                     val sampleTimeUs = input.extractor.sampleTime
                     if (sampleTimeUs == END_OF_STREAM) {
                         input.done = true
-                    } else if (next == null || sampleTimeUs < timeUs) {
-                        next = input
-                        timeUs = sampleTimeUs
+                    } else {
+                        // Shift each input to the absolute timeline before comparing: the
+                        // fragmented-MP4 extractor reports times relative to its first segment
+                        // (device report 9), so raw times would put every audio sample below
+                        // the snapped offset and skip it.
+                        val absTimeUs = sampleTimeUs + input.baseUs
+                        if (next == null || absTimeUs < timeUs) {
+                            next = input
+                            timeUs = absTimeUs
+                        }
                     }
                 }
                 if (next == null) return samples
+                // Samples arrive in time order, so the first one past the clip end means
+                // every remaining sample is past it too.
+                if (clipEndUs != C.TIME_UNSET && timeUs >= clipEndUs) return samples
                 val extractor = next.extractor
+                if (timeUs < offsetUs) {
+                    // A sample from before the snapped start (audio sought to closest sync).
+                    extractor.advance()
+                    continue
+                }
                 buffer = ensureCapacity(buffer, next)
                 buffer.clear()
                 val size = extractor.readSampleData(buffer, 0)
                 if (size < 0) {
+                    next.readFailures++
                     next.done = true
                     continue
                 }
                 buffer.position(0).limit(size)
                 val flags = if (extractor.sampleFlags and MediaExtractor.SAMPLE_FLAG_SYNC != 0) C.BUFFER_FLAG_KEY_FRAME else 0
-                muxer.writeSampleData(next.muxerTrack, buffer, BufferInfo(timeUs, size, flags))
+                muxer.writeSampleData(next.muxerTrack, buffer, BufferInfo(timeUs - offsetUs, size, flags))
                 samples++
+                next.written++
                 extractor.advance()
-                if (onProgress != null && totalUs != null) {
-                    val percent = (timeUs * 100 / totalUs).toInt().coerceIn(0, 99)
+                if (onProgress != null && progressTotalUs != null) {
+                    val percent = ((timeUs - offsetUs) * 100 / progressTotalUs).toInt().coerceIn(0, 99)
                     if (percent != lastReported) {
                         lastReported = percent
                         onProgress(percent / 100f)
