@@ -3,6 +3,7 @@ package io.github.aedev.flow.ui.screens.settings.home
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ManageSearch
 import androidx.compose.material.icons.outlined.AccountCircle
+import androidx.compose.material.icons.outlined.BatterySaver
 import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material.icons.outlined.CloudSync
 import androidx.compose.material.icons.outlined.CloudUpload
@@ -55,6 +56,7 @@ internal fun destinationIcon(destination: SettingsDestination): ImageVector =
 
 internal object HomeRowIcons {
     val DeepFlow: ImageVector = Icons.Outlined.VisibilityOff
+    val BatterySaver: ImageVector = Icons.Outlined.BatterySaver
     val DeepFlowDuration: ImageVector = Icons.Outlined.Timer
     val DeepFlowHistory: ImageVector = Icons.Outlined.WorkHistory
     val DeepFlowScrobble: ImageVector = Icons.Outlined.CloudUpload
