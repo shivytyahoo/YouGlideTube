@@ -85,6 +85,9 @@ fun PlaylistsScreen(
     var musicToRename by remember { mutableStateOf<PlaylistInfo?>(null) }
     var musicToDelete by remember { mutableStateOf<PlaylistInfo?>(null) }
 
+    val isVideoCreating by viewModel.isCreating.collectAsStateWithLifecycle()
+    val isMusicCreating by musicViewModel.isCreating.collectAsStateWithLifecycle()
+
     val ownedPlaylists = if (contentKind == MediaKind.Music) musicState.playlists else videoState.playlists
     val savedPlaylists = if (contentKind == MediaKind.Music) musicState.savedPlaylists else videoState.savedPlaylists
     val visiblePlaylists =
@@ -235,14 +238,14 @@ fun PlaylistsScreen(
                 ),
             confirmLabel = stringResource(R.string.create),
             icon = if (isVideo) Icons.Default.VideoLibrary else Icons.Default.MusicNote,
+            isBusy = if (isVideo) isVideoCreating else isMusicCreating,
             onDismiss = { creationTarget = null },
             onConfirm = { name, description ->
                 if (isVideo) {
-                    viewModel.createPlaylist(name, description)
+                    viewModel.createPlaylist(name, description) { creationTarget = null }
                 } else {
-                    musicViewModel.createPlaylist(name, description)
+                    musicViewModel.createPlaylist(name, description) { creationTarget = null }
                 }
-                creationTarget = null
             },
         )
     }
