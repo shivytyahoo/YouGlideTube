@@ -349,17 +349,30 @@ class QualityManager(
         forceCheck: Boolean,
         currentPosition: Long,
     ) {
-        if (!isAdaptiveQualityEnabled || isAdaptiveLadderActive) return
+        if (isAdaptiveLadderActive) return
+        // A pinned quality that stalls three times in a row is unplayable on this link: fall back
+        // to Auto, which jumps straight to the rung the live estimate can sustain, instead of
+        // stalling forever at the pinned height.
+        if (!isAdaptiveQualityEnabled) {
+            if (!forceCheck) return
+            Log.d(TAG, "Adaptive: pinned quality stalled repeatedly, falling back to Auto")
+            enableAdaptiveQuality(currentPosition)
+            return
+        }
         val current = currentVideoStream ?: return
         val streams = getWorkingStreams()
         if (forceCheck) {
-            val lower = AutoQualityPolicy.stepDown(current, streams, preferredCodecKey) ?: return
+            val estimatedBandwidth = bandwidthMeter?.bitrateEstimate
+            val lower =
+                estimatedBandwidth?.let { AutoQualityPolicy.jumpDown(current, streams, it, preferredCodecKey) }
+                    ?: AutoQualityPolicy.stepDown(current, streams, preferredCodecKey)
+                    ?: return
             Log.d(TAG, "Adaptive DOWNGRADE (buffering): ${qualityHeight(current)}p -> ${qualityHeight(lower)}p")
             performAdaptiveQualitySwitch(lower, currentPosition)
             return
         }
         val estimatedBandwidth = bandwidthMeter?.bitrateEstimate ?: return
-        val lower = AutoQualityPolicy.stepDownForBandwidth(current, streams, estimatedBandwidth, preferredCodecKey) ?: return
+        val lower = AutoQualityPolicy.jumpDown(current, streams, estimatedBandwidth, preferredCodecKey) ?: return
         Log.d(
             TAG,
             "Adaptive DOWNGRADE (low bandwidth): ${qualityHeight(current)}p -> ${qualityHeight(lower)}p " +
@@ -458,9 +471,8 @@ class QualityManager(
      * Increment buffering count for adaptive quality tracking.
      */
     fun incrementBufferingCount() {
-        if (isAdaptiveQualityEnabled) {
-            consecutiveBufferingCount++
-        }
+        // Counted in pinned mode too: three stalls at a pinned quality fall back to Auto.
+        consecutiveBufferingCount++
     }
 
     /**
