@@ -1,0 +1,9 @@
+VERSION: 1.0.3
+DATE: 2026-11-07
+• Diwali diyas: six glowing diyas float over the home background — turn them off in Settings → Appearance → Layout
+• TV catches up with mobile: matching banner, circles and diyas on TV, visit a channel from any feed card or the player, previews follow the remote, and a clear focus ring
+• Battery saver in Settings: switches off animations, glass blur, feed previews and Shorts pre-loading for a lighter, faster app
+• Smoother on slow networks: videos keep a bigger buffer and step up quality more slowly, so mid-video stalls are rarer
+• Download a clip: pick a start and end time and download just that part — no need to download the whole video
+• Clip downloads are much faster now: only the clip's own segments are fetched, for MP4 and WebM (VP9/AV1) alike
+• Fixed a thin outline that appeared around cards on phones
