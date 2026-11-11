@@ -5,9 +5,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import io.github.aedev.flow.R
 import io.github.aedev.flow.data.model.Comment
+import io.github.aedev.flow.innertube.YouTube
 import io.github.aedev.flow.innertube.pages.VideoCommentSort
 import io.github.aedev.flow.utils.formatTimeAgo
 import io.github.aedev.flow.utils.parseTimestampMs
+import io.github.aedev.flow.utils.relativedate.RelativeUploadDateParser
 
 enum class CommentSortFilter(
     @param:StringRes val labelRes: Int,
@@ -52,22 +54,21 @@ fun applyVideoCommentFilters(
     }
 }
 
-private fun relativeTimeToSeconds(timeStr: String): Long {
-    val lower = timeStr.lowercase().trim()
-    val number = Regex("\\d+").find(lower)?.value?.toLongOrNull() ?: 0L
-    return when {
-        "second" in lower -> number
-        "minute" in lower -> number * 60L
-        "hour" in lower -> number * 3_600L
-        "day" in lower -> number * 86_400L
-        "week" in lower -> number * 604_800L
-        "month" in lower -> number * 2_592_000L
-        "year" in lower -> number * 31_536_000L
-        else -> Long.MAX_VALUE
-    }
-}
+/**
+ * When a comment was posted, as epoch millis, from its relative "3 days ago" text — in the
+ * request's own language, via the same parser the feeds use. Null when the text carries no
+ * parsable age; callers must never read that as "now", or a stale comment sorts as new.
+ */
+private fun commentPostedMs(comment: Comment): Long? = RelativeUploadDateParser.parse(comment.publishedTime, YouTube.locale.hl)
 
-/** Sorts comments for the given filter, keeping pinned comments first. */
+/**
+ * Sorts comments for the given filter, keeping pinned comments first.
+ *
+ * The loaded list always arrives newest first (the chronological continuation, or the
+ * community feed), so Oldest sorts by posted time ascending and — within one coarse bucket
+ * such as "2 days ago", where every comment shares one timestamp — keeps the input reversed,
+ * oldest of the bucket first. Newest does the same in reverse: ties keep the server's order.
+ */
 fun sortCommentsByFilter(
     comments: List<Comment>,
     filter: CommentSortFilter,
@@ -77,8 +78,8 @@ fun sortCommentsByFilter(
     val sortedUnpinned =
         when (filter) {
             CommentSortFilter.TOP -> unpinned.sortedByDescending { it.likeCount }
-            CommentSortFilter.NEWEST -> unpinned.sortedBy { relativeTimeToSeconds(it.publishedTime) }
-            CommentSortFilter.OLDEST -> unpinned.sortedByDescending { relativeTimeToSeconds(it.publishedTime) }
+            CommentSortFilter.NEWEST -> unpinned.sortedByDescending { commentPostedMs(it) ?: Long.MIN_VALUE }
+            CommentSortFilter.OLDEST -> unpinned.asReversed().sortedBy { commentPostedMs(it) ?: Long.MAX_VALUE }
         }
     return pinned + sortedUnpinned
 }
