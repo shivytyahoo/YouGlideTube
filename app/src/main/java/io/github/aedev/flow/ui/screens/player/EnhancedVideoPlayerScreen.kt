@@ -96,7 +96,7 @@ internal fun EnhancedVideoPlayerScreen(
     val playerState by EnhancedPlayerManager.getInstance().playerState.collectAsStateWithLifecycle()
     val animatedBackground by remember { PlayerPreferences(context) }
         .animatedBackground
-        .collectAsState(initial = "diwali")
+        .collectAsState(initial = "none")
     Box(
         modifier =
             Modifier
