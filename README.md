@@ -11,15 +11,15 @@
 <p align="center"><b>Buttery smooth. Truly yours.</b></p>
 
 <p align="center">
-  <a href="https://github.com/shivytyahoo/YouGlideTube/releases/tag/v1.0.2"><img src="https://img.shields.io/badge/version-1.0.2-blue?style=flat-square" alt="Version 1.0.2"></a>
+  <a href="https://github.com/shivytyahoo/YouGlideTube/releases/tag/v1.0.4"><img src="https://img.shields.io/badge/version-1.0.4-blue?style=flat-square" alt="Version 1.0.4"></a>
   <a href="https://github.com/shivytyahoo/YouGlideTube/releases"><img src="https://img.shields.io/github/v/release/shivytyahoo/YouGlideTube?style=flat-square" alt="Latest release"></a>
   <img src="https://img.shields.io/badge/platform-Android%208.0%2B-3DDC84?style=flat-square" alt="Android 8.0+">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0-blue?style=flat-square" alt="GPL-3.0"></a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/shivytyahoo/YouGlideTube/releases/tag/v1.0.2"><b>⬇️ Download YouGlideTube 1.0.2</b></a><br>
-  <sub><code>YouGlideTube-1.0.2.apk</code> · universal APK — one file for every device · 27,599,579 bytes · installs over 1.0.1 · Android 8.0 (API 26) or newer</sub>
+  <a href="https://github.com/shivytyahoo/YouGlideTube/releases/tag/v1.0.4"><b>⬇️ Download YouGlideTube 1.0.4</b></a><br>
+  <sub><code>YouGlideTube-1.0.4.apk</code> · universal APK — one file for every device · 27,689,393 bytes · installs over 1.0.3 · Android 8.0 (API 26) or newer</sub>
 </p>
 
 ## About
@@ -38,7 +38,7 @@ text.
 | | |
 |---|---|
 | **App** | `shivyt.android.glidetube` |
-| **Latest release** | [1.0.2](https://github.com/shivytyahoo/YouGlideTube/releases/tag/v1.0.2) |
+| **Latest release** | [1.0.4](https://github.com/shivytyahoo/YouGlideTube/releases/tag/v1.0.4) |
 | **Requires** | Android 8.0 (API 26) or newer |
 | **TV** | Android TV layout included — same app, big-screen interface |
 | **License** | GPL-3.0 |
@@ -71,6 +71,67 @@ The result is an app that feels considered rather than assembled: quiet
 where it should be quiet, colourful exactly where your videos are, and
 fast everywhere. It is the kind of interface you enjoy opening, not just
 tolerating.
+
+## ⚡ What's new in 1.0.4
+
+This release folds in everything since 1.0.2 — eight rounds of fixes and
+features, in one APK.
+
+- **🎬 Live videos play again** — live streams were blocked on every
+  player; they now load through your signed-in session.
+- **🧹 History, finally fixed** — Clear All wipes your whole YouTube
+  watch history in one go, and it stays gone after refresh.
+- **🗑️ Delete and Delete Shorts now remove videos from your server
+  history too**, not just the local list.
+- **📈 Video quality is Auto by default** — videos climb to the best
+  quality your network can handle instead of staying pinned to 480p on
+  mobile data.
+- **📋 Playlists that actually load** — your playlist list was coming
+  back empty; it now shows all of them.
+- **⏰ Watch Later works** — adding a video to Watch Later now saves it
+  on the server.
+- **📚 Library stays live** — counts and thumbnails update the moment
+  you add, remove, or delete a playlist.
+- **🗑️ Deleting a playlist sticks** — it no longer comes back after you
+  leave the screen.
+- **💾 Player Save button flips to Saved** the instant you save a video.
+- **🔖 Save and unsave fixed** — saving someone else's playlist, then
+  removing it, works now instead of failing with a permission error.
+- **✂️ Download a clip** — pick a start and end time and download just
+  that part, no need to download the whole video.
+- **⚡ Clip downloads are much faster now** — only the clip's own
+  segments are fetched, for MP4 and WebM (VP9/AV1) alike.
+- **🎵 Multi-audio downloads** — tick Hindi and English and the download
+  carries both audio tracks.
+- **📶 Smoother on slow networks** — videos keep a bigger buffer and step
+  up quality more slowly, so mid-video stalls are rarer.
+- **🎨 Animated backgrounds** — choose from 30 festival looks, Diwali
+  diyas and 29 more, in Settings → Appearance → Layout.
+- **📺 TV catches up with mobile** — matching banner, circles and
+  backgrounds on TV, visit a channel from any feed card or the player,
+  previews follow the remote, and a clear focus ring.
+- **🔋 Battery saver in Settings** — switches off animations, glass
+  blur, feed previews and Shorts pre-loading for a lighter, faster app.
+- **▶️ Autoplay no longer crashes** at the end of the queue when there
+  is nothing next.
+- **🃏 Fixed a thin outline** that appeared around cards on phones.
+
+## ⚡ What's new in 1.0.3
+
+- **🪔 Diwali diyas** — six glowing diyas float over the home
+  background; turn them off in Settings → Appearance → Layout.
+- **📺 TV catches up with mobile** — matching banner, circles and diyas
+  on TV, visit a channel from any feed card or the player, previews
+  follow the remote, and a clear focus ring.
+- **🔋 Battery saver in Settings** — switches off animations, glass
+  blur, feed previews and Shorts pre-loading for a lighter, faster app.
+- **📶 Smoother on slow networks** — videos keep a bigger buffer and step
+  up quality more slowly, so mid-video stalls are rarer.
+- **✂️ Download a clip** — pick a start and end time and download just
+  that part, no need to download the whole video.
+- **⚡ Clip downloads are much faster now** — only the clip's own
+  segments are fetched, for MP4 and WebM (VP9/AV1) alike.
+- **🃏 Fixed a thin outline** that appeared around cards on phones.
 
 ## ⚡ What's new in 1.0.2
 
@@ -107,6 +168,9 @@ See [CHANGELOG.md](CHANGELOG.md) for the full list.
 - **Videos start buffered before you press play**, and quality steps up
   smoothly as the stream settles — even on slow 4G
 - **Automatic quality upgrades** as the stream settles
+- **Quality is Auto by default** — videos climb to the best your network
+  can handle, instead of staying pinned to one height
+- **Live streams play** through your signed-in session
 - **Background audio** and **picture-in-picture**
 - **Equalizer** for tuned sound
 - **Shorts** with the same smooth player — neighbours pre-buffer ahead,
@@ -137,6 +201,11 @@ See [CHANGELOG.md](CHANGELOG.md) for the full list.
 - **Watch history syncs with your YouTube account** — videos watched in
   YouGlideTube appear in YouTube history on every device, and the other
   way round
+- **Clear All and Delete remove videos from your server history too**,
+  not just the local list — and they stay gone after refresh
+- **Playlists that actually load** — your full list, Watch Later that
+  saves on the server, and a Library whose counts and thumbnails update
+  the moment you change anything
 - **Library and History keep your latest watches and likes on top**,
   across restarts
 
@@ -157,6 +226,10 @@ See [CHANGELOG.md](CHANGELOG.md) for the full list.
 ### 📥 Downloads
 
 - **Offline downloads** with quality and format choice
+- **Download a clip** — pick a start and end time and download just
+  that part, fast, for MP4 and WebM (VP9/AV1) alike
+- **Multi-audio downloads** — tick more than one audio track, Hindi and
+  English together, and the download carries both
 - Download location and cache controls in Settings
 
 ### 🎵 Discovery and music
@@ -194,6 +267,10 @@ pick up new files.
 ### 🎨 Make it yours
 
 - Themes, fonts, app icon choices and navigation-bar order
+- **Animated backgrounds** — 30 festival looks, from Diwali diyas to 29
+  more, in Settings → Appearance → Layout
+- **Battery saver** — switches off animations, glass blur, feed previews
+  and Shorts pre-loading for a lighter, faster app
 - Date and time formats, home layout and widgets
 - Local media, wellbeing tools and in-app diagnostics
 - **In-app update checks** — the app fetches a new APK from the release
@@ -215,6 +292,8 @@ remote.
   the remote
 - **Full TV player** — D-pad controls, scrubbing, an Up Next rail and
   sheets, on the same playback engine
+- **Visit a channel from any feed card or the player**, with previews
+  that follow the remote and a clear focus ring
 - **Same dark-first look** — the app's own dark theme and blue-to-teal
   brand, not the TV's default
 
@@ -287,6 +366,14 @@ added or removed in this fork:
 - In-app update checks with same-version rebuild detection
 - Android TV support — big-screen layout with a D-pad navigation rail,
   Shorts tab, full TV player and the same feed, subscriptions and music
+- Live streams that play through your signed-in session, with Auto
+  quality by default
+- History Clear All and Delete that remove videos from the server
+  history, not just the local list
+- Playlists that load in full, Watch Later that saves on the server,
+  and a Library that updates live
+- Clip downloads and multi-audio downloads
+- Animated backgrounds — 30 festival looks — and Battery saver
 
 **Kept from Flow**
 
