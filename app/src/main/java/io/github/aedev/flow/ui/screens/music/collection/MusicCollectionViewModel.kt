@@ -475,6 +475,12 @@ class MusicCollectionViewModel
 
         /** Liked music, live: newest like first, with the details the favorites store kept. */
         private suspend fun observeLiked() {
+            // The page reads the session like state, which used to hold only likes made
+            // in this process: a fresh open showed 0 songs while the Library shelf
+            // showed the account's liked music. Seed the state from the account first,
+            // and the favorites too, so the page and the shelf read the same LM list.
+            likes.ensureSeeded()
+            musicLibrary.ensureFavoritesLoaded()
             val title = context.getString(R.string.liked_music_playlist)
             combine(likes.likedMusicInfos(), musicLibrary.favorites) { liked, favorites ->
                 val tracks = likedMusicTracks(liked, favorites)
