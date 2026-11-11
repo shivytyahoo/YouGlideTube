@@ -102,7 +102,7 @@ fun FlowApp(
     val isShortsNavigationEnabled by preferences.effectiveShortsNavigationEnabled.collectAsState(initial = true)
     val isMusicNavigationEnabled by preferences.musicNavigationEnabled.collectAsState(initial = true)
     val isSearchNavigationEnabled by preferences.searchNavigationEnabled.collectAsState(initial = false)
-    val animatedBackground by preferences.animatedBackground.collectAsState(initial = "diwali")
+    val animatedBackground by preferences.animatedBackground.collectAsState(initial = "none")
     val batterySaver by preferences.batterySaverEnabled.collectAsState(initial = false)
     val disableShortsPlayer by preferences.effectiveDisableShortsPlayer.collectAsState(initial = false)
     val musicPlayerBackgroundStyle by preferences.musicPlayerBackgroundStyle.collectAsState(
