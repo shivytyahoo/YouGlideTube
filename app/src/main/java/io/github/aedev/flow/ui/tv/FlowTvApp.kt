@@ -65,7 +65,7 @@ fun FlowTvApp(
     val navigation by shellViewModel.navigation.collectAsStateWithLifecycle()
     val navController = rememberNavController()
     val preferences = remember { PlayerPreferences(context) }
-    val animatedBackground by preferences.animatedBackground.collectAsStateWithLifecycle(initialValue = "diwali")
+    val animatedBackground by preferences.animatedBackground.collectAsStateWithLifecycle(initialValue = "none")
     val batterySaver by preferences.batterySaverEnabled.collectAsStateWithLifecycle(initialValue = false)
     var needsOnboarding by remember { mutableStateOf<Boolean?>(null) }
     LaunchedEffect(Unit) {
