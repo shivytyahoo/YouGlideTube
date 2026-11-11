@@ -3021,13 +3021,13 @@ class PlayerPreferences(
         }
     }
 
-    // Animated background over the Morphe circles (default Diwali, which is what the
-    // old diyas switch showed; a user who had turned the diyas off gets "none").
+    // Animated background over the Morphe circles (default none; only a user who had the
+    // old diyas switch explicitly on keeps Diwali).
     val animatedBackground: Flow<String> =
         context.playerPreferencesDataStore.data
             .map { preferences ->
                 preferences[Keys.ANIMATED_BACKGROUND]
-                    ?: if (preferences[Keys.DIWALI_DIYAS_ENABLED] != false) "diwali" else "none"
+                    ?: if (preferences[Keys.DIWALI_DIYAS_ENABLED] == true) "diwali" else "none"
             }
 
     suspend fun setAnimatedBackground(id: String) {
