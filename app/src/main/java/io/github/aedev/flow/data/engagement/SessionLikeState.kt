@@ -41,7 +41,6 @@ class SessionLikeState
         /** Seeds LIKED states from the account's liked lists, once per session. */
         suspend fun ensureSeeded() {
             if (seeded || !YouTube.isSignedIn()) return
-            seeded = true
             val likedIds = HashSet<String>()
             val videos = youTubePlaylists.complete(AccountPlaylistIds.LIKED_VIDEOS)
             val music = youTubePlaylists.complete(AccountPlaylistIds.LIKED_MUSIC)
@@ -54,6 +53,46 @@ class SessionLikeState
             if (likedIds.isNotEmpty()) {
                 states.value = states.value + likedIds.associateWith { LIKED }
             }
+            // The infos list is what the Liked pages read, and it was never seeded: a fresh
+            // process opened Liked music to 0 songs while the Library shelf (which reads the
+            // same LM list directly) showed them. Seed it from the same two lists, with the
+            // Library's split — LM Shorts/live are liked videos, the rest are liked music —
+            // so both surfaces agree. likedAt keeps the server's newest-first order.
+            val now = System.currentTimeMillis()
+            val videoInfos =
+                ((videos?.videos.orEmpty()) + (music?.videos.orEmpty().filter { it.isShort || it.isLive })).distinctBy { it.id }.mapIndexed { index, video ->
+                    LikedVideoInfo(
+                        videoId = video.id,
+                        title = video.title,
+                        thumbnail = video.thumbnailUrl,
+                        channelName = video.channelName,
+                        channelId = video.channelId.takeIf(String::isNotBlank),
+                        durationSeconds = video.duration,
+                        likedAt = now - index,
+                    )
+                }
+            val musicOffset = videoInfos.size
+            val musicInfos =
+                (music?.videos.orEmpty().filterNot { it.isShort || it.isLive }).distinctBy { it.id }.mapIndexed { index, video ->
+                    LikedVideoInfo(
+                        videoId = video.id,
+                        title = video.title,
+                        thumbnail = video.thumbnailUrl,
+                        channelName = video.channelName,
+                        channelId = video.channelId.takeIf(String::isNotBlank),
+                        durationSeconds = video.duration,
+                        likedAt = now - musicOffset - index,
+                        isMusic = true,
+                    )
+                }
+            val seededInfos = videoInfos + musicInfos
+            if (seededInfos.isNotEmpty()) {
+                val known = infos.value.map { it.videoId }.toSet()
+                infos.value = infos.value + seededInfos.filterNot { it.videoId in known }
+            }
+            // Only mark seeded when at least one list arrived: a failed walk must retry on
+            // the next open instead of leaving the Liked pages empty for the whole process.
+            if (videos != null || music != null) seeded = true
         }
 
         fun likeState(videoId: String): Flow<String?> = states.map { it[videoId] }
