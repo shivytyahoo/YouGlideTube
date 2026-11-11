@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.5 — 2026-11-11
+
+- Liked music is back: the Liked music page was showing 0 songs even though your liked songs were right there — it now shows them, only the songs you hearted in the music player.
+- Comments sort properly now: Oldest shows comments oldest-to-newest across the whole app — player, Shorts, and channel posts — instead of showing the newest first.
+- Animated backgrounds are off by default now: the app opens with a clean background instead of Diwali diyas — pick any festival look in Settings → Appearance → Layout.
+
 ## 1.0.4 — 2026-11-10
 
 - Animated backgrounds: choose from 30 festival looks — Diwali diyas, and 29 more — in Settings → Appearance → Layout.
