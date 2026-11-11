@@ -259,6 +259,6 @@ enum class FestivalBackground(
 
     companion object {
         fun byId(id: String?): FestivalBackground =
-            entries.firstOrNull { it.id == id } ?: DIWALI
+            entries.firstOrNull { it.id == id } ?: NONE
     }
 }
