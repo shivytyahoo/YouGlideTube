@@ -3,6 +3,7 @@ package io.github.aedev.flow.data.model
 import io.github.aedev.flow.data.local.LikedVideoInfo
 import io.github.aedev.flow.data.local.VideoHistoryEntry
 import io.github.aedev.flow.data.music.model.MusicTrack
+import io.github.aedev.flow.utils.ThumbnailUrlResolver
 
 private const val MILLIS_PER_SECOND = 1000L
 
@@ -35,7 +36,7 @@ fun LikedVideoInfo.toMusicTrack(): MusicTrack =
         videoId = videoId,
         title = title,
         artist = channelName,
-        thumbnailUrl = thumbnail,
+        thumbnailUrl = thumbnail.ifBlank { ThumbnailUrlResolver.buildHighQualityYoutubeThumbnail(videoId) },
         duration = durationSeconds,
         channelId = channelId.orEmpty(),
     )
@@ -46,7 +47,7 @@ fun LikedVideoInfo.toVideo(): Video =
         title = title,
         channelName = channelName,
         channelId = channelId.orEmpty(),
-        thumbnailUrl = thumbnail,
+        thumbnailUrl = thumbnail.ifBlank { ThumbnailUrlResolver.buildHighQualityYoutubeThumbnail(videoId) },
         duration = durationSeconds,
         viewCount = -1L,
         uploadDate = "",
