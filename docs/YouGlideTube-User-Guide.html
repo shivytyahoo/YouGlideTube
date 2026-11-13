@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>YouGlideTube — User Guide</title>
+<style>
+  @page {
+    size: A4;
+    margin: 18mm 16mm 20mm 16mm;
+    background: #150B2E;
+    background-repeat: no-repeat;
+    background-image: radial-gradient(circle 71mm at 20% 22.5%, rgba(255,122,24,0.12) 0, rgba(255,122,24,0.12) 69mm, rgba(255,122,24,0) 71mm), radial-gradient(circle 50mm at 85% 18.5%, rgba(136,57,239,0.10) 0, rgba(136,57,239,0.10) 48mm, rgba(136,57,239,0) 50mm), radial-gradient(circle 36mm at 71.5% 44%, rgba(136,57,239,0.10) 0, rgba(136,57,239,0.10) 34mm, rgba(136,57,239,0) 36mm), radial-gradient(circle 57mm at 81.5% 78.5%, rgba(255,61,104,0.12) 0, rgba(255,61,104,0.12) 55mm, rgba(255,61,104,0) 57mm), radial-gradient(circle 32mm at 24% 76.5%, rgba(255,122,24,0.10) 0, rgba(255,122,24,0.10) 30mm, rgba(255,122,24,0) 32mm), radial-gradient(circle 40mm at 52.5% 89.5%, rgba(255,61,104,0.10) 0, rgba(255,61,104,0.10) 38mm, rgba(255,61,104,0) 40mm);
+    @bottom-center {
+      content: "YouGlideTube User Guide  •  Page " counter(page) " of " counter(pages);
+      font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+      font-size: 8pt;
+      color: #8F86B8;
+    }
+  }
+  @page cover { margin: 0; @bottom-center { content: none; } }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    font-size: 10.5pt;
+    line-height: 1.55;
+    color: #EDE7FF;
+    margin: 0;
+  }
+  /* ---------- Cover ---------- */
+  .cover {
+    page: cover;
+    width: 210mm; height: 296mm;
+    color: #F6F1FF;
+    text-align: center;
+    padding: 28mm 18mm 0 18mm;
+    page-break-after: always;
+    position: relative;
+  }
+  .cover .logo { width: 52mm; height: 52mm; border-radius: 14mm; }
+  .cover h1 { font-size: 34pt; margin: 8mm 0 2mm 0; color: #FF7A18; letter-spacing: 0.5pt; }
+  .cover .tagline { font-size: 14pt; color: #CDBFEA; margin: 0 0 10mm 0; }
+  .cover .guide-label {
+    display: inline-block; font-size: 13pt; letter-spacing: 4pt; text-transform: uppercase;
+    color: #150B2E; background: #FF7A18; border-radius: 6pt; padding: 3mm 8mm; font-weight: 700;
+  }
+  .cover .version {
+    margin-top: 12mm; font-size: 11pt; color: #F6F1FF;
+  }
+  .cover .version b { color: #FF3D68; }
+  .cover .version a { color: #FF7A18; text-decoration: none; }
+  .cover .credit { position: absolute; bottom: 22mm; left: 0; right: 0; font-size: 10.5pt; color: #CDBFEA; line-height: 1.7; }
+  .cover .credit a { color: #FF7A18; text-decoration: none; }
+  .cover .cover-bar { height: 3mm; background: linear-gradient(90deg, #FF7A18, #FF3D68, #8839EF); margin-top: 14mm; border-radius: 2mm; }
+  /* ---------- Body ---------- */
+  h1 {
+    font-size: 19pt; color: #F6F1FF; border-bottom: 3pt solid #FF7A18;
+    padding-bottom: 2mm; margin: 0 0 4mm 0; page-break-after: avoid;
+  }
+  h2 { font-size: 13.5pt; color: #E0C8FF; margin: 6mm 0 2mm 0; page-break-after: avoid; }
+  h3 { font-size: 11.5pt; color: #CDBFEA; margin: 4mm 0 1.5mm 0; page-break-after: avoid; }
+  p { margin: 0 0 3mm 0; }
+  ul, ol { margin: 1mm 0 3mm 0; padding-left: 6mm; }
+  li { margin-bottom: 1.2mm; }
+  section { page-break-before: always; }
+  section.first { page-break-before: auto; }
+  .lead { font-size: 11.5pt; color: #CDBFEA; }
+  .tip {
+    background: #241640; border-left: 3.5pt solid #FF7A18;
+    padding: 3mm 4mm; margin: 3mm 0; border-radius: 0 2mm 2mm 0;
+  }
+  .tip b { color: #FFD9B0; }
+  .warn {
+    background: #33141F; border-left: 3.5pt solid #FF3D68;
+    padding: 3mm 4mm; margin: 3mm 0; border-radius: 0 2mm 2mm 0;
+  }
+  .warn b { color: #FFD3DC; }
+  .nav { color: #B79CFF; font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; margin: 3mm 0; font-size: 10pt; }
+  th { background: #2A1B4D; color: #fff; text-align: left; padding: 2mm 3mm; }
+  td { border-bottom: 0.5pt solid #3D2A6E; padding: 2mm 3mm; vertical-align: top; }
+  tr:nth-child(even) td { background: #1E1238; }
+  .toc { columns: 2; column-gap: 10mm; font-size: 10.5pt; }
+  .toc a { color: #D9CCEC; text-decoration: none; }
+  .toc li { margin-bottom: 1.6mm; }
+  .banner { width: 100%; border-radius: 3mm; margin: 2mm 0 4mm 0; }
+  .shot-wrap { margin: 3mm 0; text-align: center; page-break-inside: avoid; }
+  .shot { width: 68mm; border-radius: 3mm; border: 0.5pt solid #5A3FA0; }
+  .shot-wrap figcaption { font-size: 9pt; color: #9B8FC4; margin-top: 1.5mm; }
+  .shot-wide { width: 100%; border-radius: 3mm; border: 0.5pt solid #5A3FA0; }
+  .kbd {
+    font-family: inherit; font-weight: 700; color: #FFD9B0;
+    background: #2A1B4D; border: 0.5pt solid #5A3FA0; border-radius: 1.5mm; padding: 0 1.5mm;
+  }
+  .small { font-size: 9pt; color: #9B8FC4; }
+  a { color: #FF9A3D; }
+</style>
+</head>
+<body>
+
+<!-- ================= COVER ================= -->
+<div class="cover">
+  <img class="logo" src="logo.png" alt="YouGlideTube logo">
+  <h1>YouGlideTube</h1>
+  <p class="tagline">Buttery smooth. Truly yours.</p>
+  <div class="guide-label">User Guide</div>
+  <div class="cover-bar"></div>
+  <p class="version">Android 8.0 (API 26) or newer<br>
+  Package: shivyt.android.glidetube<br>
+  Latest version: <a href="https://github.com/shivytyahoo/YouGlideTube/releases/latest">github.com/shivytyahoo/YouGlideTube/releases/latest</a></p>
+  <div class="credit">
+    Developed by <b>@shivytyahoo</b><br>
+    <a href="https://github.com/shivytyahoo">https://github.com/shivytyahoo</a><br>
+    Project: <a href="https://github.com/shivytyahoo/YouGlideTube">https://github.com/shivytyahoo/YouGlideTube</a>
+  </div>
+</div>
+
+<!-- ================= CONTENTS ================= -->
+<section class="first">
+  <h1>Contents</h1>
+  <ol class="toc">
+    <li><a href="#welcome">Welcome to YouGlideTube</a></li>
+    <li><a href="#start">Getting started</a></li>
+    <li><a href="#home">Home feed</a></li>
+    <li><a href="#search">Search</a></li>
+    <li><a href="#subs">Subscriptions</a></li>
+    <li><a href="#library">Library</a></li>
+    <li><a href="#player">Video player</a></li>
+    <li><a href="#music">Music player &amp; lyrics</a></li>
+    <li><a href="#shorts">Shorts</a></li>
+    <li><a href="#downloads">Downloads &amp; clips</a></li>
+    <li><a href="#channels">Channel pages</a></li>
+    <li><a href="#posts">Community posts &amp; comments</a></li>
+    <li><a href="#live">Live streams &amp; live chat</a></li>
+    <li><a href="#history">Watch history &amp; sync</a></li>
+    <li><a href="#notif">Notifications</a></li>
+    <li><a href="#settings">Settings guide</a></li>
+    <li><a href="#privacy">Privacy &amp; Deep Glide Mode</a></li>
+    <li><a href="#scrobble">Scrobbling</a></li>
+    <li><a href="#tv">Android TV</a></li>
+    <li><a href="#cast">Cast to TV</a></li>
+    <li><a href="#updates">Updates</a></li>
+    <li><a href="#trouble">Troubleshooting</a></li>
+    <li><a href="#about">About &amp; credits</a></li>
+  </ol>
+  <div class="tip"><b>How to use this guide.</b> Each chapter explains one part of the app in plain English, in the order you meet it: first the main tabs, then the player, then downloads, then Settings. Menu paths look like this: <span class="nav">Settings → Appearance → Layout</span>.</div>
+  <p class="small">Screens and wording may change slightly as the app grows; the in-app changelog (<span class="nav">Settings → About → Changelog</span>) always lists what is new in the version you have installed.</p>
+</section>
+
+<!-- ================= 1 WELCOME ================= -->
+<section id="welcome">
+  <h1>1 &nbsp; Welcome to YouGlideTube</h1>
+  <img class="banner" src="banner.png" alt="YouGlideTube banner">
+  <p class="lead">YouGlideTube is a fast, buttery-smooth YouTube client for Android, built for instant playback, background play, downloads and a clean, distraction-free interface — on your phone and on your Android TV.</p>
+  <p class="small">The phone screens shown in this guide are illustrations drawn from the app's design, not photographs of a device — the real screens may look slightly different.</p>
+  <p>It is a fork of <b>Flow 3.0.0</b>, rebranded and extended end to end. You sign in with your own Google account, and the app then behaves like YouTube itself: your home feed, subscriptions and watch history come straight from your account, and anything you watch in YouGlideTube also appears in your YouTube history on every other device.</p>
+  <h2>What makes it different</h2>
+  <ul>
+    <li><b>Buttery-smooth playback.</b> Videos start buffered before you press play, and quality steps up smoothly as your network allows. On slow networks the app keeps a bigger buffer and steps up more slowly, so mid-video stalls are rarer.</li>
+    <li><b>Feed previews.</b> Videos preview as you scroll. Tapping a preview continues from the preview position, with an unmute button on the preview itself.</li>
+    <li><b>Shorts that scroll without loading pauses.</b> Shorts pre-buffer ahead while you scroll.</li>
+    <li><b>Real downloads.</b> Full videos, audio in several languages at once, or just a clip between two timestamps you pick.</li>
+    <li><b>Private when you want it.</b> Deep Glide Mode pauses history and scrobbling — including the signals YouTube's servers receive (see Chapter 17).</li>
+    <li><b>Your music, your way.</b> A full music player with lyrics, translations, a parametric equalizer and scrobbling to Last.fm, Libre.fm and ListenBrainz.</li>
+  </ul>
+  <h2>Requirements</h2>
+  <ul>
+    <li>Android 8.0 (API 26) or newer, phone or Android TV.</li>
+    <li>An internet connection. Most features work without signing in, but your personal feed, subscriptions, history and likes need a Google account.</li>
+    <li>One universal APK — the same file installs on every device.</li>
+  </ul>
+</section>
+
+<!-- ================= 2 GETTING STARTED ================= -->
+<section id="start">
+  <h1>2 &nbsp; Getting started</h1>
+  <h2>Installing</h2>
+  <ol>
+    <li>Download the latest APK from the <a href="https://github.com/shivytyahoo/YouGlideTube/releases/latest">latest release</a> — this link always opens the newest version.</li>
+    <li>Open the file on your phone and allow installation from that source when Android asks.</li>
+    <li>Open YouGlideTube. It installs over any earlier version without losing your data.</li>
+  </ol>
+  <h2>First run</h2>
+  <p>The first-run screens walk you through the basics. The most important step is <b>Sign in with Google</b>: sign in and YouGlideTube works like YouTube — your home feed, subscriptions and history come straight from your account. You can skip this and sign in later from Settings; without signing in you can still search and watch, but your personal feed, subscriptions and history stay empty.</p>
+  <div class="tip"><b>Multiple accounts.</b> You can sign in with more than one Google account and switch between them. Each account keeps its own feed, subscriptions and history.</div>
+  <h2>The main tabs</h2>
+  <p>Along the bottom of the screen are the main tabs. Tapping a tab you are already on <b>refreshes</b> it — this works on every tab: Home, Music, Subscriptions, Library, Search, Explore and Shorts.</p>
+  <table>
+    <tr><th>Tab</th><th>What it is</th></tr>
+    <tr><td><b>Home</b></td><td>Your personal feed from YouTube, with video previews as you scroll.</td></tr>
+    <tr><td><b>Music</b></td><td>Music home, mixes and your music collections.</td></tr>
+    <tr><td><b>Subscriptions</b></td><td>The latest videos and Shorts from channels you follow.</td></tr>
+    <tr><td><b>Library</b></td><td>Your playlists, Liked videos and music, Watch Later, history and downloads.</td></tr>
+    <tr><td><b>Search</b></td><td>Search everything, with filters and recent searches.</td></tr>
+    <tr><td><b>Shorts</b></td><td>Full-screen vertical videos, one swipe at a time.</td></tr>
+  </table>
+  <p>If the bottom tabs ever disappear on their own, tap anywhere in the app and they come back.</p>
+</section>
+
+<!-- ================= 3 HOME ================= -->
+<section id="home">
+  <h1>3 &nbsp; Home feed</h1>
+  <p>The Home tab shows your personal feed, served by YouTube for your signed-in account. Pull down to refresh. Tapping the Home tab again also refreshes it.</p>
+  <ul>
+    <li><b>Video previews.</b> As you scroll, videos preview silently. Tap a preview and playback continues from the preview position; tap the unmute button on a preview to hear it.</li>
+    <li><b>Video cards.</b> Cards are spaced with proper gaps, and each card picks its accent colours from its own thumbnail.</li>
+    <li><b>Open a channel.</b> You can visit a channel from any feed card or from the player.</li>
+    <li><b>Not interested / block.</b> You can mark a video "Not interested" or block a channel; hidden items stay hidden for the session.</li>
+    <li><b>Same feed for hours?</b> That is normal: YouTube serves the same home feed for hours at a time. It is not a bug — a refresh returns the same videos until YouTube itself changes the feed.</li>
+  </ul>
+  <figure class="shot-wrap">
+    <img class="shot" src="screenshots/mock-home.png" alt="Home feed">
+    <figcaption>Home feed.</figcaption>
+  </figure>
+  <div class="tip"><b>Animated backgrounds.</b> The home background can show one of 30 animated festival looks (Diwali diyas and 29 more). They are off by default. Turn them on in <span class="nav">Settings → Appearance → Layout</span>.</div>
+  <h2>Battery saver</h2>
+  <p>If the app ever feels heavy, <span class="nav">Settings → Battery saver</span> switches off animations, glass blur, feed previews and Shorts pre-loading for a lighter, faster app.</p>
+</section>
+
+<!-- ================= 4 SEARCH ================= -->
+<section id="search">
+  <h1>4 &nbsp; Search</h1>
+  <p>Search finds videos, Shorts, channels, playlists, movies and music across YouTube.</p>
+  <figure class="shot-wrap">
+    <img class="shot" src="screenshots/mock-search.png" alt="Search with recent searches and filters">
+    <figcaption>Search, with recent searches and filters.</figcaption>
+  </figure>
+  <h2>Filters</h2>
+  <p>After searching, open <b>Filters</b> to narrow results by:</p>
+  <ul>
+    <li><b>Type</b> — All, Videos, Shorts, Channels, Playlists, Movies and more.</li>
+    <li><b>Duration</b> — under 4 minutes, 4–20 minutes, or over 20 minutes.</li>
+    <li><b>Upload date</b> — last hour, today, this week, this month or this year.</li>
+    <li><b>Features</b> — for example videos with subtitles/CC, in 4K, or live.</li>
+    <li><b>Sort by</b> — relevance, upload date, view count or rating.</li>
+    <li><b>Watched</b> — show only videos you have or have not watched.</li>
+  </ul>
+  <p>Use <b>Apply</b> to run the filtered search, or <b>Reset</b> to clear all filters.</p>
+  <h2>Recent searches</h2>
+  <p>Your recent searches appear under the search box and survive restarts. You can clear them from <span class="nav">Settings → Search &amp; History</span>.</p>
+  <h2>Deep Glide switch on search</h2>
+  <p>If you turn on <b>Show on search</b> in the Deep Glide settings, a Deep Glide switch appears above your recent searches, so you can switch private mode on or off without opening Settings. See Chapter 17.</p>
+  <h2>Recognize music</h2>
+  <p><b>Recognize music</b> listens to a song playing around you and identifies it (Shazam-powered), with a recognition history you can search later.</p>
+</section>
+
+<!-- ================= 5 SUBSCRIPTIONS ================= -->
+<section id="subs">
+  <h1>5 &nbsp; Subscriptions</h1>
+  <p>The Subscriptions tab shows the latest videos and Shorts from the channels you follow, newest first. Tapping the tab again refreshes it.</p>
+  <ul>
+    <li><b>Subscribe / unsubscribe</b> from any channel page, or from a video's channel row. Subscriptions live on your Google account, so they match youtube.com.</li>
+    <li><b>Subscription groups.</b> You can sort channels into folders (groups) and label avatars with their group, so a busy subscriptions list stays organised.</li>
+    <li><b>Guest mode.</b> If you are signed out, tapping like, dislike or subscribe shows a sign-in prompt instead of silently doing nothing.</li>
+  </ul>
+</section>
+
+<!-- ================= 6 LIBRARY ================= -->
+<section id="library">
+  <h1>6 &nbsp; Library</h1>
+  <p>The Library tab is your collection. Pull down to refresh it, or tap the tab again.</p>
+  <h2>Playlists</h2>
+  <ul>
+    <li>All of your playlists load from your account — created, saved and liked playlists alike.</li>
+    <li>Open a playlist to see its videos, sort them, and play them in order or shuffled.</li>
+    <li><b>Create, rename, edit and delete</b> playlists. Deleting a playlist sticks — it does not come back after you leave the screen.</li>
+    <li><b>Save</b> someone else's playlist to your library, and remove it again later. Saving works on playlists that are not yours, not just your own.</li>
+    <li><b>Add to playlist</b> from any video: pick a playlist, or create a new one on the spot.</li>
+    <li><b>Watch Later</b> is a playlist like any other: add a video to it and it is saved on the server, so it is there on every device.</li>
+  </ul>
+  <figure class="shot-wrap">
+    <img class="shot-wide" src="screenshots/playlists-rows.jpg" alt="Playlists in the Library">
+    <figcaption>Your playlists in the Library.</figcaption>
+  </figure>
+  <h2>Liked videos &amp; Liked music</h2>
+  <ul>
+    <li><b>Liked videos</b> lists every video you have liked. The page cover shows the picture of the top video, and follows your sorting — sort the list and the cover follows the video on top.</li>
+    <li><b>Liked music</b> lists the songs you hearted in the music player. Its cover works the same way: it follows the top song after any sort.</li>
+    <li>If a saved picture is broken, the cover and the rows fall back to the video's own thumbnail instead of staying blank.</li>
+  </ul>
+  <figure class="shot-wrap">
+    <img class="shot-wide" src="screenshots/liked-videos-header.jpg" alt="Liked videos collection">
+    <figcaption>Liked videos — Play all, Shuffle, and sort by date added.</figcaption>
+  </figure>
+  <figure class="shot-wrap">
+    <img class="shot-wide" src="screenshots/liked-music-songs.jpg" alt="Liked music songs">
+    <figcaption>Liked music — songs you hearted in the music player.</figcaption>
+  </figure>
+  <h2>History</h2>
+  <p>Your watch history comes from your YouTube account server, like the official app — so it matches everywhere. See Chapter 14 for the full story, including Clear All and deleting single entries.</p>
+  <h2>Downloads</h2>
+  <p>Everything you have downloaded, in one place. See Chapter 10.</p>
+  <h2>Local media &amp; notes</h2>
+  <ul>
+    <li><b>Local media.</b> Play videos and music stored on this device, alongside your online library.</li>
+    <li><b>Notes.</b> Keep private notes on channels and videos, visible only to you in the app.</li>
+  </ul>
+</section>
+
+<!-- ================= 7 PLAYER ================= -->
+<section id="player">
+  <h1>7 &nbsp; Video player</h1>
+  <p>Tap any video to play it. The player is designed for buttery-smooth playback even on slow 4G: videos start buffered before you press play, and quality climbs step by step instead of jumping.</p>
+  <figure class="shot-wrap">
+    <img class="shot" src="screenshots/mock-player.png" alt="Video player with playback settings">
+    <figcaption>The video player.</figcaption>
+  </figure>
+  <h2>Playback controls</h2>
+  <ul>
+    <li><b>Quality.</b> The default is <b>Auto</b>: the app climbs to the best quality your network can handle instead of staying pinned to 480p on mobile data. You can also pick a fixed resolution (including HDR where the video offers it), separately for Wi-Fi and mobile data.</li>
+    <li><b>Playback speed.</b> From 0.25× to 2×, with presets you can edit in Settings.</li>
+    <li><b>Repeat &amp; shuffle.</b> Repeat one video, repeat the queue, or shuffle it.</li>
+    <li><b>Queue.</b> Up next is a real queue: add videos to it, reorder it, and remove items. Autoplay follows YouTube's own related list — a song leads to songs like it, a trailer to trailers like it.</li>
+    <li><b>Audio tracks.</b> Videos with more than one audio language (for example Hindi and English) let you switch language while playing.</li>
+    <li><b>Subtitles / CC.</b> Turn subtitles on and pick a language where the video offers them.</li>
+    <li><b>Transcript.</b> Follow along with the video's transcript while it plays.</li>
+    <li><b>Sleep timer.</b> Stop playback automatically after a time you pick — the button sits next to the queue button (turn it on in Player Appearance settings if it is hidden).</li>
+    <li><b>Seek zones.</b> Double-tap the left or right side to seek back or forward; the seek distance is adjustable.</li>
+  </ul>
+  <h2>Save, like, subscribe</h2>
+  <ul>
+    <li><b>Save</b> adds the video to a playlist or Watch Later. The button flips to <b>Saved</b> the instant the save lands.</li>
+    <li><b>Like / dislike</b> work on your account. Signed out, they show a sign-in prompt instead of changing the count.</li>
+    <li><b>Share</b> sends just the video link, or the link with a message — your choice.</li>
+  </ul>
+  <h2>Background play &amp; picture-in-picture</h2>
+  <ul>
+    <li><b>Background Play.</b> Leave the app and the video keeps playing as audio, with controls in the notification and on the lock screen.</li>
+    <li><b>Picture-in-Picture (PiP).</b> A floating video window over other apps. <b>Auto PiP</b> switches to picture-in-picture by itself when you leave the app mid-video.</li>
+    <li>Both can be set separately for videos and for Shorts.</li>
+  </ul>
+  <h2>SponsorBlock, DeArrow &amp; RYD</h2>
+  <p><b>SponsorBlock</b> skips sponsored segments and other marked parts of a video automatically, per category (sponsors, intros, outros, interaction reminders and more). You can turn categories on or off, and choose per video whether segments are skipped, shown with a button, or left alone. DeArrow replaces clickbait titles and thumbnails with community-chosen ones, and RYD (Return YouTube Dislike) shows the community dislike count.</p>
+  <div class="tip"><b>Tip.</b> If a video ever buffers in the middle, check the Diagnostics report in Settings — it records buffer and stall lines that show exactly where playback struggled.</div>
+</section>
+
+<!-- ================= 8 MUSIC ================= -->
+<section id="music">
+  <h1>8 &nbsp; Music player &amp; lyrics</h1>
+  <p>Music plays in its own player, built for listening: background play, queue, and lyrics that follow the song.</p>
+  <figure class="shot-wrap">
+    <img class="shot" src="screenshots/mock-music.png" alt="Music player with lyrics">
+    <figcaption>The music player with lyrics.</figcaption>
+  </figure>
+
+  <ul>
+    <li><b>Music home &amp; mixes.</b> The Music tab has your mixes, new releases and music collections.</li>
+    <li><b>Queue.</b> The full up-next queue, with shuffle and repeat.</li>
+    <li><b>Lyrics.</b> Synced lyrics with a full-screen view. Tap any line to play from that line.</li>
+    <li><b>Translation &amp; romanization.</b> Show the translated line under each lyric, and show lyrics written in other scripts in Latin letters too.</li>
+    <li><b>Lyrics providers.</b> If lyrics are missing, you can switch lyrics provider in Playback settings.</li>
+    <li><b>Parametric equalizer.</b> A full equalizer with frequency, gain and Q controls per band, plus presets (including Vocal and podcast).</li>
+    <li><b>Heart songs.</b> Hearting a song in the music player adds it to your Liked music collection in the Library.</li>
+  </ul>
+</section>
+
+<!-- ================= 9 SHORTS ================= -->
+<section id="shorts">
+  <h1>9 &nbsp; Shorts</h1>
+  <p>Shorts play full-screen, one swipe at a time — up for the next, down for the previous. They pre-buffer ahead while you scroll, so scrolling has no visible loading pauses.</p>
+  <figure class="shot-wrap">
+    <img class="shot" src="screenshots/mock-shorts.png" alt="Shorts">
+    <figcaption>Shorts.</figcaption>
+  </figure>
+
+  <ul>
+    <li>Like, dislike, comment and share work exactly like the video player; signed out, they ask you to sign in.</li>
+    <li>Shorts have their own background-play and picture-in-picture settings.</li>
+    <li>Comments on a Short use the same sorting (Newest / Oldest) as everywhere else.</li>
+  </ul>
+</section>
+
+<!-- ================= 10 DOWNLOADS ================= -->
+<section id="downloads">
+  <h1>10 &nbsp; Downloads &amp; clips</h1>
+  <p>Download videos to watch offline. Downloads live in <span class="nav">Library → Downloads</span>, and in <b>Download/YouGlideTube</b> and <b>Music/YouGlideTube</b> on your device storage.</p>
+  <figure class="shot-wrap">
+    <img class="shot" src="screenshots/mock-downloads.png" alt="Downloads">
+    <figcaption>Downloads.</figcaption>
+  </figure>
+  <h2>Downloading a video</h2>
+  <ol>
+    <li>Tap <b>Download</b> on a video.</li>
+    <li>Pick a quality — <b>Best</b>, or a specific resolution and codec. HDR is offered where the video has it. The approximate file size is shown next to each quality.</li>
+    <li>Tick the audio languages to keep. A download can carry <b>more than one audio track</b> — for example Hindi and English in the same file — and you switch language while playing it back.</li>
+    <li>Downloads keep working in the background, with progress in the notification.</li>
+  </ol>
+  <h2>Download a clip</h2>
+  <p>You do not have to download a whole video. <b>Download a clip</b> saves just the part between a start and an end time you pick:</p>
+  <ul>
+    <li>Enter a start time and an end time inside the video length.</li>
+    <li>The clip starts at the nearest keyframe just before your start time, so the cut is clean.</li>
+    <li>Only the clip's own segments are fetched — for MP4 and WebM (VP9/AV1) alike — so clip downloads are much faster than downloading the whole video.</li>
+  </ul>
+  <h2>Download settings</h2>
+  <p><span class="nav">Settings → Download Settings</span> controls performance, storage location and how many download threads run at once. If downloads from an earlier install are missing from the list, the app can find them again in your Download/YouGlideTube and Music/YouGlideTube folders.</p>
+</section>
+
+<!-- ================= 11 CHANNELS ================= -->
+<section id="channels">
+  <h1>11 &nbsp; Channel pages</h1>
+  <p>Every channel has its own page, reachable from a feed card, a search result, the player, or a video's channel row. Tabs on a channel page:</p>
+  <figure class="shot-wrap">
+    <img class="shot" src="screenshots/mock-channel.png" alt="Channel page">
+    <figcaption>A channel page.</figcaption>
+  </figure>
+  <table>
+    <tr><th>Tab</th><th>What you find there</th></tr>
+    <tr><td><b>Home</b></td><td>The channel's featured videos and shelves.</td></tr>
+    <tr><td><b>Videos</b></td><td>Every upload, newest first.</td></tr>
+    <tr><td><b>Shorts</b></td><td>The channel's Shorts.</td></tr>
+    <tr><td><b>Live</b></td><td>Live streams and upcoming streams.</td></tr>
+    <tr><td><b>Releases</b></td><td>Music releases — albums and singles, each as a playlist with its cover art.</td></tr>
+    <tr><td><b>Playlists</b></td><td>The channel's public playlists.</td></tr>
+    <tr><td><b>Posts</b></td><td>Community posts: text, photos, polls and shared videos.</td></tr>
+    <tr><td><b>About</b></td><td>Description, links and channel details.</td></tr>
+  </table>
+  <p><b>Subscribe</b> from the channel page to follow it; the button shows the state on your account. You can also search inside a channel from its search box.</p>
+</section>
+
+<!-- ================= 12 POSTS & COMMENTS ================= -->
+<section id="posts">
+  <h1>12 &nbsp; Community posts &amp; comments</h1>
+  <h2>Community posts</h2>
+  <p>Channels post text, photos, polls and shared videos on their <b>Posts</b> tab. You can:</p>
+  <ul>
+    <li>Like a post, and vote in its polls.</li>
+    <li>Tap a photo to see it full-screen; swipe through galleries.</li>
+    <li><b>Save a post photo to your Gallery.</b> Open the photo full-screen and tap the download button next to "Tap to close" — the picture saves to <b>Pictures/YouGlideTube</b>, in full quality.</li>
+    <li>Share a post, and open the attached video from a shared-video post.</li>
+  </ul>
+  <figure class="shot-wrap">
+    <img class="shot" src="screenshots/mock-community.png" alt="Community post">
+    <figcaption>A community post.</figcaption>
+  </figure>
+  <h2>Comments</h2>
+  <p>Comments work everywhere — on videos, Shorts and channel posts — and they are real: what you post reaches YouTube's servers and stays there.</p>
+  <ul>
+    <li><b>Post</b> a comment, <b>reply</b> inside a thread, <b>edit</b> your own comment, <b>delete</b> it, and <b>like</b> comments — including replies inside threads.</li>
+    <li><b>Sort</b> comments by <b>Newest</b> or <b>Oldest</b>. Oldest shows comments oldest-to-newest across the whole app — player, Shorts and channel posts.</li>
+    <li>Only your own comments can be edited or deleted.</li>
+    <li>Signed out, commenting shows a sign-in prompt.</li>
+  </ul>
+</section>
+
+<!-- ================= 13 LIVE ================= -->
+<section id="live">
+  <h1>13 &nbsp; Live streams &amp; live chat</h1>
+  <p>Live streams play in the same player as normal videos, loaded through your signed-in session. You can watch, chat, and replay a live stream's chat afterwards where YouTube provides it.</p>
+  <ul>
+    <li><b>Live chat.</b> Send messages in the chat, and remove your own messages.</li>
+    <li><b>Live tab.</b> A channel's Live tab lists its live and upcoming streams.</li>
+    <li>Live streams keep no history row, but their watching time is still counted in your usage stats.</li>
+  </ul>
+</section>
+
+<!-- ================= 14 HISTORY ================= -->
+<section id="history">
+  <h1>14 &nbsp; Watch history &amp; sync</h1>
+  <p>Your watch history comes from your YouTube account server — exactly like the official app. A video watched in YouGlideTube appears in your YouTube history on every device, and the other way round.</p>
+  <h2>Using history</h2>
+  <ul>
+    <li><b>History tab.</b> All watches, newest first, with filters for Videos, Shorts, Music and more.</li>
+    <li><b>Delete one entry.</b> Remove a single video (or Short) from history — it is removed from the server too, not just from the list.</li>
+    <li><b>Clear All.</b> Wipes your whole YouTube watch history in one go, and it stays gone after refresh.</li>
+    <li><b>Pause watch history.</b> In <span class="nav">Settings → Search &amp; History</span>, pausing freezes what the server shows: while paused, nothing you watch is added to history — on the server either. (Deep Glide Mode does the same while it is on; see Chapter 17.)</li>
+    <li><b>Resume watching.</b> History entries remember where you stopped, so you can pick up where you left off.</li>
+  </ul>
+  <div class="warn"><b>Heads up.</b> History needs a signed-in account. Signed out, the app keeps only a session-only list that disappears when the session ends — by design, history belongs to the account, not the device.</div>
+</section>
+
+<!-- ================= 15 NOTIFICATIONS ================= -->
+<section id="notif">
+  <h1>15 &nbsp; Notifications</h1>
+  <p>The bell on every screen shows your notifications, with an unread badge. Open it to see the inbox, grouped as <b>New</b>, <b>Last 7 days</b> and <b>Earlier</b>.</p>
+  <ul>
+    <li><b>Pull to refresh</b> the inbox, <b>dismiss</b> single notifications, or <b>clear all</b> at once.</li>
+    <li><b>Check interval.</b> In <span class="nav">Settings → Notification Preferences</span> you choose how often the app checks for new notifications — and the interval you pick actually reschedules the check.</li>
+    <li><b>Which notifications.</b> Downloads, General and other notification switches in Settings control what the app may send.</li>
+    <li><b>Bedtime and break reminders</b> come from Time Management (see Chapter 16).</li>
+  </ul>
+</section>
+
+<!-- ================= 16 SETTINGS ================= -->
+<section id="settings">
+  <h1>16 &nbsp; Settings guide</h1>
+  <p>Settings is organised in sections. This chapter walks through each one.</p>
+  <figure class="shot-wrap">
+    <img class="shot" src="screenshots/mock-settings.png" alt="Settings">
+    <figcaption>Settings.</figcaption>
+  </figure>
+  <h2>Appearance</h2>
+  <ul>
+    <li><b>Theme.</b> Pick a colour theme — Flow Default (deep violet, saffron and coral, dark-first), Morphe, Lavender, Nord, Deep Ocean, Cream Paper and more — in light and dark variants. Or build a <b>custom theme</b> of your own, choosing every colour role yourself.</li>
+    <li><b>App icon.</b> Customise your launcher icon.</li>
+    <li><b>Animated backgrounds / Layout.</b> Choose one of 30 festival looks (Diwali diyas and 29 more), or none. They are off by default; the app opens with a clean background.</li>
+    <li><b>Player appearance.</b> Artwork colours, sleep-timer button, and how the player looks.</li>
+    <li><b>Fonts, date &amp; time, navigation bar.</b> Change the app font, date/time format, and the order of the bottom navigation tabs.</li>
+    <li><b>Content display.</b> Grid size, thumbnails and layout density.</li>
+    <li><b>App language.</b> Use your device language or pick one manually.</li>
+  </ul>
+  <h2>Content &amp; Playback</h2>
+  <ul>
+    <li><b>Player settings.</b> Autoplay, Background Play, SponsorBlock and more.</li>
+    <li><b>Video &amp; music quality.</b> Video resolution and music audio quality, separately for Wi-Fi and mobile data. Video quality defaults to Auto.</li>
+    <li><b>Buffer settings.</b> How much video is buffered ahead — turn it up on slow networks.</li>
+    <li><b>Download settings.</b> Performance, storage location and thread count.</li>
+    <li><b>Content preferences.</b> Block topics you do not want to see.</li>
+    <li><b>Trending region.</b> Which region's trending lists you see.</li>
+    <li><b>Search &amp; history.</b> Clear history, manage suggestions, pause watch history.</li>
+    <li><b>Library settings.</b> What the Library shows and how it is organised.</li>
+    <li><b>Music home settings.</b> What appears on the Music tab.</li>
+  </ul>
+  <h2>Privacy — YouGlideTube Engine</h2>
+  <p>Deep Glide Mode and its options live here. They are explained in full in Chapter 17.</p>
+  <h2>Data Management</h2>
+  <ul>
+    <li><b>Export data.</b> Back up your data (settings, subscriptions groups and more).</li>
+    <li><b>Import data.</b> Restore from a backup, or import from other apps — including your subscription groups.</li>
+    <li><b>Proxy settings.</b> Route remote traffic through an HTTP or SOCKS5 proxy. Casting and local devices stay direct.</li>
+  </ul>
+  <h2>Time Management</h2>
+  <ul>
+    <li><b>Usage stats.</b> See how much you have watched, counted from a real watch-time ledger.</li>
+    <li><b>Bedtime reminders.</b> Get reminded when it is bedtime; reminders repeat every night and survive a reboot.</li>
+    <li><b>Break reminders.</b> Reminders to take a break after long watching sessions.</li>
+  </ul>
+  <h2>Notifications</h2>
+  <p>Notification Preferences — which notifications the app can send, and how often it checks for new ones. See Chapter 15.</p>
+  <h2>Scrobbling</h2>
+  <p>Connect Last.fm, Libre.fm and ListenBrainz accounts, and choose what is sent. See Chapter 18.</p>
+  <h2>Diagnostics</h2>
+  <p>The Diagnostics screen builds a report of what the app has been doing — playback, history, downloads and errors. If something goes wrong, generating a report here and sharing it is the fastest way to get it fixed: the report shows the exact lines (for example <i>serverHistoryPing</i> or <i>commentsLoaded</i>) that prove what happened.</p>
+  <h2>About YouGlideTube</h2>
+  <ul>
+    <li>Version, licence and contributors.</li>
+    <li><b>Changelog.</b> What is new in the version you have installed.</li>
+    <li><b>Check for update.</b> Fetches the newest release and installs it when one exists — or tells you that you are up to date. If the check itself fails, it says so instead of claiming you are up to date.</li>
+    <li><b>Support &amp; donations.</b> How to help support development.</li>
+  </ul>
+  <div class="tip"><b>Battery saver.</b> Found at the top of Settings, it switches off animations, glass blur, feed previews and Shorts pre-loading for a lighter, faster app.</div>
+</section>
+
+<!-- ================= 17 PRIVACY / DEEP GLIDE ================= -->
+<section id="privacy">
+  <h1>17 &nbsp; Privacy &amp; Deep Glide Mode</h1>
+  <p class="lead">Deep Glide Mode is the app's private mode — browse privately, the way an incognito window works in a browser.</p>
+  <h2>Turning it on</h2>
+  <p>Go to <span class="nav">Settings → YouGlideTube Engine → Deep Glide Mode</span> and switch it on. The video that is playing pauses immediately, and the Home logo changes so you can see at a glance that private mode is on. Switch it off the same way. If you enabled <b>Show on search</b>, the switch also appears above recent searches on the Search screen.</p>
+  <figure class="shot-wrap">
+    <img class="shot" src="screenshots/deep-glide-settings.jpg" alt="Deep Glide Mode settings in YouGlideTube">
+    <figcaption>Deep Glide Mode settings — Settings → YouGlideTube Engine.</figcaption>
+  </figure>
+  <h2>What Deep Glide Mode does</h2>
+  <table>
+    <tr><th>While it is on…</th><th>What happens</th></tr>
+    <tr><td>Video pauses</td><td>The video playing when you switch it on pauses at once.</td></tr>
+    <tr><td>Local history stops</td><td>Nothing you watch is written to the app's History. No local history rows are saved at all.</td></tr>
+    <tr><td>Server history stops</td><td>The watch signals YouTube's servers receive are blocked too — the playback beacon and the progress beacons. The video does not appear in your YouTube account history on any device.</td></tr>
+    <tr><td>Scrobbling stops</td><td>No listens go to Last.fm, Libre.fm or ListenBrainz — unless you turned on "Scrobble during Deep Glide".</td></tr>
+    <tr><td>Recommendations are not taught</td><td>Because nothing is recorded, the recommendation engine learns nothing from what you watch in Deep Glide.</td></tr>
+  </table>
+  <h2>Its options</h2>
+  <ul>
+    <li><b>Auto-disable after.</b> Private mode switches itself off after a time you pick — 1, 2, 4, 6, 8, 12 or 24 hours, or <b>Never</b> (it stays on until you turn it off). The default is 4 hours. When the timer ends, you get a "Deep Glide timer ended" message.</li>
+    <li><b>Save to watch history.</b> Keep watch history during Deep Glide — the videos are saved to your History, but without teaching recommendations. Off by default.</li>
+    <li><b>Scrobble during Deep Glide.</b> Keep sending listens to Last.fm, Libre.fm and ListenBrainz while private mode is on. Off by default.</li>
+    <li><b>Show on search.</b> Show a Deep Glide switch above recent searches on the Search screen. Off by default.</li>
+  </ul>
+  <h2>What Deep Glide Mode does not do</h2>
+  <ul>
+    <li>It does not hide you from your network or internet provider, and it does not change what YouTube already recorded before you switched it on.</li>
+    <li>It does not delete history. Use <b>Clear All</b> in History to wipe what is already there.</li>
+    <li>Turning it on mid-video, then off again later, means only the part watched while it was off is recorded — the private stretch is never sent to the server afterwards.</li>
+  </ul>
+  <div class="warn"><b>Pause watch history works the same way.</b> The <b>Pause watch history</b> switch in Search &amp; History settings freezes history on the server as well — while paused, nothing you watch is added to your YouTube history, locally or on the server.</div>
+</section>
+
+<!-- ================= 18 SCROBBLING ================= -->
+<section id="scrobble">
+  <h1>18 &nbsp; Scrobbling</h1>
+  <p>Scrobbling sends the songs you listen to to your Last.fm, Libre.fm and ListenBrainz accounts, building a listening history there.</p>
+  <ul>
+    <li>Connect each service in <span class="nav">Settings → Scrobbling</span> and choose what is sent (now-playing updates and completed listens).</li>
+    <li>Scrobbling stops automatically in Deep Glide Mode, unless you turned on <b>Scrobble during Deep Glide</b>.</li>
+    <li>Scrobbling needs a network connection; listens are sent as you play.</li>
+  </ul>
+</section>
+
+<!-- ================= 19 TV ================= -->
+<section id="tv">
+  <h1>19 &nbsp; Android TV</h1>
+  <p>YouGlideTube includes a full Android TV layout — the same app, with a big-screen interface. It is built for the remote: a clear focus ring, matching banner, circles and animated backgrounds, and previews that follow the remote.</p>
+  <ul>
+    <li><b>TV parity.</b> Nothing mobile has is missing on TV: explore, categories, channel pages and subscriptions, TV Shorts, and the same player with the same fixes.</li>
+    <li><b>TV player.</b> The same quality, speed, queue and subtitle controls, with a loading spinner that only shows while the video is actually buffering.</li>
+    <li><b>Sign-in on TV.</b> Sign in on your phone first — your account then works on TV too.</li>
+    <li>TV uses the app's own default theme, not the TV's default; you can change it in Settings like on the phone.</li>
+  </ul>
+</section>
+
+<!-- ================= 20 CAST ================= -->
+<section id="cast">
+  <h1>20 &nbsp; Cast to TV</h1>
+  <p><b>Cast to TV</b> sends the video you are watching to a cast device (Chromecast / Google TV) on the same network, so it plays on the big screen while your phone acts as the remote.</p>
+  <ul>
+    <li>Start casting from the cast button in the player.</li>
+    <li>Playback controls stay on your phone while the video plays on the TV.</li>
+    <li>Casting and local devices stay direct even if you use a proxy in Settings.</li>
+  </ul>
+</section>
+
+<!-- ================= 21 UPDATES ================= -->
+<section id="updates">
+  <h1>21 &nbsp; Updates</h1>
+  <p>YouGlideTube checks for updates in the app — it does not need the Play Store.</p>
+  <ul>
+    <li><b>Check for update</b> (<span class="nav">Settings → About → Check for update</span>) fetches the newest release from the releases page and installs it when one exists. If you are up to date, it says so. If the check itself fails, it tells you the check failed instead of claiming you are up to date.</li>
+    <li>Every release carries a changelog — in the app (<span class="nav">Settings → About → Changelog</span>) and on the GitHub release page.</li>
+    <li>Each release is one universal APK that installs over any earlier version.</li>
+  </ul>
+</section>
+
+<!-- ================= 22 TROUBLESHOOTING ================= -->
+<section id="trouble">
+  <h1>22 &nbsp; Troubleshooting</h1>
+  <table>
+    <tr><th>Problem</th><th>Try this</th></tr>
+    <tr><td>Home feed shows the same videos after refresh</td><td>Normal — YouTube serves the same feed for hours. Wait, or try Search / Subscriptions for fresh videos.</td></tr>
+    <tr><td>A video buffers or stalls</td><td>Check your connection, then <span class="nav">Settings → Buffer Settings</span> and raise the buffer. Battery saver off also helps.</td></tr>
+    <tr><td>Live video will not play</td><td>Make sure you are signed in — live streams load through your signed-in session. Then retry.</td></tr>
+    <tr><td>History came back after Clear All</td><td>Pull to refresh on the History screen; if an entry returns, delete it once more and check the Diagnostics report.</td></tr>
+    <tr><td>Liked music shows 0 songs</td><td>Sign in with the account you hearted the songs on, then open Liked music again — it shows only songs hearted in the music player.</td></tr>
+    <tr><td>A download will not play in the app</td><td>Try it in another player first: if it plays elsewhere, generate a Diagnostics report right after the failure and share it.</td></tr>
+    <tr><td>Notifications do not arrive</td><td>Check <span class="nav">Settings → Notification Preferences</span> (switches and check interval) and your system notification permission.</td></tr>
+    <tr><td>Something else is wrong</td><td><span class="nav">Settings → Diagnostics</span> → generate a report. It records exactly what the app did, which makes the cause findable.</td></tr>
+  </table>
+</section>
+
+<!-- ================= 23 ABOUT ================= -->
+<section id="about">
+  <h1>23 &nbsp; About &amp; credits</h1>
+  <h2>Developer</h2>
+  <p><b>Developed by @shivytyahoo</b> — <a href="https://github.com/shivytyahoo">https://github.com/shivytyahoo</a><br>
+  Project repository: <a href="https://github.com/shivytyahoo/YouGlideTube">https://github.com/shivytyahoo/YouGlideTube</a><br>
+  Latest version: <a href="https://github.com/shivytyahoo/YouGlideTube/releases/latest">github.com/shivytyahoo/YouGlideTube/releases/latest</a></p>
+  <h2>Open source</h2>
+  <p>YouGlideTube is a fork of <b>Flow 3.0.0</b> (GPL-3.0), rebranded and extended end to end. The player foundation builds on open-source work licensed under the GNU General Public License v3.0, and this project is distributed under the same licence. See the LICENSE file in the repository for the full text. SponsorBlock, DeArrow and Return YouTube Dislike data come from their community services.</p>
+  <p class="small" style="margin-top:8mm">YouGlideTube User Guide — November 2026. YouGlideTube is an independent open-source project and is not affiliated with YouTube or Google. YouTube is a trademark of Google LLC.</p>
+</section>
+
+</body>
+</html>
