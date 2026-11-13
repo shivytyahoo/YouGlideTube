@@ -8,6 +8,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.aedev.flow.R
 import io.github.aedev.flow.data.account.AccountPlaylists
+import io.github.aedev.flow.data.account.AccountPlaylistIds
 import io.github.aedev.flow.data.account.toPlaylistInfo
 import io.github.aedev.flow.data.local.PlayerPreferences
 import io.github.aedev.flow.data.model.Playlist
@@ -53,7 +54,9 @@ class PlaylistsViewModel
             viewModelScope.launch {
                 accountPlaylists.playlists.collect { playlists ->
                     _uiState.update {
-                        it.copy(isLoading = false, playlists = playlists.map { playlist -> playlist.toPlaylistInfo() })
+                        // Liked videos has its own section in Library; it is not a playlist
+                        // card here either (the Library shelf hides it the same way).
+                        it.copy(isLoading = false, playlists = playlists.filterNot { playlist -> playlist.id == AccountPlaylistIds.LIKED_VIDEOS }.map { playlist -> playlist.toPlaylistInfo() })
                     }
                 }
             }
