@@ -94,6 +94,8 @@ Liked, Library and channel Releases, plus a new way to keep post photos.
   Search, Explore and Shorts all refresh when you tap their tab again.
 - **📺 TV player spinner fixed** — the loading spinner no longer spins over a
   video that is already playing.
+- **🕘 Library History shelf matches full History** — the shelf now shows your
+  latest watch first, in the same order as the full History screen.
 
 ## ⚡ What's new in 1.0.4
 
