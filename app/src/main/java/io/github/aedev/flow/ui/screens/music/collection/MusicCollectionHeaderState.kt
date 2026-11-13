@@ -7,6 +7,7 @@ import androidx.compose.ui.res.stringResource
 import io.github.aedev.flow.R
 import io.github.aedev.flow.data.music.model.MusicTrack
 import io.github.aedev.flow.ui.components.shared.mediaLengthLabel
+import io.github.aedev.flow.utils.ThumbnailUrlResolver
 
 private val SavableKinds = setOf(MusicCollectionKind.ALBUM, MusicCollectionKind.PLAYLIST, MusicCollectionKind.SAVED)
 
@@ -43,7 +44,13 @@ internal fun rememberCollectionHeaderState(
                 .orEmpty()
                 .takeUnless { isAlbum }
                 .orEmpty(),
-        artworkUrl = details.thumbnailUrl.ifBlank { tracks.firstOrNull()?.thumbnailUrl.orEmpty() },
+        artworkUrl =
+            // The cover follows the sorted list, like the Liked videos header: the top
+            // track's picture wins, so sorting Tera Kajra back changes the cover too.
+            tracks.firstOrNull { it.thumbnailUrl.isNotBlank() }?.thumbnailUrl
+                ?: details.thumbnailUrl.takeIf { it.isNotBlank() }
+                ?: tracks.firstOrNull()?.let { ThumbnailUrlResolver.buildHighQualityYoutubeThumbnail(it.videoId) }.orEmpty(),
+        artworkVideoId = tracks.firstOrNull()?.videoId.orEmpty(),
         isSaved = state.isSaved,
         canSave = state.kind in SavableKinds,
         canShare = state.kind != null,
