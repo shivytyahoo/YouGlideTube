@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,6 +13,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -36,6 +41,7 @@ import io.github.aedev.flow.R
 fun FullSizeImageDialog(
     imageUrl: String,
     onDismiss: () -> Unit,
+    onDownload: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
 
@@ -79,11 +85,25 @@ fun FullSizeImageDialog(
                     filterQuality = FilterQuality.High,
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = stringResource(R.string.tap_to_close),
-                    color = Color.White,
-                    style = MaterialTheme.typography.labelMedium,
-                )
+                Row(
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = stringResource(R.string.tap_to_close),
+                        color = Color.White,
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                    if (onDownload != null) {
+                        IconButton(onClick = onDownload) {
+                            Icon(
+                                imageVector = Icons.Default.Download,
+                                contentDescription = stringResource(R.string.download),
+                                tint = Color.White,
+                            )
+                        }
+                    }
+                }
             }
         }
     }
