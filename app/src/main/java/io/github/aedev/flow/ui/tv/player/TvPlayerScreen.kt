@@ -404,8 +404,11 @@ fun TvPlayerScreen(
             AutoplayCountdownOverlay()
         }
 
+        // A video that is playing never waits: isPlaying is true only in
+        // STATE_READY, so a spinner over it is always a stale flag, not a
+        // stall. A genuine stall has isPlaying=false and still shows it.
         TvPlayerStatus(
-            loading = overlayState.mode == TvOverlayMode.HIDDEN && (uiState.isLoading || playerState.isBuffering),
+            loading = overlayState.mode == TvOverlayMode.HIDDEN && !playerState.isPlaying && (uiState.isLoading || playerState.isBuffering),
             error = uiState.error?.let { error -> uiState.errorHint?.let { hint -> "$error\n$hint" } ?: error },
             onRetry = viewModel::retryLoadVideo,
             modifier = Modifier.align(Alignment.Center),
