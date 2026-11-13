@@ -514,9 +514,12 @@ class VideoPlayerViewModel
         fun reportServerWatchTime(videoId: String, positionMs: Long) {
             val session = _uiState.value.serverWatchSession
             if (session == null || session.videoId != videoId || !YouTube.isSignedIn()) return
-            lastWatchSession = session
-            lastWatchPositionMs = positionMs
             viewModelScope.launch {
+                // Read at record time, not arm time: a mid-play Deep Flow toggle takes
+                // effect on the next tick, and a hidden stretch never arms a final ping.
+                if (playerPreferences.isWatchHistorySavingBlocked()) return@launch
+                lastWatchSession = session
+                lastWatchPositionMs = positionMs
                 val result =
                     YouTube.pingWatchTime(
                         url = session.watchtimeUrl,
@@ -539,6 +542,7 @@ class VideoPlayerViewModel
             if (lastWatchPositionMs <= 0L) return
             val positionMs = lastWatchPositionMs
             viewModelScope.launch {
+                if (playerPreferences.isWatchHistorySavingBlocked()) return@launch
                 val result =
                     YouTube.pingWatchTime(
                         url = session.watchtimeUrl,
