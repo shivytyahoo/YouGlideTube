@@ -40,6 +40,7 @@ import io.github.aedev.flow.ui.components.layout.topbar.FlowTopBar
 import io.github.aedev.flow.ui.components.library.LibraryNavigationRow
 import io.github.aedev.flow.ui.components.library.LibrarySection
 import io.github.aedev.flow.ui.components.shared.FlowEmptyState
+import io.github.aedev.flow.ui.components.shared.FlowPullToRefreshBox
 import io.github.aedev.flow.ui.components.shared.FlowMaxContentWidth
 import io.github.aedev.flow.ui.components.shared.MediaKind
 
@@ -70,8 +71,14 @@ fun LibraryScreen(
     val separatePlaylistKinds by viewModel.separatePlaylistKinds.collectAsStateWithLifecycle()
     val isLibraryEmpty by viewModel.isLibraryEmpty.collectAsStateWithLifecycle()
     val hiddenSections by viewModel.hiddenSections.collectAsStateWithLifecycle()
+    val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
-    OnTabReselected(FlowTab.Library.route) { listState.animateScrollToItem(0) }
+    // A reselect scrolls back up and refreshes, like Music and Subscriptions: the
+    // Library used to only scroll, so a tap never re-read the account lists (2026-11-12).
+    OnTabReselected(FlowTab.Library.route) {
+        listState.animateScrollToItem(0)
+        viewModel.refreshOnReturn(force = true)
+    }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.refreshOnReturn() }
     val openSection: (LibrarySection) -> Unit = { section ->
         when (section) {
@@ -93,63 +100,65 @@ fun LibraryScreen(
         containerColor = Color.Transparent,
         topBar = { FlowTopBar(title = stringResource(R.string.library)) },
     ) { padding ->
-        LazyColumn(
-            state = listState,
-            modifier =
-                modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .background(Color.Transparent),
-            contentPadding = PaddingValues(top = ListVerticalPadding, bottom = flowBottomContentPadding(ListVerticalPadding)),
-            verticalArrangement = Arrangement.spacedBy(ShelfSpacing),
+        FlowPullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = { viewModel.refreshOnReturn(force = true) },
+            modifier = modifier.fillMaxSize().padding(padding),
         ) {
-            val hidden = hiddenSections ?: return@LazyColumn
-            val contentSections = visibleContentSections(hidden, separatePlaylistKinds, shortsEnabled)
-            val settingsSections = visibleSettingsSections(hidden)
-            if (shelfPreviewsEnabled && isLibraryEmpty) {
-                item(key = "library-empty", contentType = "empty") {
-                    FlowEmptyState(
-                        title = stringResource(R.string.library_empty_title),
-                        subtitle = stringResource(R.string.library_empty_body),
-                        icon = Icons.Outlined.VideoLibrary,
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize().background(Color.Transparent),
+                contentPadding = PaddingValues(top = ListVerticalPadding, bottom = flowBottomContentPadding(ListVerticalPadding)),
+                verticalArrangement = Arrangement.spacedBy(ShelfSpacing),
+            ) {
+                val hidden = hiddenSections ?: return@LazyColumn
+                val contentSections = visibleContentSections(hidden, separatePlaylistKinds, shortsEnabled)
+                val settingsSections = visibleSettingsSections(hidden)
+                if (shelfPreviewsEnabled && isLibraryEmpty) {
+                    item(key = "library-empty", contentType = "empty") {
+                        FlowEmptyState(
+                            title = stringResource(R.string.library_empty_title),
+                            subtitle = stringResource(R.string.library_empty_body),
+                            icon = Icons.Outlined.VideoLibrary,
+                        )
+                    }
+                } else if (shelfPreviewsEnabled) {
+                    libraryShelves(
+                        viewModel = viewModel,
+                        sections = contentSections,
+                        onOpenSection = openSection,
+                        onVideoClick = onVideoClick,
+                        onMusicClick = onMusicClick,
+                        onPlaylistClick = onPlaylistClick,
+                        onMusicPlaylistClick = onMusicPlaylistClick,
+                        onDownloadedVideoClick = onDownloadedVideoClick,
+                        onDownloadedMusicClick = onDownloadedMusicClick,
                     )
+                } else if (contentSections.isNotEmpty()) {
+                    item(key = "sections", contentType = "navigation-section") {
+                        val counts by viewModel.counts.collectAsStateWithLifecycle()
+                        LibrarySectionList(sections = contentSections, counts = counts, onOpenSection = openSection)
+                    }
                 }
-            } else if (shelfPreviewsEnabled) {
-                libraryShelves(
-                    viewModel = viewModel,
-                    sections = contentSections,
-                    onOpenSection = openSection,
-                    onVideoClick = onVideoClick,
-                    onMusicClick = onMusicClick,
-                    onPlaylistClick = onPlaylistClick,
-                    onMusicPlaylistClick = onMusicPlaylistClick,
-                    onDownloadedVideoClick = onDownloadedVideoClick,
-                    onDownloadedMusicClick = onDownloadedMusicClick,
-                )
-            } else if (contentSections.isNotEmpty()) {
-                item(key = "sections", contentType = "navigation-section") {
-                    val counts by viewModel.counts.collectAsStateWithLifecycle()
-                    LibrarySectionList(sections = contentSections, counts = counts, onOpenSection = openSection)
-                }
-            }
 
-            val emptyLibraryDownloads = shelfPreviewsEnabled && isLibraryEmpty && LibrarySection.DOWNLOADS in contentSections
-            if (emptyLibraryDownloads || settingsSections.isNotEmpty()) {
-                item(key = "settings-data", contentType = "navigation-section") {
-                    Column(modifier = Modifier.widthIn(max = FlowMaxContentWidth).padding(horizontal = 16.dp)) {
-                        LibrarySectionHeader(stringResource(R.string.library_settings_data_header))
-                        if (emptyLibraryDownloads) {
-                            LibraryNavigationRow(
-                                icon = LibrarySection.DOWNLOADS.icon,
-                                title = LibrarySection.DOWNLOADS.title,
-                                subtitle = stringResource(R.string.empty_downloads),
-                                onClick = onNavigateToDownloads,
-                            )
+                val emptyLibraryDownloads = shelfPreviewsEnabled && isLibraryEmpty && LibrarySection.DOWNLOADS in contentSections
+                if (emptyLibraryDownloads || settingsSections.isNotEmpty()) {
+                    item(key = "settings-data", contentType = "navigation-section") {
+                        Column(modifier = Modifier.widthIn(max = FlowMaxContentWidth).padding(horizontal = 16.dp)) {
+                            LibrarySectionHeader(stringResource(R.string.library_settings_data_header))
+                            if (emptyLibraryDownloads) {
+                                LibraryNavigationRow(
+                                    icon = LibrarySection.DOWNLOADS.icon,
+                                    title = LibrarySection.DOWNLOADS.title,
+                                    subtitle = stringResource(R.string.empty_downloads),
+                                    onClick = onNavigateToDownloads,
+                                )
+                            }
+                            settingsSections.forEach { section ->
+                                LibrarySectionRow(section = section, counts = null, onClick = { openSection(section) })
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
                         }
-                        settingsSections.forEach { section ->
-                            LibrarySectionRow(section = section, counts = null, onClick = { openSection(section) })
-                        }
-                        Spacer(modifier = Modifier.height(8.dp))
                     }
                 }
             }
