@@ -259,12 +259,17 @@ class LibraryViewModel
                 accountHistoryCapture.entriesFlow,
             ) { sessionEntries, server, captured ->
                 if (io.github.aedev.flow.innertube.YouTube.isSignedIn() && server != null) {
-                    // Session plays head the shelf: the server list never learns of a
-                    // watch made in this app, so without the merge the newest plays
-                    // never show and the shelf looks unsorted.
+                    // Same order as History itself (batch 92): the server list is
+                    // the account's newest-first order, so it is the backbone. Only
+                    // session plays the server has not recorded yet head the shelf;
+                    // a play the server knows keeps its server position, with the
+                    // session's own card so its progress stays.
                     val sessionItems = sessionEntries.map { it.toLibraryMediaItem() }
-                    val seen = sessionItems.map { it.mediaId() }.toSet()
-                    (sessionItems + server.map { LibraryMediaItem.VideoItem(it) }.filterNot { it.mediaId() in seen })
+                    val serverItems = server.map { LibraryMediaItem.VideoItem(it) }
+                    val serverIds = serverItems.map { it.mediaId() }.toSet()
+                    val sessionById = sessionItems.associateBy { it.mediaId() }
+                    (sessionItems.filterNot { it.mediaId() in serverIds } +
+                        serverItems.map { sessionById[it.mediaId()] ?: it })
                         .take(LIBRARY_SHELF_ITEM_LIMIT)
                 } else {
                     // Signed out, the shelf is the session's plays plus the last
