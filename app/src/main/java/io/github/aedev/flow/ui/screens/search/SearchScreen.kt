@@ -70,7 +70,12 @@ fun SearchScreen(
     val quickActions: QuickActionsViewModel = sharedQuickActionsViewModel()
     val pagingItems = viewModel.searchResults.collectAsLazyPagingItems()
     val gridState = rememberLazyGridState()
-    OnTabReselected(FlowTab.Search.route) { gridState.animateScrollToItem(0) }
+    // A reselect scrolls back up and re-runs the current search, like every other
+    // tab's reselect refresh (2026-11-12).
+    OnTabReselected(FlowTab.Search.route) {
+        gridState.animateScrollToItem(0)
+        pagingItems.refresh()
+    }
     var showFilters by rememberSaveable { mutableStateOf(false) }
 
     val submitWith = rememberSearchSubmitter(viewModel, state, quickActions)
