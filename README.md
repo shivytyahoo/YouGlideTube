@@ -11,15 +11,15 @@
 <p align="center"><b>Buttery smooth. Truly yours.</b></p>
 
 <p align="center">
-  <a href="https://github.com/shivytyahoo/YouGlideTube/releases/tag/v1.0.4"><img src="https://img.shields.io/badge/version-1.0.4-blue?style=flat-square" alt="Version 1.0.4"></a>
+  <a href="https://github.com/shivytyahoo/YouGlideTube/releases/tag/v1.0.6"><img src="https://img.shields.io/badge/version-1.0.6-blue?style=flat-square" alt="Version 1.0.6"></a>
   <a href="https://github.com/shivytyahoo/YouGlideTube/releases"><img src="https://img.shields.io/github/v/release/shivytyahoo/YouGlideTube?style=flat-square" alt="Latest release"></a>
   <img src="https://img.shields.io/badge/platform-Android%208.0%2B-3DDC84?style=flat-square" alt="Android 8.0+">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0-blue?style=flat-square" alt="GPL-3.0"></a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/shivytyahoo/YouGlideTube/releases/tag/v1.0.4"><b>⬇️ Download YouGlideTube 1.0.4</b></a><br>
-  <sub><code>YouGlideTube-1.0.4.apk</code> · universal APK — one file for every device · 27,689,393 bytes · installs over 1.0.3 · Android 8.0 (API 26) or newer</sub>
+  <a href="https://github.com/shivytyahoo/YouGlideTube/releases/tag/v1.0.6"><b>⬇️ Download YouGlideTube 1.0.6</b></a><br>
+  <sub><code>YouGlideTube-1.0.6.apk</code> · universal APK — one file for every device · 27,691,375 bytes · installs over 1.0.5 · Android 8.0 (API 26) or newer</sub>
 </p>
 
 ## About
@@ -38,7 +38,7 @@ text.
 | | |
 |---|---|
 | **App** | `shivyt.android.glidetube` |
-| **Latest release** | [1.0.4](https://github.com/shivytyahoo/YouGlideTube/releases/tag/v1.0.4) |
+| **Latest release** | [1.0.6](https://github.com/shivytyahoo/YouGlideTube/releases/tag/v1.0.6) |
 | **Requires** | Android 8.0 (API 26) or newer |
 | **TV** | Android TV layout included — same app, big-screen interface |
 | **License** | GPL-3.0 |
@@ -71,6 +71,28 @@ The result is an app that feels considered rather than assembled: quiet
 where it should be quiet, colourful exactly where your videos are, and
 fast everywhere. It is the kind of interface you enjoy opening, not just
 tolerating.
+
+## ⚡ What's new in 1.0.6
+
+This release folds in everything since 1.0.5 — thumbnail fixes across
+Liked, Library and channel Releases, plus a new way to keep post photos.
+
+- **📸 Post photos save to your Gallery** — open any photo in a channel
+  post and tap the download button; it saves to Pictures/YouGlideTube.
+- **💿 Channel Releases show their covers** — the playlist cards on a
+  channel's Releases tab were blank grey; they now show the release artwork.
+- **❤️ Liked videos cover follows your sorting** — the cover shows the top
+  video's picture after any sort, and a broken saved picture falls back to
+  the video's own thumbnail.
+- **🎵 Liked music cover follows your sorting too** — the cover shows the top
+  song after any sort, and songs with a broken saved picture show their own
+  thumbnail.
+- **📚 Library is tidier** — the Liked videos card no longer repeats on the
+  shelf, and pulling to refresh actually refreshes.
+- **🔄 Re-tapping a tab refreshes it** — Home, Music, Subscriptions, Library,
+  Search, Explore and Shorts all refresh when you tap their tab again.
+- **📺 TV player spinner fixed** — the loading spinner no longer spins over a
+  video that is already playing.
 
 ## ⚡ What's new in 1.0.4
 
