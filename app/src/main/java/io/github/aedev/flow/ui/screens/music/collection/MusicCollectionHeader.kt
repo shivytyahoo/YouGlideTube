@@ -55,9 +55,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
 import io.github.aedev.flow.R
 import io.github.aedev.flow.ui.components.layout.LocalFlowBottomInsets
+import io.github.aedev.flow.ui.components.shared.VideoThumbnailImage
 import io.github.aedev.flow.ui.components.shared.connectedButtonShapes
 import io.github.aedev.flow.ui.components.shared.flowHeroArtworkSize
 
@@ -74,6 +74,8 @@ internal data class CollectionHeaderState(
     val metadata: String,
     val description: String,
     val artworkUrl: String,
+    /** The video behind the cover, so a stored picture that no longer loads falls back to its own thumbnail. */
+    val artworkVideoId: String = "",
     val isSaved: Boolean,
     val canSave: Boolean,
     val canShare: Boolean,
@@ -113,7 +115,7 @@ internal fun MusicCollectionHero(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        CollectionArtwork(state.artworkUrl, Modifier.size(flowHeroArtworkSize()))
+        CollectionArtwork(state.artworkUrl, state.artworkVideoId, Modifier.size(flowHeroArtworkSize()))
         Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
             CollectionTitleBlock(state, actions, centered = true)
         }
@@ -141,7 +143,7 @@ internal fun MusicCollectionHeaderPane(
         Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             // The cover gives way when the pane is short, as on a TV, so the actions under it stay on screen.
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                CollectionArtwork(state.artworkUrl, Modifier.weight(1f, fill = false))
+                CollectionArtwork(state.artworkUrl, state.artworkVideoId, Modifier.weight(1f, fill = false))
                 CollectionTitleBlock(state, actions, centered = false)
             }
             CollectionSecondaryActions(state, actions)
@@ -153,6 +155,7 @@ internal fun MusicCollectionHeaderPane(
 @Composable
 private fun CollectionArtwork(
     url: String,
+    videoId: String,
     modifier: Modifier,
 ) {
     Surface(
@@ -161,7 +164,8 @@ private fun CollectionArtwork(
         modifier = modifier.aspectRatio(1f),
     ) {
         if (url.isNotBlank()) {
-            AsyncImage(model = url, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+            // A stored picture that no longer loads falls through to the video's own thumbnail.
+            VideoThumbnailImage(videoId = videoId, model = url, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
         }
     }
 }
