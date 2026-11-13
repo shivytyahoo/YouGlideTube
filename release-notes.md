@@ -1,3 +1,17 @@
+# YouGlideTube 1.0.6
+
+**Release date:** 2026-11-13
+**Status:** Stable
+
+## Highlights
+
+- Post photos save to your Gallery: open any photo in a channel post and tap the download button — it saves to Pictures/YouGlideTube.
+- Channel Releases show their covers: the playlist cards on a channel's Releases tab were blank grey — they now show the release artwork.
+- Liked videos and Liked music covers follow your sorting: the cover shows the top item's picture after any sort, and a broken saved picture falls back to the video's own thumbnail.
+- Library is tidier: the Liked videos card no longer repeats on the shelf, and pulling to refresh actually refreshes.
+- Re-tapping a tab refreshes it: Home, Music, Subscriptions, Library, Search, Explore and Shorts all refresh when you tap their tab again.
+- TV player spinner fixed: the loading spinner no longer spins over a video that is already playing.
+
 # YouGlideTube 1.0.2
 
 **Release date:** 2026-11-05
