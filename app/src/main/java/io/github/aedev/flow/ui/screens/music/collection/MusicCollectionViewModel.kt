@@ -479,7 +479,10 @@ class MusicCollectionViewModel
             // in this process: a fresh open showed 0 songs while the Library shelf
             // showed the account's liked music. Seed the state from the account first,
             // and the favorites too, so the page and the shelf read the same LM list.
+            // A seed that ran while one list was absent leaves blank pictures behind,
+            // so the open also backfills them from whichever list has the picture.
             likes.ensureSeeded()
+            likes.backfillMissingThumbnails()
             musicLibrary.ensureFavoritesLoaded()
             val title = context.getString(R.string.liked_music_playlist)
             combine(likes.likedMusicInfos(), musicLibrary.favorites) { liked, favorites ->
@@ -487,7 +490,7 @@ class MusicCollectionViewModel
                 PlaylistDetails(
                     id = collectionId,
                     title = title,
-                    thumbnailUrl = tracks.firstOrNull()?.thumbnailUrl.orEmpty(),
+                    thumbnailUrl = tracks.firstOrNull { it.thumbnailUrl.isNotBlank() }?.thumbnailUrl.orEmpty(),
                     author = "",
                     trackCount = tracks.size,
                     tracks = tracks,
