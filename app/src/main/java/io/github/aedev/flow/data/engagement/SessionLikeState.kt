@@ -95,6 +95,25 @@ class SessionLikeState
             if (videos != null || music != null) seeded = true
         }
 
+        /** Fills in thumbnails the seed missed: a tile can arrive picture-less while the other
+         * list's tile for the same video has it, and a seed that ran while one list was absent
+         * never retries — the blank rows stayed blank for the whole process (2026-11-12: the
+         * first Liked-music song had no picture). Runs on every Liked-music open, not once
+         * per session; the lists are cached, so a retry costs no fresh walk. */
+        suspend fun backfillMissingThumbnails() {
+            if (!YouTube.isSignedIn()) return
+            val current = infos.value
+            if (current.none { it.thumbnail.isBlank() }) return
+            val videos = youTubePlaylists.complete(AccountPlaylistIds.LIKED_VIDEOS)
+            val music = youTubePlaylists.complete(AccountPlaylistIds.LIKED_MUSIC)
+            val byId = ((videos?.videos.orEmpty()) + (music?.videos.orEmpty())).associateBy { it.id }
+            val fixed =
+                current.map { info ->
+                    if (info.thumbnail.isBlank()) info.copy(thumbnail = byId[info.videoId]?.thumbnailUrl.orEmpty()) else info
+                }
+            if (fixed != current) infos.value = fixed
+        }
+
         fun likeState(videoId: String): Flow<String?> = states.map { it[videoId] }
 
         fun likedInfos(): Flow<List<LikedVideoInfo>> = infos
