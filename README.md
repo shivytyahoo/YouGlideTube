@@ -77,6 +77,7 @@ tolerating.
 This release folds in everything since 1.0.5 — thumbnail fixes across
 Liked, Library and channel Releases, plus a new way to keep post photos.
 
+- **🔒 Deep Glide Mode blocks server history too** — a private watch stays off YouTube's servers as well as your phone, and pausing watch history does the same.
 - **📸 Post photos save to your Gallery** — open any photo in a channel
   post and tap the download button; it saves to Pictures/YouGlideTube.
 - **💿 Channel Releases show their covers** — the playlist cards on a
