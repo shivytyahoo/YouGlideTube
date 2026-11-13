@@ -9,6 +9,7 @@ import io.github.aedev.flow.data.model.Video
 import io.github.aedev.flow.data.video.DownloadBatch
 import io.github.aedev.flow.ui.components.library.PlaylistHeaderState
 import io.github.aedev.flow.ui.components.shared.mediaLengthLabel
+import io.github.aedev.flow.utils.ThumbnailUrlResolver
 
 /**
  * What the header shows for this playlist: owner, count, total length and what kind of playlist it
@@ -45,7 +46,16 @@ internal fun rememberPlaylistHeaderState(
         metadata = parts.joinToString(" $separator "),
         description = uiState.description,
         note = stringResource(R.string.playlist_unavailable_hidden).takeIf { uiState.hidesUnavailable },
-        thumbnailUrl = videos.firstOrNull()?.thumbnailUrl ?: uiState.thumbnailUrl,
+        thumbnailUrl =
+            videos.firstOrNull { it.thumbnailUrl.isNotBlank() }?.thumbnailUrl
+                ?: uiState.thumbnailUrl.takeIf { it.isNotBlank() }
+                // Every video has an i.ytimg.com thumbnail by id, so a cover is never left
+                // blank by a page whose rows and header both arrived without pictures.
+                ?: videos.firstOrNull()?.let { ThumbnailUrlResolver.buildHighQualityYoutubeThumbnail(it.id) }.orEmpty(),
+        thumbnailVideoId =
+            // The video whose picture the cover shows, so a stored picture that no longer
+            // loads falls back to that video's own thumbnail at the image layer.
+            videos.firstOrNull { it.thumbnailUrl.isNotBlank() }?.id ?: videos.firstOrNull()?.id.orEmpty(),
         isSaved = uiState.isSaved,
         canSave = !isUserCreated,
         canAddAll = !isUserCreated,
