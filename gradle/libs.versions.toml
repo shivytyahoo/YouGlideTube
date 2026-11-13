@@ -27,6 +27,7 @@ haze = "2.0.1"
 coroutines = "1.11.0"
 paging = "3.5.1"
 work = "2.11.2"
+browser = "1.8.0"
 junit = "4.13.2"
 kxml2 = "2.3.0"
 testExtJunit = "1.3.0"
@@ -54,6 +55,7 @@ androidxTestCore = "1.7.0"
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "core-splashscreen" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
+androidx-browser = { group = "androidx.browser", name = "browser", version.ref = "browser" }
 # Alpha BOM: pins material3 1.5.0-alpha26 (M3 Expressive) + compose 1.13.0-alpha01 consistently.
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom-alpha", version.ref = "composeBom" }
 androidx-ui = { group = "androidx.compose.ui", name = "ui" }
