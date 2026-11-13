@@ -61,7 +61,15 @@ internal fun List<Video>.sortedForPlaylist(sortOrder: PlaylistSortOrder): List<V
     }
 
 // Rows without an add time predate every timed one; those and any ties go by position, latest first.
-private fun List<Video>.sortedByDateAdded(): List<Video> = asReversed().sortedByDescending { it.addedAtInPlaylist ?: 0L }
+// A server list carries no add time at all, and its own order is newest first — so newest is the
+// list as it came, oldest is it reversed. The 1.0.5 one-liner reversed unconditionally, which
+// flipped every dateless list: Newest opened on the oldest likes (device verdict 2026-11-12).
+private fun List<Video>.sortedByDateAdded(): List<Video> =
+    if (none { it.addedAtInPlaylist != null }) {
+        this
+    } else {
+        asReversed().sortedByDescending { it.addedAtInPlaylist ?: 0L }
+    }
 
 private fun List<Video>.sortedByPublishDate(descending: Boolean): List<Video> {
     val now = System.currentTimeMillis()
