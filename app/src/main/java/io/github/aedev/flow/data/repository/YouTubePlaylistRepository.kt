@@ -68,6 +68,11 @@ class YouTubePlaylistRepository
             completeLists[playlistId] = CachedList(page.copy(continuation = null), System.currentTimeMillis())
         }
 
+        /** Drops the remembered whole list, so the next [complete] walks it again from the server. */
+        fun invalidateComplete(playlistId: String) {
+            completeLists.remove(playlistId)
+        }
+
         suspend fun firstPage(playlistId: String): RemotePlaylistPage? {
             val page =
                 fetch { YouTube.videoPlaylistPage(playlistId) }
