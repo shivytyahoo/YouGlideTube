@@ -46,7 +46,17 @@ internal fun JsonObject.toLockupItem(owner: FeedItemOwner): FeedItem? {
                 Playlist(
                     id = contentId,
                     name = title,
-                    thumbnailUrl = lockupThumbnailUrl().orEmpty(),
+                    // A release's cover can hide in thumbnailRenderer.playlistCustomThumbnailRenderer
+                    // instead of the lockup's own thumbnail, like a show's.
+                    thumbnailUrl =
+                        lockupThumbnailUrl()
+                            ?: this["thumbnailRenderer"]
+                                .objectOrNull()
+                                ?.get("playlistCustomThumbnailRenderer")
+                                .objectOrNull()
+                                ?.get("thumbnail")
+                                .largestImageUrl()
+                                .orEmpty(),
                     // The count badge is missing from some lockups' thumbnails; the
                     // same "N videos" text sits in the metadata rows instead, so
                     // the card shows 0 while the page lists videos without it.
