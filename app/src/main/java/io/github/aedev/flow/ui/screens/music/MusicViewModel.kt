@@ -699,14 +699,18 @@ class MusicViewModel
                 } else if (!skippedFreshCache && !quickPicksComposed &&
                     _uiState.value.forYouTracks.isEmpty() && _uiState.value.dynamicSections.isEmpty()
                 ) {
-                    val recs = musicRecommendationAlgorithm.getRecommendations(24).audioMusicOnly()
+                    val recs =
+                        withTimeoutOrNull(10_000L) {
+                            musicRecommendationAlgorithm.getRecommendations(24)
+                        }.orEmpty().audioMusicOnly()
                     if (recs.isNotEmpty()) {
                         _uiState.update { it.copy(forYouTracks = recs) }
                     }
                 }
-                if (_uiState.value.trendingSongs.isNotEmpty() || homeSections.isNotEmpty()) {
-                    _uiState.update { it.copy(isLoading = false) }
-                }
+                // The spinner is the load itself: every cycle ends here whether
+                // or not anything arrived, so a dry load can never leave it
+                // spinning over old content.
+                _uiState.update { it.copy(isLoading = false) }
             }
 
             // 3. SECONDARY: History (Disk IO)
@@ -1278,7 +1282,10 @@ class MusicViewModel
                 viewModelScope.launch(PerformanceDispatcher.networkIO) {
                     _uiState.update { it.copy(isLoading = true) }
                     try {
-                        val response = YouTube.home(params = chip.endpoint.params).getOrNull()
+                        val response =
+                            withTimeoutOrNull(10_000L) {
+                                YouTube.home(params = chip.endpoint.params).getOrNull()
+                            }
                         response?.let { home ->
                             processHomeSections(musicRecommendationAlgorithm.parseHomeSections(home))
                         }
