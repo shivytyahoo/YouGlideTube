@@ -62,11 +62,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
 import io.github.aedev.flow.R
 import io.github.aedev.flow.ui.components.shared.FlowActionButtonPair
 import io.github.aedev.flow.ui.components.shared.FlowPairAction
 import io.github.aedev.flow.ui.components.shared.FlowSortChip
+import io.github.aedev.flow.ui.components.shared.VideoThumbnailImage
 import io.github.aedev.flow.ui.components.shared.connectedButtonShapes
 import io.github.aedev.flow.ui.components.shared.thumbnailUrlOrNull
 
@@ -89,6 +89,8 @@ internal data class PlaylistHeaderState(
     /** A line about the list itself, such as videos YouTube leaves out; null shows none. */
     val note: String? = null,
     val thumbnailUrl: String,
+    /** The video behind the cover, so a stored picture that no longer loads falls back to its own thumbnail. */
+    val thumbnailVideoId: String = "",
     val isSaved: Boolean = false,
     val canSave: Boolean = false,
     val canAddAll: Boolean = false,
@@ -127,7 +129,7 @@ internal fun PlaylistHeader(
         modifier = modifier.fillMaxWidth().padding(HeaderPadding),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        PlaylistArtwork(url = state.thumbnailUrl, modifier = Modifier.fillMaxWidth())
+        PlaylistArtwork(url = state.thumbnailUrl, videoId = state.thumbnailVideoId, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.size(4.dp))
         PlaylistTitleBlock(state)
         PlaylistPrimaryActions(actions)
@@ -150,7 +152,7 @@ internal fun PlaylistHeaderPane(
         modifier = modifier.padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        PlaylistArtwork(url = state.thumbnailUrl, modifier = Modifier.fillMaxWidth())
+        PlaylistArtwork(url = state.thumbnailUrl, videoId = state.thumbnailVideoId, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.size(4.dp))
         PlaylistTitleBlock(state)
         Spacer(Modifier.weight(1f))
@@ -162,6 +164,7 @@ internal fun PlaylistHeaderPane(
 @Composable
 private fun PlaylistArtwork(
     url: String,
+    videoId: String,
     modifier: Modifier = Modifier,
 ) {
     Box(
@@ -174,7 +177,8 @@ private fun PlaylistArtwork(
     ) {
         val artworkUrl = thumbnailUrlOrNull(url)
         if (artworkUrl != null) {
-            AsyncImage(model = artworkUrl, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+            // A stored picture that no longer loads falls through to the video's own thumbnail.
+            VideoThumbnailImage(videoId = videoId, model = artworkUrl, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
         } else {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.PlaylistPlay,
