@@ -210,6 +210,12 @@ internal class PlaybackSessionApplier(
         loadToken: Long,
     ) {
         if (!YouTube.isSignedIn() || !isLoadCurrent(loadToken) || videoId == lastHistoryPingVideoId) return
+        // Deep Flow (and paused history) hides the watch from the server too:
+        // no playback beacon, and no watchtime session armed for the progress pings.
+        if (playerPreferences.isWatchHistorySavingBlocked()) {
+            ShivLog.i("serverHistoryPing id=${videoId.take(12)} status=blocked")
+            return
+        }
         // Prefer the WEB-minted tracking URLs: the winning response is
         // usually VISIONOS, and its ei/plid blob presented with WEB params +
         // WEB auth never landed in the account history (0.3.47–0.3.53, all
