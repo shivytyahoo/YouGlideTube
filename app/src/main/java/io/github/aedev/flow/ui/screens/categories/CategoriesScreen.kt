@@ -70,10 +70,13 @@ fun CategoriesScreen(
 
     val shelfState = rememberLazyGridState()
     val gridState = rememberLazyGridState()
+    // A reselect scrolls back up and reloads the section, like every other
+    // tab's reselect refresh (2026-11-12).
     OnTabReselected(FlowTab.Explore.route) {
         val isGridSection =
             uiState.sectionKind == ExploreSectionKind.CHART || uiState.sectionKind == ExploreSectionKind.GRID
         if (uiState.openShelfTitle == null && isGridSection) gridState.animateScrollToItem(0) else shelfState.animateScrollToItem(0)
+        viewModel.refresh()
     }
 
     BackHandler(enabled = uiState.openShelfTitle != null) { viewModel.closeShelf() }
