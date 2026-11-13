@@ -199,9 +199,31 @@ class HistoryViewModel
                         viewHistory.getAllHistory(),
                         shortsContentFilter.enabled,
                     ) { server, serverShorts, local, shortsEnabled ->
-                        val localSorted = local.sortedByDescending { it.timestamp }
-                        val localIds = localSorted.map { it.videoId }.toSet()
-                        val merged = localSorted + server.filterNot { it.videoId in localIds }
+                        // The server list is the account's newest-first order, so it
+                        // is the backbone: a watch the server knows (TV, web, another
+                        // device) keeps its server position instead of sinking below
+                        // every local row. Only session plays the server has not
+                        // recorded yet head the list, newest first. A server row keeps
+                        // the local resume position when this device has one.
+                        val serverIds = server.map { it.videoId }.toSet()
+                        val localById = local.associateBy { it.videoId }
+                        val freshLocal =
+                            local
+                                .sortedByDescending { it.timestamp }
+                                .filterNot { it.videoId in serverIds }
+                        val merged =
+                            freshLocal +
+                                server.map { entry ->
+                                    val played = localById[entry.videoId]
+                                    if (played == null) {
+                                        entry
+                                    } else {
+                                        entry.copy(
+                                            position = played.position,
+                                            duration = if (played.duration > 0) played.duration else entry.duration,
+                                        )
+                                    }
+                                }
                         // Server entries carry no watch time, so the merged order is
                         // kept with tightly descending stamps, as the server list was.
                         val now = System.currentTimeMillis()
