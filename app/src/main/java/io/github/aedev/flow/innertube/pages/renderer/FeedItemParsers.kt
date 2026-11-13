@@ -221,11 +221,21 @@ private const val TIME_STATUS_SHORTS = "SHORTS"
 private fun JsonObject.toPlaylistRendererItem(): FeedItem? {
     val playlistId = this["playlistId"].stringOrNull()?.takeIf(String::isNotBlank) ?: return null
     val title = this["title"].youtubeText()?.takeIf(String::isNotBlank) ?: return null
+    val thumbnail =
+        this["thumbnail"].largestImageUrl()
+            // Releases (albums/singles) carry no plain thumbnail: the cover hides in
+            // thumbnailRenderer.playlistCustomThumbnailRenderer, like a show's.
+            ?: this["thumbnailRenderer"]
+                .objectOrNull()
+                ?.get("playlistCustomThumbnailRenderer")
+                .objectOrNull()
+                ?.get("thumbnail")
+                .largestImageUrl()
     return FeedItem.PlaylistItem(
         Playlist(
             id = playlistId,
             name = title,
-            thumbnailUrl = this["thumbnail"].largestImageUrl().orEmpty(),
+            thumbnailUrl = thumbnail.orEmpty(),
             videoCount =
                 this["videoCount"].stringOrNull()?.toIntOrNull()
                     ?: this["videoCountText"].youtubeText()?.leadingCount()
