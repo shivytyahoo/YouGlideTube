@@ -37,16 +37,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
-import coil3.request.ImageRequest
-import coil3.request.crossfade
 import io.github.aedev.flow.R
 import io.github.aedev.flow.data.music.model.MusicTrack
 import io.github.aedev.flow.ui.components.music.common.MusicNowPlayingOverlay
@@ -54,6 +50,7 @@ import io.github.aedev.flow.ui.components.music.common.isTrackPlaying
 import io.github.aedev.flow.ui.components.music.common.rememberMusicArtworkColors
 import io.github.aedev.flow.ui.components.shared.DownloadedBadge
 import io.github.aedev.flow.ui.components.shared.ExplicitBadge
+import io.github.aedev.flow.ui.components.shared.VideoThumbnailImage
 import io.github.aedev.flow.ui.theme.Dimensions
 import io.github.aedev.flow.utils.formatDuration
 import io.github.aedev.flow.utils.formatViewCount
@@ -111,7 +108,6 @@ fun MusicTrackItem(
     onLongClick: (() -> Unit)? = null,
     onMenuClick: () -> Unit = {},
 ) {
-    val context = LocalContext.current
     val scheme = MaterialTheme.colorScheme
     val highlight = if (isPlaying) rememberMusicArtworkColors(track.thumbnailUrl) else null
     val rowColor = highlight?.container ?: containerColor
@@ -163,13 +159,10 @@ fun MusicTrackItem(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center,
             ) {
-                AsyncImage(
-                    model =
-                        ImageRequest
-                            .Builder(context)
-                            .data(track.listThumbnailUrl)
-                            .crossfade(true)
-                            .build(),
+                // A stored picture that no longer loads falls through to the video's own thumbnail.
+                VideoThumbnailImage(
+                    videoId = track.videoId,
+                    model = track.listThumbnailUrl,
                     contentDescription = null,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop,
