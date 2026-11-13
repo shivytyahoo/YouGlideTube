@@ -1,5 +1,6 @@
 package io.github.aedev.flow.ui.components.channel
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -25,12 +26,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -41,10 +44,13 @@ import io.github.aedev.flow.data.model.Video
 import io.github.aedev.flow.innertube.pages.renderer.PostAttachment
 import io.github.aedev.flow.ui.components.shared.FullSizeImageDialog
 import io.github.aedev.flow.ui.components.shared.VideoThumbnailImage
+import io.github.aedev.flow.ui.components.shared.toHighQualityAvatarUrl
 import io.github.aedev.flow.ui.theme.extendedColors
+import io.github.aedev.flow.utils.ImageGallerySaver
 import io.github.aedev.flow.utils.ThumbnailUrlResolver
 import io.github.aedev.flow.utils.formatDuration
 import io.github.aedev.flow.utils.formatViewCount
+import kotlinx.coroutines.launch
 
 @Composable
 internal fun CommunityPostAttachment(
@@ -69,9 +75,33 @@ private fun PostImages(
     val resolved = remember(urls) { urls.map { ThumbnailUrlResolver.resolveCommunityPostImage(it) } }
     if (resolved.isEmpty()) return
 
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var fullSizeIndex by rememberSaveable { mutableIntStateOf(-1) }
     if (fullSizeIndex in resolved.indices) {
-        FullSizeImageDialog(imageUrl = resolved[fullSizeIndex], onDismiss = { fullSizeIndex = -1 })
+        FullSizeImageDialog(
+            imageUrl = resolved[fullSizeIndex],
+            onDismiss = { fullSizeIndex = -1 },
+            onDownload = {
+                // Save the same high-quality picture the dialog shows.
+                val url = toHighQualityAvatarUrl(resolved[fullSizeIndex])
+                scope.launch {
+                    val saved = ImageGallerySaver.save(context, url)
+                    Toast
+                        .makeText(
+                            context,
+                            context.getString(
+                                if (saved != null) {
+                                    R.string.post_image_saved
+                                } else {
+                                    R.string.post_image_save_failed
+                                },
+                            ),
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                }
+            },
+        )
     }
 
     // A lone image runs edge to edge; a gallery insets so the next page peeks, which is the only cue
