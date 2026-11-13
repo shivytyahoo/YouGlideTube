@@ -1009,7 +1009,14 @@ class EnhancedPlayerManager private constructor() {
                 }
 
                 override fun onIsPlayingChanged(isPlaying: Boolean) {
-                    _playerState.value = _playerState.value.copy(isPlaying = isPlaying)
+                    // isPlaying is true only in STATE_READY, where isBuffering is
+                    // false by definition — a forced isBuffering=true that outlived
+                    // its READY event is cleared the moment playback resumes.
+                    _playerState.value =
+                        _playerState.value.copy(
+                            isPlaying = isPlaying,
+                            isBuffering = if (isPlaying) false else _playerState.value.isBuffering,
+                        )
                     if (isPlaying) abandonedSkips.onPlaybackStarted()
                     autoNextLog("onIsPlayingChanged isPlaying=$isPlaying")
                 }
