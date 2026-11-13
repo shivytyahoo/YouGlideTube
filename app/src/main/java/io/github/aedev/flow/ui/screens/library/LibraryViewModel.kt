@@ -116,9 +116,12 @@ class LibraryViewModel
         private val playlistOrder = playerPreferences.playlistListOrder
 
         // Library playlists are the account's own (FEplaylist_aggregation) — there is no local store.
+        // Liked videos is not a playlist card here: it has its own Liked section below, so the
+        // aggregation tile for it would only duplicate it (2026-11-12). Watch Later stays —
+        // it has no other home in the Library.
         private val allVideoPlaylists =
             combine(accountPlaylists.playlists, playlistOrder) { playlists, order ->
-                playlists.map { it.toPlaylistInfo() }.sortedFor(order)
+                playlists.filterNot { it.id == AccountPlaylistIds.LIKED_VIDEOS }.map { it.toPlaylistInfo() }.sortedFor(order)
             }.shared()
 
         // The account list is one list; the music shelf split was a local-store artifact.
@@ -139,13 +142,29 @@ class LibraryViewModel
          * shelves are loaded once in init, so a playlist edit made on another
          * screen never reached them until the process died.
          */
-        internal fun refreshOnReturn() {
-            if (refreshJob?.isActive == true) return
+        private val _isRefreshing = MutableStateFlow(false)
+        val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
+
+        internal fun refreshOnReturn(force: Boolean = false) {
+            if (!force && refreshJob?.isActive == true) return
+            if (force) refreshJob?.cancel()
             refreshJob =
                 viewModelScope.launch {
-                    accountPlaylists.refresh()
-                    loadWatchLater()
-                    loadAccountLikes()
+                    _isRefreshing.value = force
+                    try {
+                        if (force) {
+                            // The likes come from the remembered whole lists; a user refresh
+                            // must re-walk them from the server, not re-read the cache.
+                            youTubePlaylistRepository.invalidateComplete(AccountPlaylistIds.LIKED_VIDEOS)
+                            youTubePlaylistRepository.invalidateComplete(AccountPlaylistIds.LIKED_MUSIC)
+                        }
+                        accountPlaylists.refresh()
+                        loadWatchLater()
+                        loadAccountLikes()
+                        loadServerHistory()
+                    } finally {
+                        _isRefreshing.value = false
+                    }
                 }
         }
 
@@ -164,12 +183,17 @@ class LibraryViewModel
             // songs stay music; the rest are liked videos.
             val musicVideos = likedMusic.filterNot { it.isShort || it.isLive }
             val routedVideos = likedMusic.filter { it.isShort || it.isLive }
+            // One list's tile can arrive without its picture while the other list's tile for
+            // the same video has it — a blank picture falls back to the other list, so the
+            // Library shelves never show a blank tile for a video the account knows (2026-11-12).
+            val llById = likedVideos.associateBy { it.id }
+            val lmById = likedMusic.associateBy { it.id }
             val videoInfos =
                 (likedVideos + routedVideos).distinctBy { it.id }.map {
                     io.github.aedev.flow.data.local.LikedVideoInfo(
                         videoId = it.id,
                         title = it.title,
-                        thumbnail = it.thumbnailUrl,
+                        thumbnail = it.thumbnailUrl.ifBlank { lmById[it.id]?.thumbnailUrl.orEmpty() },
                         channelName = it.channelName,
                         channelId = it.channelId.takeIf(String::isNotBlank),
                         durationSeconds = it.duration,
@@ -181,7 +205,7 @@ class LibraryViewModel
                         io.github.aedev.flow.data.local.LikedVideoInfo(
                             videoId = it.id,
                             title = it.title,
-                            thumbnail = it.thumbnailUrl,
+                            thumbnail = it.thumbnailUrl.ifBlank { llById[it.id]?.thumbnailUrl.orEmpty() },
                             channelName = it.channelName,
                             channelId = it.channelId.takeIf(String::isNotBlank),
                             durationSeconds = it.duration,
@@ -206,16 +230,26 @@ class LibraryViewModel
 
         init {
             if (io.github.aedev.flow.innertube.YouTube.isSignedIn()) {
-                viewModelScope.launch {
-                    val page = io.github.aedev.flow.innertube.YouTube.serverHistory().getOrNull()
-                    serverHistory.value =
-                        if (page == null) {
-                            emptyList()
-                        } else {
-                            (page.videos + page.shorts).distinctBy { it.id }
-                        }
-                }
+                viewModelScope.launch { loadServerHistory() }
             }
+        }
+
+        /**
+         * The server list behind the Library's History shelf. It loads once at start and again
+         * on every return to the Library: after a history clear the shelf kept showing the
+         * pre-clear server videos while History > All was empty (2026-11-12), because nothing
+         * ever re-read it. A failed reload keeps the last good list, like the likes reload.
+         */
+        private suspend fun loadServerHistory() {
+            if (!io.github.aedev.flow.innertube.YouTube.isSignedIn()) return
+            val page = io.github.aedev.flow.innertube.YouTube.serverHistory().getOrNull()
+            if (page == null) {
+                // First load with nothing yet: an empty list, so the shelf reads the server
+                // branch; a later failure keeps the last good list instead of blanking it.
+                if (serverHistory.value == null) serverHistory.value = emptyList()
+                return
+            }
+            serverHistory.value = (page.videos + page.shorts).distinctBy { it.id }
         }
 
         internal val history =
