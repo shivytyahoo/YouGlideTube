@@ -47,6 +47,8 @@ import io.github.aedev.flow.data.model.toVideo
 import io.github.aedev.flow.data.shorts.queue.ShortsQueueSource
 import io.github.aedev.flow.player.GlobalPlayerState
 import io.github.aedev.flow.player.shorts.ShortsPlayerPool
+import io.github.aedev.flow.ui.OnTabReselected
+import io.github.aedev.flow.ui.components.layout.navigation.FlowTab
 import io.github.aedev.flow.ui.components.shared.CommentSortFilter
 import io.github.aedev.flow.ui.components.shared.FlowCommentsBottomSheet
 import io.github.aedev.flow.ui.components.shared.FlowDescriptionBottomSheet
@@ -93,6 +95,9 @@ fun ShortsScreen(
 
     val snackbarHostState = remember { SnackbarHostState() }
     val snackbarMessage by viewModel.snackbarMessage.collectAsState()
+    // Tapping the Shorts tab again reloads the feed from the start, like every other
+    // tab's reselect refresh (2026-11-12).
+    OnTabReselected(FlowTab.Shorts.route) { viewModel.retry(source) }
     LaunchedEffect(snackbarMessage) {
         snackbarMessage?.let { message ->
             snackbarHostState.showSnackbar(message = message, duration = SnackbarDuration.Short)
