@@ -744,6 +744,13 @@ class InnerTube {
         // validate — the ping then goes out effectively unauthenticated and
         // YouTube answers 204 without recording anything (0.3.48–0.3.50).
         ytClient(client, true, apiUrl = YouTubeClient.API_URL_YOUTUBE)
+        // The stats ping carries no account pageid, unlike browse: for a cookie-less
+        // OAuth session the Bearer alone never proved the ping lands in the account
+        // history (0.3.47–0.3.53 all answered 204 and recorded nothing), so the
+        // ping now carries the same X-Goog-Pageid browse sends for this account.
+        if (cookie.isNullOrBlank() && oauthAccessToken != null && client.loginSupported) {
+            pageIdToken?.takeIf { it.isNotBlank() }?.let { header("X-Goog-Pageid", it) }
+        }
     }
 
     /** The progress beacon: same session cpn as the playback beacon, position in
@@ -768,6 +775,10 @@ class InnerTube {
     ) {
         // Same www origin as the playback beacon (see above).
         ytClient(client, true, apiUrl = YouTubeClient.API_URL_YOUTUBE)
+        // Same account pageid as the playback beacon (see above).
+        if (cookie.isNullOrBlank() && oauthAccessToken != null && client.loginSupported) {
+            pageIdToken?.takeIf { it.isNotBlank() }?.let { header("X-Goog-Pageid", it) }
+        }
     }
 
     suspend fun browse(
