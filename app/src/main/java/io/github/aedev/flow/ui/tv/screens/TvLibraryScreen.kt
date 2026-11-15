@@ -1,6 +1,7 @@
 package io.github.aedev.flow.ui.tv.screens
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
@@ -23,9 +24,12 @@ import io.github.aedev.flow.ui.components.layout.flowBottomContentPadding
 import io.github.aedev.flow.ui.components.library.LibrarySection
 import io.github.aedev.flow.ui.components.shared.FlowEmptyState
 import io.github.aedev.flow.ui.components.shared.MediaKind
+import io.github.aedev.flow.ui.screens.library.LibrarySectionHeader
+import io.github.aedev.flow.ui.screens.library.LibrarySectionRow
 import io.github.aedev.flow.ui.screens.library.LibraryViewModel
 import io.github.aedev.flow.ui.screens.library.libraryShelves
 import io.github.aedev.flow.ui.screens.library.visibleContentSections
+import io.github.aedev.flow.ui.screens.library.visibleSettingsSections
 import io.github.aedev.flow.ui.tv.components.TvScreenFrame
 
 private val ShelfSpacing = 24.dp
@@ -94,6 +98,24 @@ fun TvLibraryScreen(
                 onDownloadedVideoClick = onDownloadedVideoClick,
                 onDownloadedMusicClick = onDownloadedMusicClick,
             )
+            // Local Media is a settings section, not a content section, so the shelves above never
+            // list it — without this row the TV Library has no way into it at all (2026-11-15).
+            val settingsSections = visibleSettingsSections(hidden).filter { it == LibrarySection.LOCAL_MEDIA }
+            if (settingsSections.isNotEmpty()) {
+                item(key = "library-settings", contentType = "settings") {
+                    Column {
+                        LibrarySectionHeader(stringResource(R.string.library_section_header))
+                        settingsSections.forEach { section ->
+                            LibrarySectionRow(section, counts = null) {
+                                when (section) {
+                                    LibrarySection.LOCAL_MEDIA -> onOpenLocalMedia()
+                                    else -> Unit
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
