@@ -100,6 +100,9 @@ Liked, Library and channel Releases, plus a new way to keep post photos.
   ahead of the video you just watched, in full History and on the Library shelf.
 - **🎶 Liked videos stays out of Music** — it no longer appears under Your
   playlists in the Music tab; it lives in the Library where it belongs.
+- **🕐 History follows your real watch time** — videos now appear in the
+  order you actually watched them, even when YouTube's own list has them out
+  of order, in full History and on the Library shelf.
 
 ## ⚡ What's new in 1.0.4
 
