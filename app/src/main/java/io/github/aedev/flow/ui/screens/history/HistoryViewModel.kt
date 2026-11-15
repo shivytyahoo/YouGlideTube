@@ -19,7 +19,7 @@ import io.github.aedev.flow.data.shorts.queue.ShortsQueueSource
 import io.github.aedev.flow.utils.PerformanceDispatcher
 import io.github.aedev.flow.utils.ShivLog
 import io.github.aedev.flow.utils.ThumbnailUrlResolver
-import io.github.aedev.flow.utils.partitionUnrecordedLocal
+import io.github.aedev.flow.utils.mergeHistoryOrder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -200,45 +200,43 @@ class HistoryViewModel
                         viewHistory.getAllHistory(),
                         shortsContentFilter.enabled,
                     ) { server, serverShorts, local, shortsEnabled ->
-                        // The server list is the account's newest-first order, so it
-                        // is the backbone: a watch the server knows (TV, web, another
-                        // device) keeps its server position instead of sinking below
-                        // every local row. Only session plays the server has not
-                        // recorded yet AND that are newer than the anchor head the
-                        // list, newest first; older unrecorded rows go after the
-                        // server section (batch 95). A server row keeps the local
-                        // resume position when this device has one.
-                        val serverIds = server.map { it.videoId }.toSet()
+                        // The server list is the account's newest-first order, but
+                        // Report 48 proved its order cannot be trusted for entries
+                        // this device knows, so the merge sorts by the best-known
+                        // watch time instead (batch 98): a local timestamp where
+                        // one exists, the server-relative position otherwise. A
+                        // server row keeps the local resume position when this
+                        // device has one.
                         val localById = local.associateBy { it.videoId }
-                        val freshLocal =
-                            local
-                                .sortedByDescending { it.timestamp }
-                                .filterNot { it.videoId in serverIds }
-                        val (headIds, tailIds) =
-                            partitionUnrecordedLocal(
+                        val serverById = server.associateBy { it.videoId }
+                        val now = System.currentTimeMillis()
+                        val mergedOrder =
+                            mergeHistoryOrder(
                                 local.map { it.videoId to it.timestamp },
                                 server.map { it.videoId },
+                                now,
                             )
-                        val head = freshLocal.filter { it.videoId in headIds }
-                        val tail = freshLocal.filter { it.videoId in tailIds }
+                        val overlay: (VideoHistoryEntry) -> VideoHistoryEntry = { entry ->
+                            val played = localById[entry.videoId]
+                            if (played == null) {
+                                entry
+                            } else {
+                                entry.copy(
+                                    position = played.position,
+                                    duration = if (played.duration > 0) played.duration else entry.duration,
+                                )
+                            }
+                        }
                         val merged =
-                            head +
-                                server.map { entry ->
-                                    val played = localById[entry.videoId]
-                                    if (played == null) {
-                                        entry
-                                    } else {
-                                        entry.copy(
-                                            position = played.position,
-                                            duration = if (played.duration > 0) played.duration else entry.duration,
-                                        )
-                                    }
-                                } + tail
-                        // Server entries carry no watch time, so the merged order is
-                        // kept with tightly descending stamps, as the server list was.
-                        val now = System.currentTimeMillis()
-                        val stamped = merged.mapIndexed { index, entry -> entry.copy(timestamp = now - index * 1_000L) }
-                        val filtered = if (shortsEnabled) stamped else stamped.filterNot { it.isShort }
+                            mergedOrder.mapNotNull { (videoId, effectiveTimestamp) ->
+                                val base = serverById[videoId]?.let { overlay(it) } ?: localById[videoId]
+                                base?.copy(timestamp = effectiveTimestamp)
+                            }
+                        ShivLog.i(
+                            "historyMerge serverFirst=${server.firstOrNull()?.videoId} " +
+                                "merged=${mergedOrder.take(5).joinToString(",") { it.first }} server=${server.size} local=${local.size}",
+                        )
+                        val filtered = if (shortsEnabled) merged else merged.filterNot { it.isShort }
                         filtered to (serverShorts + loadShortVideos(filtered.filter { it.isShort }))
                     }.collect { (entries, shorts) ->
                         _uiState.update { it.copy(historyEntries = entries, shortVideos = shorts) }
