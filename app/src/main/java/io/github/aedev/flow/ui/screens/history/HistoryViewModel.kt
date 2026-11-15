@@ -19,6 +19,7 @@ import io.github.aedev.flow.data.shorts.queue.ShortsQueueSource
 import io.github.aedev.flow.utils.PerformanceDispatcher
 import io.github.aedev.flow.utils.ShivLog
 import io.github.aedev.flow.utils.ThumbnailUrlResolver
+import io.github.aedev.flow.utils.partitionUnrecordedLocal
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -203,16 +204,25 @@ class HistoryViewModel
                         // is the backbone: a watch the server knows (TV, web, another
                         // device) keeps its server position instead of sinking below
                         // every local row. Only session plays the server has not
-                        // recorded yet head the list, newest first. A server row keeps
-                        // the local resume position when this device has one.
+                        // recorded yet AND that are newer than the anchor head the
+                        // list, newest first; older unrecorded rows go after the
+                        // server section (batch 95). A server row keeps the local
+                        // resume position when this device has one.
                         val serverIds = server.map { it.videoId }.toSet()
                         val localById = local.associateBy { it.videoId }
                         val freshLocal =
                             local
                                 .sortedByDescending { it.timestamp }
                                 .filterNot { it.videoId in serverIds }
+                        val (headIds, tailIds) =
+                            partitionUnrecordedLocal(
+                                local.map { it.videoId to it.timestamp },
+                                server.map { it.videoId },
+                            )
+                        val head = freshLocal.filter { it.videoId in headIds }
+                        val tail = freshLocal.filter { it.videoId in tailIds }
                         val merged =
-                            freshLocal +
+                            head +
                                 server.map { entry ->
                                     val played = localById[entry.videoId]
                                     if (played == null) {
@@ -223,7 +233,7 @@ class HistoryViewModel
                                             duration = if (played.duration > 0) played.duration else entry.duration,
                                         )
                                     }
-                                }
+                                } + tail
                         // Server entries carry no watch time, so the merged order is
                         // kept with tightly descending stamps, as the server list was.
                         val now = System.currentTimeMillis()
