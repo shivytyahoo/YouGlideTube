@@ -5,9 +5,6 @@ import io.github.aedev.flow.data.model.Video
 /** How many of the most recent uploads count as a channel's current window. */
 internal const val RECENT_CHANNEL_WINDOW = 20
 
-/** Minimum spacing between two videos of one channel in the merged feed. */
-internal const val CHANNEL_GAP = 10
-
 internal const val FRESH_SUB_WINDOW_MS = 72L * 60L * 60L * 1000L
 internal const val HOME_MAX_SUGGESTION_AGE_MS = 365L * 24L * 60L * 60L * 1000L
 
