@@ -103,6 +103,8 @@ Liked, Library and channel Releases, plus a new way to keep post photos.
 - **🕐 History follows your real watch time** — videos now appear in the
   order you actually watched them, even when YouTube's own list has them out
   of order, in full History and on the Library shelf.
+- **📺 TV Library shows Local Media now** — the Local Media row was missing from the TV Library; it opens your on-device videos and music, like on the phone.
+- **🏠 Home feed is fully YouTube’s now** — pages you scroll to no longer get re-arranged on the phone; the order is exactly what YouTube sends.
 
 ## ⚡ What's new in 1.0.4
 
