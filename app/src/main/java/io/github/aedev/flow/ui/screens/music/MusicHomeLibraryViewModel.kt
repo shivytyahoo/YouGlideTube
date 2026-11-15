@@ -3,6 +3,7 @@ package io.github.aedev.flow.ui.screens.music
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.aedev.flow.data.account.AccountPlaylistIds
 import io.github.aedev.flow.data.local.PlayerPreferences
 import io.github.aedev.flow.data.account.toPlaylistInfo
 import io.github.aedev.flow.data.music.model.ArtistDetails
@@ -47,6 +48,10 @@ class MusicHomeLibraryViewModel
         val playlists: StateFlow<List<MusicPlaylist>> =
             combine(accountPlaylists.playlists, preferences.playlistListOrder) { account, order ->
                 account
+                    // Batch 96: Liked videos is not a music playlist — it has its
+                    // own Library section, like the Library's own list (see
+                    // LibraryViewModel). It must not appear here.
+                    .filterNot { it.id == AccountPlaylistIds.LIKED_VIDEOS }
                     .map { it.toPlaylistInfo() }
                     .sortedFor(order)
                     .take(SHELF_LIMIT)
