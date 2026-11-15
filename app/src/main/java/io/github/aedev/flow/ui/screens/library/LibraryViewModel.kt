@@ -21,6 +21,7 @@ import io.github.aedev.flow.ui.components.library.LIBRARY_SHELF_ITEM_LIMIT
 import io.github.aedev.flow.ui.components.library.LibraryMediaItem
 import io.github.aedev.flow.ui.components.library.LibrarySection
 import io.github.aedev.flow.ui.components.library.toLibraryMediaItem
+import io.github.aedev.flow.utils.partitionUnrecordedLocal
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
@@ -261,15 +262,24 @@ class LibraryViewModel
                 if (io.github.aedev.flow.innertube.YouTube.isSignedIn() && server != null) {
                     // Same order as History itself (batch 92): the server list is
                     // the account's newest-first order, so it is the backbone. Only
-                    // session plays the server has not recorded yet head the shelf;
-                    // a play the server knows keeps its server position, with the
-                    // session's own card so its progress stays.
+                    // session plays the server has not recorded yet AND that are
+                    // newer than the anchor head the shelf (batch 95); older
+                    // unrecorded rows go after the server section. A play the
+                    // server knows keeps its server position, with the session's
+                    // own card so its progress stays.
                     val sessionItems = sessionEntries.map { it.toLibraryMediaItem() }
                     val serverItems = server.map { LibraryMediaItem.VideoItem(it) }
                     val serverIds = serverItems.map { it.mediaId() }.toSet()
                     val sessionById = sessionItems.associateBy { it.mediaId() }
-                    (sessionItems.filterNot { it.mediaId() in serverIds } +
-                        serverItems.map { sessionById[it.mediaId()] ?: it })
+                    val (headIds, tailIds) =
+                        partitionUnrecordedLocal(
+                            sessionEntries.map { it.videoId to it.timestamp },
+                            serverItems.map { it.mediaId() },
+                        )
+                    val freshSession = sessionItems.filterNot { it.mediaId() in serverIds }
+                    val head = freshSession.filter { it.mediaId() in headIds }
+                    val tail = freshSession.filter { it.mediaId() in tailIds }
+                    (head + serverItems.map { sessionById[it.mediaId()] ?: it } + tail)
                         .take(LIBRARY_SHELF_ITEM_LIMIT)
                 } else {
                     // Signed out, the shelf is the session's plays plus the last
