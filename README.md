@@ -96,6 +96,10 @@ Liked, Library and channel Releases, plus a new way to keep post photos.
   video that is already playing.
 - **🕘 Library History shelf matches full History** — the shelf now shows your
   latest watch first, in the same order as the full History screen.
+- **⏱️ History keeps its order** — songs you heard days ago no longer jump
+  ahead of the video you just watched, in full History and on the Library shelf.
+- **🎶 Liked videos stays out of Music** — it no longer appears under Your
+  playlists in the Music tab; it lives in the Library where it belongs.
 
 ## ⚡ What's new in 1.0.4
 
