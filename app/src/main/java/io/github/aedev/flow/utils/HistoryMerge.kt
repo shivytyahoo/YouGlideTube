@@ -1,35 +1,79 @@
 package io.github.aedev.flow.utils
 
 /**
- * Splits session plays the server has not recorded into the ones new enough to
- * head a server-backed history list and the ones that belong after it.
+ * Merges a server history list with this device's plays into one newest-first
+ * order, keyed by the best-known watch time for each video.
  *
- * WHY: the server list is the account's newest-first order but carries no watch
- * times, so a local play can only jump ahead of it when its own timestamp
- * proves it is newer than the newest local play the server HAS recorded. The
- * anchor is the server list's first entry when this device has it, else the
- * newest timestamp among local plays anywhere in the server list. Without this
- * bound every unrecorded row heads the list forever — including music, which
- * the server never records at all, so a song from yesterday sat above a video
- * watched minutes ago (2026-11-14). With no overlap at all and a non-empty
- * server list, nothing heads: recency that cannot be proven must not jump the
- * queue. An empty server list is a pure local list, so everything heads.
+ * WHY: the server list carries no watch times, and Report 48 proved its order
+ * cannot be trusted for entries this device knows — YouTube listed Surprise
+ * (06:15) and Tera Mera Rishta (06:05) above Rohit/Kohli (08:25), which this
+ * device watched two hours later and never re-played. The server is only a
+ * relative order; a local timestamp is the ground truth for its own video, so
+ * every entry sorts by its local timestamp where one exists. A server-only
+ * entry keeps its server-relative position by interpolation between the
+ * nearest local timestamps that bracket it (or a 1 s step past the nearest
+ * one at either end), so yesterday's server rows still fall below today's
+ * plays instead of heading the list. With no overlap at all the server list
+ * cannot be anchored, so it keeps its order first and local rows follow, as
+ * before. An empty server list is a pure local list.
  */
-fun partitionUnrecordedLocal(
+fun mergeHistoryOrder(
     local: List<Pair<String, Long>>,
     serverIdsInOrder: List<String>,
-): Pair<Set<String>, Set<String>> {
+    now: Long,
+): List<Pair<String, Long>> {
     val localById = local.toMap()
-    val serverIds = serverIdsInOrder.toSet()
-    val anchor =
-        serverIdsInOrder.firstOrNull()?.let { localById[it] }
-            ?: local.filter { (id, _) -> id in serverIds }.maxOfOrNull { (_, timestamp) -> timestamp }
-    val unrecorded = local.filter { (id, _) -> id !in serverIds }
-    val headIds =
-        when {
-            anchor != null -> unrecorded.filter { (_, timestamp) -> timestamp > anchor }.map { (id, _) -> id }.toSet()
-            serverIds.isEmpty() -> unrecorded.map { (id, _) -> id }.toSet()
-            else -> emptySet()
+    val serverIndex = serverIdsInOrder.withIndex().associate { it.value to it.index }
+    val localIndex = local.withIndex().associate { it.value.first to it.index }
+    if (serverIdsInOrder.isEmpty()) {
+        return local.sortedByDescending { (_, timestamp) -> timestamp }
+    }
+    val knownServer = serverIdsInOrder.withIndex().filter { (_, id) -> id in localById }
+    if (knownServer.isEmpty()) {
+        val serverPart = serverIdsInOrder.mapIndexed { index, id -> id to now - index * 1_000L }
+        val localPart =
+            local.filter { (id, _) -> id !in serverIndex }
+                .sortedByDescending { (_, timestamp) -> timestamp }
+                .mapIndexed { index, (id, _) -> id to now - (serverIdsInOrder.size + index) * 1_000L }
+        return serverPart + localPart
+    }
+    val effective = HashMap<String, Long>(serverIdsInOrder.size + localById.size)
+    for ((index, id) in serverIdsInOrder.withIndex()) {
+        val known = localById[id]
+        if (known != null) {
+            effective[id] = known
+            continue
         }
-    return headIds to (unrecorded.map { (id, _) -> id }.toSet() - headIds)
+        val prevKnown = knownServer.lastOrNull { it.index < index }
+        val nextKnown = knownServer.firstOrNull { it.index > index }
+        val interpolated =
+            if (prevKnown != null) {
+                val prevTs = localById.getValue(prevKnown.value)
+                if (nextKnown != null) {
+                    val nextTs = localById.getValue(nextKnown.value)
+                    prevTs + (nextTs - prevTs) * (index - prevKnown.index) / (nextKnown.index - prevKnown.index)
+                } else {
+                    prevTs - (index - prevKnown.index) * 1_000L
+                }
+            } else {
+                // No known entry precedes this one: the first known entry
+                // after it is the only bracket, so this row sits above it
+                // by its distance. nextKnown is null only when no known
+                // entry follows either, which cannot happen here because
+                // knownServer is non-empty, so first() is the same row.
+                val next = nextKnown ?: knownServer.first()
+                localById.getValue(next.value) + (next.index - index) * 1_000L
+            }
+        effective[id] = minOf(now, interpolated)
+    }
+    for ((id, timestamp) in localById) {
+        if (id !in effective) effective[id] = timestamp
+    }
+    return effective.entries
+        .sortedWith(
+            compareByDescending<Map.Entry<String, Long>> { it.value }
+                .thenBy { serverIndex[it.key] ?: Int.MAX_VALUE }
+                .thenBy { localIndex[it.key] ?: Int.MAX_VALUE },
+        )
+        .map { it.key to it.value }
 }
