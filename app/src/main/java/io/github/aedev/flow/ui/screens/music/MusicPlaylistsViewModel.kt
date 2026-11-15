@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.aedev.flow.R
+import io.github.aedev.flow.data.account.AccountPlaylistIds
 import io.github.aedev.flow.data.account.AccountPlaylists
 import io.github.aedev.flow.data.account.toPlaylistInfo
 import io.github.aedev.flow.data.local.entity.DownloadCollectionKind
@@ -45,7 +46,15 @@ class MusicPlaylistsViewModel
             viewModelScope.launch {
                 accountPlaylists.playlists.collect { playlists ->
                     _uiState.update {
-                        it.copy(playlists = playlists.map { playlist -> playlist.toPlaylistInfo() }, isLoading = false)
+                        // Batch 96: same rule as the music home shelf — Liked
+                        // videos is not a music playlist and must not appear here.
+                        it.copy(
+                            playlists =
+                                playlists
+                                    .filterNot { it.id == AccountPlaylistIds.LIKED_VIDEOS }
+                                    .map { playlist -> playlist.toPlaylistInfo() },
+                            isLoading = false,
+                        )
                     }
                 }
             }
