@@ -766,7 +766,6 @@ class HomeViewModel
         ): List<Video>? {
             if (page.isEmpty() || !homePrefetchQueue.isCurrent(generation)) return null
             val exclusions = feedExclusions()
-            val followed = subscriptionScope().boosted
             var updatedSnapshot: List<Video>? = null
             var appendedPage = emptyList<Video>()
             _uiState.update { state ->
@@ -777,14 +776,8 @@ class HomeViewModel
                         .filterWatched(watchedVideoIds.value)
                         .filterNot { it.id in existingVideoIds || exclusions.hidesFromRecommendations(it) }
                 if (appendedPage.isEmpty()) return@update state
-                val tailChannels = state.videos.takeLast(CHANNEL_GAP).map { it.channelId }
-                val updated =
-                    state.videos +
-                        spaceByChannel(
-                            rhythmBySource(appendedPage, isSubscribed = { it.channelId in followed }),
-                            gap = CHANNEL_GAP,
-                            seedRecent = tailChannels,
-                        )
+                // The page joins exactly as YouTube sent it: no local re-ordering of any kind.
+                val updated = state.videos + appendedPage
                 updatedSnapshot = updated
                 HomeFeedCache.update(updated, state.shorts)
                 val appendedIds = appendedPage.mapTo(HashSet()) { it.id }
