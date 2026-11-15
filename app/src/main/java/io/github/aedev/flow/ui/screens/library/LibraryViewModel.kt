@@ -21,6 +21,7 @@ import io.github.aedev.flow.ui.components.library.LIBRARY_SHELF_ITEM_LIMIT
 import io.github.aedev.flow.ui.components.library.LibraryMediaItem
 import io.github.aedev.flow.ui.components.library.LibrarySection
 import io.github.aedev.flow.ui.components.library.toLibraryMediaItem
+import io.github.aedev.flow.utils.ShivLog
 import io.github.aedev.flow.utils.mergeHistoryOrder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -147,6 +148,7 @@ class LibraryViewModel
         val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
         internal fun refreshOnReturn(force: Boolean = false) {
+            refreshServerHistory()
             if (!force && refreshJob?.isActive == true) return
             if (force) refreshJob?.cancel()
             refreshJob =
@@ -162,7 +164,6 @@ class LibraryViewModel
                         accountPlaylists.refresh()
                         loadWatchLater()
                         loadAccountLikes()
-                        loadServerHistory()
                     } finally {
                         _isRefreshing.value = false
                     }
@@ -170,6 +171,21 @@ class LibraryViewModel
         }
 
         private var refreshJob: Job? = null
+
+        /**
+         * The History shelf's server list, re-read on every return to the
+         * Library in its own job: the account-lists walk above is slow, and
+         * while it runs the old code skipped the reload entirely, so a watch
+         * made since the last reload sat stale on the shelf while full
+         * History — which re-reads on every open — already showed it
+         * (2026-11-15). One quick call; an in-flight reload is not repeated.
+         */
+        private var serverHistoryJob: Job? = null
+
+        private fun refreshServerHistory() {
+            if (serverHistoryJob?.isActive == true) return
+            serverHistoryJob = viewModelScope.launch { loadServerHistory() }
+        }
 
         private suspend fun loadAccountLikes() {
             if (!io.github.aedev.flow.innertube.YouTube.isSignedIn()) return
@@ -276,6 +292,10 @@ class LibraryViewModel
                             serverItems.map { it.mediaId() },
                             System.currentTimeMillis(),
                         ).map { it.first }
+                    ShivLog.i(
+                        "libraryHistoryMerge serverFirst=${serverItems.firstOrNull()?.mediaId()} " +
+                            "merged=${mergedIds.take(5).joinToString(",")} server=${serverItems.size} local=${sessionEntries.size}",
+                    )
                     mergedIds.mapNotNull { id -> sessionById[id] ?: serverById[id] }
                         .take(LIBRARY_SHELF_ITEM_LIMIT)
                 } else {
