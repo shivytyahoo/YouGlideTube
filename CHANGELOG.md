@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.7 — 2026-11-16
+
+- Smoother playback on slow connections: videos start at a lower quality and climb only when the connection proves fast, and a stall steps the quality down instead of looping
+- Your manual quality choice is now always respected: a quality you pick never changes on its own, even if the video keeps buffering
+- 8K (4320p) quality option added where the video offers it
+- Sign-in stability improvements
+- Updated the playback engine to Media3 1.11.1
+
 ## 1.0.5 — 2026-11-11
 
 - Liked music is back: the Liked music page was showing 0 songs even though your liked songs were right there — it now shows them, only the songs you hearted in the music player.
