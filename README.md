@@ -11,15 +11,15 @@
 <p align="center"><b>Buttery smooth. Truly yours.</b></p>
 
 <p align="center">
-  <a href="https://github.com/shivytyahoo/YouGlideTube/releases/tag/v1.0.6"><img src="https://img.shields.io/badge/version-1.0.6-blue?style=flat-square" alt="Version 1.0.6"></a>
+  <a href="https://github.com/shivytyahoo/YouGlideTube/releases/tag/v1.0.7"><img src="https://img.shields.io/badge/version-1.0.7-blue?style=flat-square" alt="Version 1.0.7"></a>
   <a href="https://github.com/shivytyahoo/YouGlideTube/releases"><img src="https://img.shields.io/github/v/release/shivytyahoo/YouGlideTube?style=flat-square" alt="Latest release"></a>
   <img src="https://img.shields.io/badge/platform-Android%208.0%2B-3DDC84?style=flat-square" alt="Android 8.0+">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0-blue?style=flat-square" alt="GPL-3.0"></a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/shivytyahoo/YouGlideTube/releases/tag/v1.0.6"><b>⬇️ Download YouGlideTube 1.0.6</b></a><br>
-  <sub><code>YouGlideTube-1.0.6.apk</code> · universal APK — one file for every device · 27,691,375 bytes · installs over 1.0.5 · Android 8.0 (API 26) or newer</sub>
+  <a href="https://github.com/shivytyahoo/YouGlideTube/releases/tag/v1.0.7"><b>⬇️ Download YouGlideTube 1.0.7</b></a><br>
+  <sub><code>YouGlideTube-1.0.7.apk</code> · universal APK — one file for every device · 16,798,498 bytes · installs over 1.0.6 · Android 8.0 (API 26) or newer</sub>
 </p>
 
 ## About
@@ -38,7 +38,7 @@ text.
 | | |
 |---|---|
 | **App** | `shivyt.android.glidetube` |
-| **Latest release** | [1.0.6](https://github.com/shivytyahoo/YouGlideTube/releases/tag/v1.0.6) |
+| **Latest release** | [1.0.7](https://github.com/shivytyahoo/YouGlideTube/releases/tag/v1.0.7) |
 | **Requires** | Android 8.0 (API 26) or newer |
 | **TV** | Android TV layout included — same app, big-screen interface |
 | **License** | GPL-3.0 |
@@ -71,6 +71,14 @@ The result is an app that feels considered rather than assembled: quiet
 where it should be quiet, colourful exactly where your videos are, and
 fast everywhere. It is the kind of interface you enjoy opening, not just
 tolerating.
+
+## ⚡ What's new in 1.0.7
+
+- Smoother playback on slow connections: videos start at a lower quality and climb only when the connection proves fast, and a stall steps the quality down instead of looping
+- Your manual quality choice is now always respected: a quality you pick never changes on its own, even if the video keeps buffering
+- 8K (4320p) quality option added where the video offers it
+- Sign-in stability improvements
+- Updated the playback engine to Media3 1.11.1
 
 ## ⚡ What's new in 1.0.6
 
