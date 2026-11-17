@@ -46,15 +46,15 @@ object PlayerConfig {
     const val MID_MEMORY_MAIN_TARGET_BUFFER_BYTES = 12 * 1024 * 1024
 
     /** Explicit target buffer budget per shorts player in the pooled shorts stack. */
-    const val SHORTS_TARGET_BUFFER_BYTES = 4 * 1024 * 1024
+    const val SHORTS_TARGET_BUFFER_BYTES = 8 * 1024 * 1024
 
     /**
      * Shorts buffer window. Deliberately below the floors in `BufferDurations` — a swipe has to
      * start the next clip immediately, and three pooled players each holding a long window would
      * cost more memory than the feed is worth.
      */
-    const val SHORTS_MIN_BUFFER_MS = 1_500
-    const val SHORTS_MAX_BUFFER_MS = 8_000
+    const val SHORTS_MIN_BUFFER_MS = 3_000
+    const val SHORTS_MAX_BUFFER_MS = 15_000
     const val SHORTS_BUFFER_FOR_PLAYBACK_MS = 250
     const val SHORTS_BUFFER_FOR_REBUFFER_MS = 750
     const val SHORTS_BACK_BUFFER_MS = 2_000
@@ -91,6 +91,15 @@ object PlayerConfig {
      */
     const val MAX_INITIAL_BANDWIDTH_ESTIMATE_BPS = 3_000_000L
 
+    /**
+     * Cap on the estimate the initial pick trusts. The live estimate is sampled per transfer end
+     * and a chunk's burst phase inflates it far above the sustained link (39–252 Mbps seen on a
+     * ~0.3–0.5 Mbps link), so an uncapped pick starts every video at the top rung and stalls its
+     * way down. At this cap the budget (× [AUTO_BANDWIDTH_FRACTION]) lands on 480p on a normal
+     * ladder, and the ladder climbs from there only on sustained evidence.
+     */
+    const val INITIAL_PICK_BANDWIDTH_CAP_BPS = 1_000_000L
+
     // ===== Quality Adaptation =====
 
     /** Share of the bandwidth estimate a stream may use, for Auto's own picks and Media3's ladder alike. */
@@ -117,6 +126,11 @@ object PlayerConfig {
 
     /** Buffering count threshold before quality downgrade */
     const val BUFFERING_COUNT_THRESHOLD = 3
+
+    // How many bytes the loader reads before it re-checks whether to keep loading. ExoPlayer's
+    // default is 1 MiB, which makes the first seconds of a YouTube stream feel stuck on slow or
+    // throttled links; NewPipe (#7919) fixed long initial buffering by shrinking it to 16 KiB.
+    const val PROGRESSIVE_LOAD_INTERVAL_BYTES = 32 * 1024
 
     // ===== Network Configuration =====
 

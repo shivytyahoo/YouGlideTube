@@ -51,6 +51,7 @@ import io.github.aedev.flow.ui.components.music.item.MusicItemDensity
 import io.github.aedev.flow.ui.components.music.item.MusicTrackItem
 import io.github.aedev.flow.ui.components.shared.ChartRankBadge
 import io.github.aedev.flow.ui.components.shared.FlowFilterChip
+import io.github.aedev.flow.ui.components.shared.dpadFocusGroup
 import io.github.aedev.flow.ui.components.shared.flowArtistShape
 import io.github.aedev.flow.ui.components.shared.flowGridCellWidth
 import io.github.aedev.flow.ui.components.shared.flowGridColumns
@@ -411,6 +412,7 @@ fun MusicHomeChipRow(
         modifier =
             modifier
                 .fillMaxWidth()
+                .dpadFocusGroup()
                 .padding(vertical = 8.dp),
         contentPadding = PaddingValues(horizontal = Dimensions.ContentPaddingHorizontal),
         horizontalArrangement = Arrangement.spacedBy(8.dp),

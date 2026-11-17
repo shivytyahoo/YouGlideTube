@@ -38,6 +38,7 @@ import io.github.aedev.flow.player.EnhancedMusicPlayerManager
 import io.github.aedev.flow.utils.PerformanceDispatcher
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -91,6 +92,10 @@ class MusicViewModel
         }
 
         private val _uiState = MutableStateFlow(MusicUiState())
+
+        // The in-flight chip filter, so a second tap cancels the first chip's
+        // request instead of letting two filtered loads race into the feed.
+        private var chipFilterJob: Job? = null
 
         // WhileSubscribed (not Eagerly) is load-bearing for battery: it makes
         // _uiState.subscriptionCount reflect real UI visibility, which gates the
@@ -1277,26 +1282,65 @@ class MusicViewModel
         }
 
         fun setHomeChip(chip: HomePage.Chip?) {
-            _uiState.update { it.copy(selectedHomeChip = chip) }
-            if (chip != null && chip.endpoint != null) {
+            chipFilterJob?.cancel()
+            if (chip == null) {
+                _uiState.update { it.copy(selectedHomeChip = null, selectedFilter = null, isSearching = false) }
+                loadMusicContent()
+                return
+            }
+            // The feed already renders a filtered list for selectedFilter, with a
+            // progress row while isSearching: that is the chip tap's visible result.
+            _uiState.update { it.copy(selectedHomeChip = chip, selectedFilter = chip.title, isSearching = true) }
+            chipFilterJob =
                 viewModelScope.launch(PerformanceDispatcher.networkIO) {
-                    _uiState.update { it.copy(isLoading = true) }
-                    try {
-                        val response =
+                    val serverSections =
+                        chip.endpoint?.params?.let { params ->
                             withTimeoutOrNull(10_000L) {
-                                YouTube.home(params = chip.endpoint.params).getOrNull()
-                            }
-                        response?.let { home ->
-                            processHomeSections(musicRecommendationAlgorithm.parseHomeSections(home))
-                        }
-                    } catch (e: Exception) {
-                        Log.e("MusicViewModel", "Error filtering by chip", e)
-                    } finally {
-                        _uiState.update { it.copy(isLoading = false) }
+                                YouTube.home(params = params).getOrNull()
+                            }?.let { musicRecommendationAlgorithm.parseHomeSections(it) }
+                        }.orEmpty()
+                    if (serverSections.isNotEmpty()) {
+                        processHomeSections(serverSections)
+                        val tracks = serverSections.flatMap { it.tracks }.distinctBy { it.videoId }
+                        _uiState.update { it.copy(allSongs = tracks, isSearching = false, isLoading = false) }
+                    } else {
+                        // No endpoint (some chips carry none), a timeout, or an empty
+                        // filtered home: filter what is already loaded instead of
+                        // silently reloading the unfiltered home, which used to leave
+                        // the chip ticked and the feed unchanged.
+                        val tracks = filterLoadedTracksForChip(chip.title)
+                        _uiState.update { it.copy(allSongs = tracks, isSearching = false, isLoading = false) }
                     }
                 }
-            } else {
-                loadMusicContent()
+        }
+
+        /**
+         * Local fallback for a chip the server did not filter: tracks from the loaded
+         * shelves whose title, artist, album or shelf title matches the chip, so the
+         * tap always changes what the feed shows.
+         */
+        private fun filterLoadedTracksForChip(chipTitle: String): List<MusicTrack> {
+            val tokens = chipTitle.lowercase().split(Regex("[^a-z0-9]+")).filter { it.length >= 3 }
+            if (tokens.isEmpty()) return emptyList()
+            val state = _uiState.value
+            val candidates = LinkedHashMap<String, MusicTrack>()
+            fun add(tracks: List<MusicTrack>) {
+                tracks.forEach { candidates.putIfAbsent(it.videoId, it) }
+            }
+            state.dynamicSections.forEach { add(it.tracks) }
+            add(state.trendingSongs)
+            add(state.forYouTracks)
+            add(state.listenAgain)
+            add(state.onRepeatTracks)
+            add(state.newReleases)
+            add(state.history)
+            val sectionTitleByTrack =
+                state.dynamicSections.flatMap { section -> section.tracks.map { it.videoId to section.title } }.toMap()
+            return candidates.values.filter { track ->
+                val haystack =
+                    listOf(track.title, track.artist, track.album, sectionTitleByTrack[track.videoId].orEmpty())
+                        .joinToString(" ").lowercase()
+                tokens.any { haystack.contains(it) }
             }
         }
 
@@ -1308,6 +1352,13 @@ class MusicViewModel
             relatedCache.clear()
             artistDetailsCache.clear()
             _uiState.update { it.copy(isLoading = true) }
+            // A selected chip stays selected over a refresh: re-run its filter
+            // instead of reloading the unfiltered home under a ticked chip.
+            val activeChip = _uiState.value.selectedHomeChip
+            if (activeChip != null) {
+                setHomeChip(activeChip)
+                return
+            }
             loadMusicContent(force = true)
         }
 

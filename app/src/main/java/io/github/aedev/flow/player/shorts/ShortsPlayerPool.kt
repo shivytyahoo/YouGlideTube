@@ -340,6 +340,7 @@ class ShortsPlayerPool private constructor() {
                         .build()
             }.setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
                 .setEnableDecoderFallback(true)
+                .experimentalSetEnableMediaCodecVideoRendererPrewarming(true)
 
         return ExoPlayer
             .Builder(context, renderersFactory)
@@ -685,7 +686,7 @@ class ShortsPlayerPool private constructor() {
      */
     suspend fun warmAhead(
         videoUrl: String,
-        maxBytes: Long = 2_000_000L,
+        maxBytes: Long = 3_000_000L,
     ) {
         val dataSource =
             (cachedDataSourceFactory as? CacheDataSource.Factory)?.createDataSource() ?: return

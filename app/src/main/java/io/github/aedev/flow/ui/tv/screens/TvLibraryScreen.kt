@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.runtime.Composable
@@ -13,6 +14,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.aedev.flow.R
 import io.github.aedev.flow.data.account.AccountPlaylistIds
@@ -20,7 +23,9 @@ import io.github.aedev.flow.data.model.Video
 import io.github.aedev.flow.data.music.DownloadedTrack
 import io.github.aedev.flow.data.video.DownloadedVideo
 import io.github.aedev.flow.data.music.model.MusicTrack
+import io.github.aedev.flow.ui.OnTabReselected
 import io.github.aedev.flow.ui.components.layout.flowBottomContentPadding
+import io.github.aedev.flow.ui.components.layout.navigation.FlowTab
 import io.github.aedev.flow.ui.components.library.LibrarySection
 import io.github.aedev.flow.ui.components.shared.FlowEmptyState
 import io.github.aedev.flow.ui.components.shared.MediaKind
@@ -56,9 +61,19 @@ fun TvLibraryScreen(
     val separatePlaylistKinds by viewModel.separatePlaylistKinds.collectAsStateWithLifecycle()
     val isLibraryEmpty by viewModel.isLibraryEmpty.collectAsStateWithLifecycle()
     val hiddenSections by viewModel.hiddenSections.collectAsStateWithLifecycle()
+    val listState = rememberLazyListState()
+    // The phone Library reselected this way since 2026-11-12 (scroll up + force
+    // refresh); TV Library is a separate screen and never had the listener, so a
+    // rail tap on TV did nothing at all.
+    OnTabReselected(FlowTab.Library.route) {
+        listState.animateScrollToItem(0)
+        viewModel.refreshOnReturn(force = true)
+    }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.refreshOnReturn() }
 
     TvScreenFrame(modifier = modifier) {
         LazyColumn(
+            state = listState,
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = flowBottomContentPadding(extra = 24.dp)),
             verticalArrangement = Arrangement.spacedBy(ShelfSpacing),

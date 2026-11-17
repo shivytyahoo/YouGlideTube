@@ -124,6 +124,23 @@ fun TvShell(
         railFocusRequester.requestFocus(FocusDirection.Left)
     }
 
+    // A reselect issued while a detail page sits over the root cannot be delivered
+    // yet: the root screen is not composed, so its TabScrollEventBus collector is not
+    // listening. Remember it and emit once the pop lands back on the root; drop it if
+    // the user moves to another root instead.
+    var pendingReselectRoute by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(currentRoute, pendingReselectRoute) {
+        val pending = pendingReselectRoute ?: return@LaunchedEffect
+        when {
+            currentRoute == pending -> {
+                pendingReselectRoute = null
+                TabScrollEventBus.emitScrollToTop(pending)
+            }
+
+            currentRoute != null && currentRoute in rootRoutes -> pendingReselectRoute = null
+        }
+    }
+
     fun navigateToRoot(route: String) {
         navController.navigate(route) {
             popUpTo(navController.graph.findStartDestination().id) { saveState = true }
@@ -135,26 +152,23 @@ fun TvShell(
     // Navigating to a root with restoreState brings back the pages last opened over it, so the root the
     // remote is already under, and the start root (always at the bottom of the stack), are popped to instead.
     fun selectRoot(route: String) {
-        val popped =
-            when {
-                route == currentRoute -> {
-                    TabScrollEventBus.emitScrollToTop(route)
-                    true
-                }
-
-                route == currentRoot -> {
-                    navController.popBackStack(route, inclusive = false)
-                }
-
-                route == navigation.startTab.route -> {
-                    navController.popBackStack(route, inclusive = false, saveState = true)
-                }
-
-                else -> {
-                    false
-                }
-            }
-        if (!popped) navigateToRoot(route)
+        // Already on the root itself: the screen is listening, so the reselect scrolls
+        // it up and refreshes it right away, exactly as tapping the tab does on the phone.
+        if (route == currentRoute) {
+            TabScrollEventBus.emitScrollToTop(route)
+            return
+        }
+        // On a detail page under the root (a channel, playlist, artist, ...): popping
+        // back used to be all TV did, so the root just reappeared stale — no scroll, no
+        // refresh — while the phone's tab tap refreshes it. Pop, then deliver the same
+        // reselect once the root is back on top, so it scrolls up and refreshes too.
+        if (route == currentRoot || route == navigation.startTab.route) {
+            val popped = navController.popBackStack(route, inclusive = false, saveState = true)
+            if (!popped) navigateToRoot(route)
+            pendingReselectRoute = route
+            return
+        }
+        navigateToRoot(route)
     }
 
     // Onboarding is full-screen: no rail, no mini player, no browse focus machinery.

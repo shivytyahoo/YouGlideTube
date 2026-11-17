@@ -1,5 +1,6 @@
 package io.github.aedev.flow.player.sabr.integration
 
+import io.github.aedev.flow.player.config.PlayerConfig
 import android.net.Uri
 import android.util.Log
 import androidx.media3.common.MediaItem
@@ -120,11 +121,13 @@ object SabrMediaSourceFactory {
         val audioSource =
             ProgressiveMediaSource
                 .Factory(audioDataSourceFactory)
+                .setContinueLoadingCheckIntervalBytes(PlayerConfig.PROGRESSIVE_LOAD_INTERVAL_BYTES)
                 .createMediaSource(audioItemBuilder.build())
 
         val videoSource =
             ProgressiveMediaSource
                 .Factory(videoDataSourceFactory)
+                .setContinueLoadingCheckIntervalBytes(PlayerConfig.PROGRESSIVE_LOAD_INTERVAL_BYTES)
                 .createMediaSource(videoItemBuilder.build())
 
         val mergedSource = MergingMediaSource(true, true, videoSource, audioSource)

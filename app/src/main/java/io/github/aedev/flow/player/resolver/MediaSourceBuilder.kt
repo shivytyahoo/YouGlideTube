@@ -1,5 +1,6 @@
 package io.github.aedev.flow.player.resolver
 
+import io.github.aedev.flow.player.config.PlayerConfig
 import android.net.Uri
 import androidx.media3.common.MediaItem
 import androidx.media3.datasource.DataSource
@@ -36,6 +37,7 @@ object MediaSourceBuilder {
     ): MediaSource =
         ProgressiveMediaSource
             .Factory(dataSourceFactory)
+            .setContinueLoadingCheckIntervalBytes(PlayerConfig.PROGRESSIVE_LOAD_INTERVAL_BYTES)
             .createMediaSource(MediaItem.fromUri(uri))
 
     fun buildHlsSource(

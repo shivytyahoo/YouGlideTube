@@ -1,5 +1,9 @@
 package io.github.aedev.flow.player.datasource
 
+import okhttp3.Dispatcher
+import okhttp3.ConnectionPool
+import okhttp3.Protocol
+import io.github.aedev.flow.player.config.PlayerConfig
 import android.net.Uri
 import android.util.Log
 import androidx.media3.common.C
@@ -68,8 +72,23 @@ class YouTubeHttpDataSource private constructor(
                     val client =
                         AppProxyManager
                             .applyTo(OkHttpClient.Builder())
-                            .connectTimeout(15, TimeUnit.SECONDS)
-                            .readTimeout(30, TimeUnit.SECONDS)
+                            .connectTimeout(PlayerConfig.CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                            .readTimeout(PlayerConfig.READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                            .writeTimeout(PlayerConfig.WRITE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                            // OkHttp's default is 5 requests per host; the main player, the
+                            // Shorts pool and the warm-ahead writer all hit googlevideo.com at once.
+                            .dispatcher(
+                                Dispatcher().apply {
+                                    maxRequests = PlayerConfig.MAX_REQUESTS
+                                    maxRequestsPerHost = PlayerConfig.MAX_REQUESTS_PER_HOST
+                                },
+                            ).connectionPool(
+                                ConnectionPool(
+                                    PlayerConfig.CONNECTION_POOL_SIZE,
+                                    PlayerConfig.CONNECTION_POOL_KEEP_ALIVE_MINUTES,
+                                    TimeUnit.MINUTES,
+                                ),
+                            ).protocols(listOf(Protocol.HTTP_2, Protocol.HTTP_1_1))
                             .followRedirects(true)
                             .followSslRedirects(true)
                             .retryOnConnectionFailure(true)
