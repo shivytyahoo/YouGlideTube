@@ -241,7 +241,6 @@ fun EnhancedMusicScreen(
                                 onArtistClick = onArtistClick,
                                 onAlbumClick = onAlbumClick,
                                 onMoodsClick = onMoodsClick,
-                                onChipToggle = { viewModel.setHomeChip(it) },
                                 onTrackMenu = musicMenus::openSong,
                                 onCollectionMenu = musicMenus::openCollection,
                                 onLoadMore = { viewModel.loadMoreHomeContent() },

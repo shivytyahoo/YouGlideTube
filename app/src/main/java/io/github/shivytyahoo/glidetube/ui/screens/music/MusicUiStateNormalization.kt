@@ -195,7 +195,6 @@ internal fun MusicUiState.withUniqueLazyContent(): MusicUiState {
     val uniqueSimilarSections = similarToSections.uniqueSectionTracks()
     val uniqueOtherPerformanceSections = otherPerformanceSections.uniqueSectionTracks()
     val uniqueMoreFromArtistSections = moreFromArtistSections.uniqueSectionTracks()
-    val uniqueHomeChips = homeChips.distinctByNonBlankKeyOrSelf { it.title }
     val uniqueGenreTracks =
         genreTracks.mapValuesIfChanged { tracks ->
             tracks.uniqueMusicTracks()
@@ -232,7 +231,6 @@ internal fun MusicUiState.withUniqueLazyContent(): MusicUiState {
         uniqueSimilarSections === similarToSections &&
         uniqueOtherPerformanceSections === otherPerformanceSections &&
         uniqueMoreFromArtistSections === moreFromArtistSections &&
-        uniqueHomeChips === homeChips &&
         uniqueGenreTracks === genreTracks &&
         uniqueArtistDetails === artistDetails &&
         uniqueSearchArtists === searchResultsArtists
@@ -264,7 +262,6 @@ internal fun MusicUiState.withUniqueLazyContent(): MusicUiState {
         favoriteArtistAlbums = uniqueFavoriteArtistAlbums,
         dynamicSections = uniqueDynamicSections,
         dailyMixSections = uniqueDailyMixSections,
-        homeChips = uniqueHomeChips,
         artistDetails = uniqueArtistDetails,
         searchResultsArtists = uniqueSearchArtists,
         similarToSections = uniqueSimilarSections,

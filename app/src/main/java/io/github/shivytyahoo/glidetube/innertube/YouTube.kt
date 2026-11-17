@@ -3465,7 +3465,8 @@ object YouTube {
                         ?.content
                         ?.musicQueueRenderer
                         ?.content
-                        ?.playlistPanelRenderer!!
+                        ?.playlistPanelRenderer
+                    ?: throw IllegalStateException("No playlist panel in watch-next response")
             val title =
                 response.contents.singleColumnMusicWatchNextResultsRenderer
                     ?.tabbedRenderer

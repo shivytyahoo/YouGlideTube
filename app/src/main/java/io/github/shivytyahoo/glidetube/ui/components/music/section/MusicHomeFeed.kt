@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.grid.LazyGridState
-import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -20,7 +19,6 @@ import io.github.shivytyahoo.glidetube.data.music.model.MusicItemType
 import io.github.shivytyahoo.glidetube.data.music.model.MusicPlaylist
 import io.github.shivytyahoo.glidetube.data.music.model.MusicTrack
 import io.github.shivytyahoo.glidetube.data.music.model.MusicTimeBucket
-import io.github.shivytyahoo.glidetube.innertube.pages.HomePage
 import io.github.shivytyahoo.glidetube.innertube.pages.MoodAndGenres
 import io.github.shivytyahoo.glidetube.ui.components.music.item.MusicTrackItem
 import io.github.shivytyahoo.glidetube.ui.components.music.sheet.MusicCollectionActionItem
@@ -48,7 +46,6 @@ fun LazyListScope.musicHomeFeed(
     onArtistClick: (String) -> Unit,
     onAlbumClick: (String) -> Unit,
     onMoodsClick: (MoodAndGenres.Item?) -> Unit,
-    onChipToggle: (HomePage.Chip?) -> Unit,
     onTrackMenu: (MusicTrack) -> Unit,
     onCollectionMenu: (MusicCollectionActionItem) -> Unit,
     onLoadMore: () -> Unit,
@@ -73,17 +70,7 @@ fun LazyListScope.musicHomeFeed(
         isAlbum: Boolean,
     ) = onCollectionMenu(collection.toCollectionActionItem(isAlbum))
 
-    if (uiState.homeChips.isNotEmpty()) {
-        item(key = "home_chips") {
-            MusicHomeChipRow(
-                chips = uiState.homeChips,
-                selectedChipTitle = uiState.selectedHomeChip?.title,
-                onChipToggle = onChipToggle,
-            )
-        }
-    }
-
-    if (uiState.selectedFilter == null) yourLibrary(library, onArtistClick)
+    yourLibrary(library, onArtistClick)
 
     if (shown(MusicHomeShelf.LISTEN_AGAIN) && uiState.listenAgain.isNotEmpty()) {
         item(key = "listen_again") {
@@ -96,23 +83,6 @@ fun LazyListScope.musicHomeFeed(
                 onTrackMenu = onTrackMenu,
             )
         }
-    }
-
-    if (uiState.selectedFilter != null) {
-        if (uiState.isSearching) {
-            item(key = "filter_loading") { GlideFeedProgress() }
-        } else {
-            items(uiState.allSongs.distinctBy { it.videoId }, key = { "filtered:${it.videoId}" }) { track ->
-                MusicTrackItem(
-                    track = track,
-                    isDownloaded = downloaded.contains(track.videoId),
-                    onClick = { onSongClick(track, uiState.allSongs, uiState.selectedFilter) },
-                    onLongClick = { onTrackMenu(track) },
-                    onMenuClick = { onTrackMenu(track) },
-                )
-            }
-        }
-        return
     }
 
     if (shown(MusicHomeShelf.ON_REPEAT) && uiState.onRepeatTracks.isNotEmpty()) {

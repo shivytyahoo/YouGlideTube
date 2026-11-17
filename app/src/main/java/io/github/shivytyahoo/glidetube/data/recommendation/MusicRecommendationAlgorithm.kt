@@ -58,9 +58,6 @@ class MusicRecommendationAlgorithm
         private var homeSectionsCache: List<MusicSection>? = null
 
         @Volatile
-        private var homeChipsCache: List<HomePage.Chip>? = null
-
-        @Volatile
         private var homeContinuationCache: String? = null
         companion object {
             private const val TAG = "MusicRecAlgo"
@@ -111,14 +108,6 @@ class MusicRecommendationAlgorithm
             }
 
         /**
-         * Get home chips from cache
-         */
-        suspend fun getHomeChips(): List<HomePage.Chip> =
-            withContext(Dispatchers.IO) {
-                homeChipsCache ?: emptyList()
-            }
-
-        /**
          * Force refresh content from network and update cache
          */
         suspend fun refreshMusicHome(): Pair<List<MusicSection>, String?> =
@@ -152,9 +141,6 @@ class MusicRecommendationAlgorithm
                     // Cache them (RAM only)
                     homeSectionsCache = sections
                     homeContinuationCache = homePage.continuation
-                    homePage.chips?.let { chips ->
-                        homeChipsCache = chips
-                    }
 
                     return sections to homePage.continuation
                 }

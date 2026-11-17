@@ -32,13 +32,11 @@ import io.github.shivytyahoo.glidetube.innertube.YouTube
 import io.github.shivytyahoo.glidetube.innertube.models.BrowseEndpoint
 import io.github.shivytyahoo.glidetube.innertube.models.SongItem
 import io.github.shivytyahoo.glidetube.innertube.pages.ArtistItemsPage
-import io.github.shivytyahoo.glidetube.innertube.pages.HomePage
 import io.github.shivytyahoo.glidetube.innertube.pages.MoodAndGenres
 import io.github.shivytyahoo.glidetube.player.EnhancedMusicPlayerManager
 import io.github.shivytyahoo.glidetube.utils.PerformanceDispatcher
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -92,10 +90,6 @@ class MusicViewModel
         }
 
         private val _uiState = MutableStateFlow(MusicUiState())
-
-        // The in-flight chip filter, so a second tap cancels the first chip's
-        // request instead of letting two filtered loads race into the feed.
-        private var chipFilterJob: Job? = null
 
         // WhileSubscribed (not Eagerly) is load-bearing for battery: it makes
         // _uiState.subscriptionCount reflect real UI visibility, which gates the
@@ -605,7 +599,7 @@ class MusicViewModel
                             _uiState.update {
                                 it.copy(
                                     trendingSongs = trend,
-                                    allSongs = if (it.selectedFilter == null) trend else it.allSongs,
+                                    allSongs = trend,
                                 )
                             }
                         }
@@ -659,7 +653,7 @@ class MusicViewModel
                         _uiState.update {
                             it.copy(
                                 trendingSongs = trend,
-                                allSongs = if (it.selectedFilter == null) trend else it.allSongs,
+                                allSongs = trend,
                                 isLoading = false,
                             )
                         }
@@ -692,11 +686,6 @@ class MusicViewModel
 
                 val homeSections = homeResult.first
                 val homeContinuation = homeResult.second
-
-                // Fetch Chips — ordered by learned genre/mood affinity so the
-                // moods the user actually plays lead the row (stable otherwise).
-                val homeChips = musicRecommendationAlgorithm.getHomeChips()
-                _uiState.update { it.copy(homeChips = homeChips) }
 
                 if (homeSections.isNotEmpty()) {
                     processHomeSections(homeSections)
@@ -1281,69 +1270,6 @@ class MusicViewModel
             }
         }
 
-        fun setHomeChip(chip: HomePage.Chip?) {
-            chipFilterJob?.cancel()
-            if (chip == null) {
-                _uiState.update { it.copy(selectedHomeChip = null, selectedFilter = null, isSearching = false) }
-                loadMusicContent()
-                return
-            }
-            // The feed already renders a filtered list for selectedFilter, with a
-            // progress row while isSearching: that is the chip tap's visible result.
-            _uiState.update { it.copy(selectedHomeChip = chip, selectedFilter = chip.title, isSearching = true) }
-            chipFilterJob =
-                viewModelScope.launch(PerformanceDispatcher.networkIO) {
-                    val serverSections =
-                        chip.endpoint?.params?.let { params ->
-                            withTimeoutOrNull(10_000L) {
-                                YouTube.home(params = params).getOrNull()
-                            }?.let { musicRecommendationAlgorithm.parseHomeSections(it) }
-                        }.orEmpty()
-                    if (serverSections.isNotEmpty()) {
-                        processHomeSections(serverSections)
-                        val tracks = serverSections.flatMap { it.tracks }.distinctBy { it.videoId }
-                        _uiState.update { it.copy(allSongs = tracks, isSearching = false, isLoading = false) }
-                    } else {
-                        // No endpoint (some chips carry none), a timeout, or an empty
-                        // filtered home: filter what is already loaded instead of
-                        // silently reloading the unfiltered home, which used to leave
-                        // the chip ticked and the feed unchanged.
-                        val tracks = filterLoadedTracksForChip(chip.title)
-                        _uiState.update { it.copy(allSongs = tracks, isSearching = false, isLoading = false) }
-                    }
-                }
-        }
-
-        /**
-         * Local fallback for a chip the server did not filter: tracks from the loaded
-         * shelves whose title, artist, album or shelf title matches the chip, so the
-         * tap always changes what the feed shows.
-         */
-        private fun filterLoadedTracksForChip(chipTitle: String): List<MusicTrack> {
-            val tokens = chipTitle.lowercase().split(Regex("[^a-z0-9]+")).filter { it.length >= 3 }
-            if (tokens.isEmpty()) return emptyList()
-            val state = _uiState.value
-            val candidates = LinkedHashMap<String, MusicTrack>()
-            fun add(tracks: List<MusicTrack>) {
-                tracks.forEach { candidates.putIfAbsent(it.videoId, it) }
-            }
-            state.dynamicSections.forEach { add(it.tracks) }
-            add(state.trendingSongs)
-            add(state.forYouTracks)
-            add(state.listenAgain)
-            add(state.onRepeatTracks)
-            add(state.newReleases)
-            add(state.history)
-            val sectionTitleByTrack =
-                state.dynamicSections.flatMap { section -> section.tracks.map { it.videoId to section.title } }.toMap()
-            return candidates.values.filter { track ->
-                val haystack =
-                    listOf(track.title, track.artist, track.album, sectionTitleByTrack[track.videoId].orEmpty())
-                        .joinToString(" ").lowercase()
-                tokens.any { haystack.contains(it) }
-            }
-        }
-
         fun retry() {
             loadMusicContent()
         }
@@ -1352,13 +1278,6 @@ class MusicViewModel
             relatedCache.clear()
             artistDetailsCache.clear()
             _uiState.update { it.copy(isLoading = true) }
-            // A selected chip stays selected over a refresh: re-run its filter
-            // instead of reloading the unfiltered home under a ticked chip.
-            val activeChip = _uiState.value.selectedHomeChip
-            if (activeChip != null) {
-                setHomeChip(activeChip)
-                return
-            }
             loadMusicContent(force = true)
         }
 
@@ -1600,15 +1519,11 @@ data class MusicUiState(
     val favoriteArtistAlbums: List<MusicPlaylist> = emptyList(), // Releases from the brain's top artists
     val dynamicSections: List<MusicSection> = emptyList(),
     val dailyMixSections: List<MusicSection> = emptyList(),
-    val homeChips: List<HomePage.Chip> = emptyList(),
-    val selectedHomeChip: HomePage.Chip? = null,
     val brainMaturity: String? = null, // "cold_start" / "warming" / "mature" — steers section order
     val explorePage: io.github.shivytyahoo.glidetube.innertube.pages.ExplorePage? = null,
     val moodsAndGenres: List<MoodAndGenres> = emptyList(),
     val selectedGenre: String? = null,
-    val selectedFilter: String? = null,
     val isLoading: Boolean = true,
-    val isSearching: Boolean = false,
     val error: String? = null,
     val artistDetails: ArtistDetails? = null,
     val artistInsights: MusicArtistInsights? = null,

@@ -15,13 +15,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -37,7 +35,6 @@ import io.github.shivytyahoo.glidetube.data.music.model.DailyDiscoverItem
 import io.github.shivytyahoo.glidetube.data.music.model.MusicItemType
 import io.github.shivytyahoo.glidetube.data.music.model.MusicPlaylist
 import io.github.shivytyahoo.glidetube.data.music.model.MusicTrack
-import io.github.shivytyahoo.glidetube.innertube.pages.HomePage
 import io.github.shivytyahoo.glidetube.innertube.pages.MoodAndGenres
 import io.github.shivytyahoo.glidetube.ui.components.currentGridThumbnailHeight
 import io.github.shivytyahoo.glidetube.ui.components.music.card.MusicHeroCard
@@ -50,8 +47,6 @@ import io.github.shivytyahoo.glidetube.ui.components.music.item.MusicCollectionC
 import io.github.shivytyahoo.glidetube.ui.components.music.item.MusicItemDensity
 import io.github.shivytyahoo.glidetube.ui.components.music.item.MusicTrackItem
 import io.github.shivytyahoo.glidetube.ui.components.shared.ChartRankBadge
-import io.github.shivytyahoo.glidetube.ui.components.shared.GlideFilterChip
-import io.github.shivytyahoo.glidetube.ui.components.shared.dpadFocusGroup
 import io.github.shivytyahoo.glidetube.ui.components.shared.flowArtistShape
 import io.github.shivytyahoo.glidetube.ui.components.shared.flowGridCellWidth
 import io.github.shivytyahoo.glidetube.ui.components.shared.flowGridColumns
@@ -392,38 +387,6 @@ fun MusicMoodsShelf(
                     modifier = Modifier.width(buttonWidth),
                 )
             }
-        }
-    }
-}
-
-/**
- * The home feed's filter chips.
- */
-@Composable
-fun MusicHomeChipRow(
-    chips: List<HomePage.Chip>,
-    selectedChipTitle: String?,
-    onChipToggle: (HomePage.Chip?) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    if (chips.isEmpty()) return
-
-    LazyRow(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .dpadFocusGroup()
-                .padding(vertical = 8.dp),
-        contentPadding = PaddingValues(horizontal = Dimensions.ContentPaddingHorizontal),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        items(items = chips.distinctBy { it.title }, key = { it.title }) { chip ->
-            val isSelected = selectedChipTitle == chip.title
-            GlideFilterChip(
-                label = chip.title,
-                selected = isSelected,
-                onClick = { onChipToggle(if (isSelected) null else chip) },
-            )
         }
     }
 }

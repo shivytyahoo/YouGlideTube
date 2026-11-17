@@ -62,7 +62,6 @@ class MusicHomeFeedKeyTest {
                     onArtistClick = {},
                     onAlbumClick = {},
                     onMoodsClick = {},
-                    onChipToggle = {},
                     onTrackMenu = {},
                     onCollectionMenu = {},
                     onLoadMore = {},

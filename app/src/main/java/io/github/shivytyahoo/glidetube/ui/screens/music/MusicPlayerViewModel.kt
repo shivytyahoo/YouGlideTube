@@ -20,6 +20,7 @@ import io.github.shivytyahoo.glidetube.data.music.DownloadManager
 import io.github.shivytyahoo.glidetube.data.music.MusicSessionLibrary
 import io.github.shivytyahoo.glidetube.data.music.YouTubeMusicService
 import io.github.shivytyahoo.glidetube.data.music.model.MUSIC_GENRE_SOURCE_PREFIX
+import io.github.shivytyahoo.glidetube.data.music.model.MusicItemType
 import io.github.shivytyahoo.glidetube.data.music.model.MusicTrack
 import io.github.shivytyahoo.glidetube.data.newmusic.InnertubeMusicService
 import io.github.shivytyahoo.glidetube.data.scrobble.Scrobbler
@@ -297,6 +298,13 @@ class MusicPlayerViewModel
             sourceName: String? = null,
             asRadio: Boolean = false,
         ) {
+            // A collection (mix, playlist, album) carries a playlist id, not a
+            // playable video id: feeding it to the stream extractor fails on
+            // every client, so resolve it to its songs and play the first one.
+            if (track.itemType != MusicItemType.SONG) {
+                viewModelScope.launch { playWatchPlaylist(track.videoId, null) }
+                return
+            }
             // Tapping the song that is already loaded, from any list, keeps it going instead of
             // fetching and restarting it; a paused one resumes. The queue is left as it is.
             if (!asRadio && isLoadedInPlayer(track.videoId)) {
@@ -324,7 +332,13 @@ class MusicPlayerViewModel
             loadTrackJob =
                 viewModelScope.launch {
                     val finalSourceName = musicSourceLabel(context, displaySourceName, track)
-                    val activeQueue = if (queue.isNotEmpty()) queue else listOf(track)
+                    // A queue built from a feed section can hold collections (mixes,
+                    // playlists) beside songs; only songs are playable, so a collection
+                    // sitting in the queue must not stall playback when reached.
+                    val activeQueue =
+                        (if (queue.isNotEmpty()) queue else listOf(track))
+                            .filter { it.itemType == MusicItemType.SONG }
+                            .ifEmpty { listOf(track) }
                     val localUriOverrides =
                         activeQueue
                             .mapNotNull { queuedTrack ->
