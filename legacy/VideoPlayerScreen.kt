@@ -1,4 +1,4 @@
-package io.github.aedev.flow.ui.screens.player
+package io.github.shivytyahoo.glidetube.ui.screens.player
 
 import android.app.Activity
 import android.content.pm.ActivityInfo
@@ -44,12 +44,12 @@ import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import androidx.media3.exoplayer.source.SingleSampleMediaSource
 import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
-import io.github.aedev.flow.data.local.VideoQuality
-import io.github.aedev.flow.data.model.Video
-import io.github.aedev.flow.player.GlobalPlayerState
-import io.github.aedev.flow.player.PictureInPictureHelper
-import io.github.aedev.flow.ui.components.VideoCardFullWidth
-import io.github.aedev.flow.ui.theme.extendedColors
+import io.github.shivytyahoo.glidetube.data.local.VideoQuality
+import io.github.shivytyahoo.glidetube.data.model.Video
+import io.github.shivytyahoo.glidetube.player.GlobalPlayerState
+import io.github.shivytyahoo.glidetube.player.PictureInPictureHelper
+import io.github.shivytyahoo.glidetube.ui.components.VideoCardFullWidth
+import io.github.shivytyahoo.glidetube.ui.theme.extendedColors
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.take
 import kotlin.math.abs

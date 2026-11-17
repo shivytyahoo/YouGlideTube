@@ -1,5 +1,5 @@
 # Words key spec 2 never stems: the engine's own word lists are written in them (NeuroStemmer).
-# Written by NeuroStemmerTest with NEURO_WRITE_UNSTEMMED=1. Flow Desktop reads the same file.
+# Written by NeuroStemmerTest with NEURO_WRITE_UNSTEMMED=1. desktop companion reads the same file.
 academy
 accessory
 acoustic

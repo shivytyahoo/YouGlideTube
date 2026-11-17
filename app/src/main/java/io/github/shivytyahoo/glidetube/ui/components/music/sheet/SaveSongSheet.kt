@@ -1,0 +1,71 @@
+package io.github.shivytyahoo.glidetube.ui.components.music.sheet
+
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
+import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.shivytyahoo.glidetube.R
+import io.github.shivytyahoo.glidetube.data.music.model.MusicTrack
+import io.github.shivytyahoo.glidetube.ui.components.shared.CollectionEditDialog
+import io.github.shivytyahoo.glidetube.ui.components.shared.CollectionSheetEntry
+import io.github.shivytyahoo.glidetube.ui.components.shared.SaveToCollectionSheet
+import io.github.shivytyahoo.glidetube.ui.screens.music.SaveSongViewModel
+
+/** Saves [track] to your music playlists, showing the ones that already hold it. */
+@Composable
+fun SaveSongSheet(
+    track: MusicTrack,
+    onDismiss: () -> Unit,
+    viewModel: SaveSongViewModel = hiltViewModel(),
+) {
+    val playlists by viewModel.playlists.collectAsStateWithLifecycle()
+    val savedIds by viewModel.savedIds.collectAsStateWithLifecycle()
+    val isCreating by viewModel.isCreating.collectAsStateWithLifecycle()
+    var showCreateDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(track.videoId) { viewModel.loadMembership(track.videoId) }
+
+    val entries =
+        playlists.map { playlist ->
+            CollectionSheetEntry(
+                id = playlist.id,
+                name = playlist.name,
+                supporting = pluralStringResource(R.plurals.songs_count_template, playlist.videoCount, playlist.videoCount),
+                thumbnailUrl = playlist.thumbnailUrl,
+                isSaved = playlist.id in savedIds,
+            )
+        }
+
+    SaveToCollectionSheet(
+        title = stringResource(R.string.title_add_to_playlist),
+        entries = entries,
+        placeholderIcon = Icons.Default.MusicNote,
+        createLabel = stringResource(R.string.create_new_playlist),
+        emptyLabel = stringResource(R.string.empty_playlists_dialog),
+        onToggle = { entry -> viewModel.toggle(track, entry.id) },
+        onCreateNew = { showCreateDialog = true },
+        onDismiss = onDismiss,
+    )
+
+    if (showCreateDialog) {
+        CollectionEditDialog(
+            title = stringResource(R.string.title_create_playlist),
+            confirmLabel = stringResource(R.string.action_create),
+            icon = Icons.AutoMirrored.Filled.PlaylistAdd,
+            isBusy = isCreating,
+            onDismiss = { showCreateDialog = false },
+            onConfirm = { name, description ->
+                viewModel.createAndAdd(track, name, description) { showCreateDialog = false }
+            },
+        )
+    }
+}

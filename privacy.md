@@ -36,7 +36,7 @@ requested, and whether the app still works without it.
 | `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` | special access | Keeping background alerts and playback alive on aggressive OEMs | No |
 | `DOWNLOAD_WITHOUT_NOTIFICATION` | install-time | Legacy, no longer used, scheduled for removal | No |
 | `RECEIVE_BOOT_COMPLETED` | install-time, from library | Added by `androidx.work`, reschedules background jobs after reboot | Library |
-| `REQUEST_INSTALL_PACKAGES` | install-time, from library | `github` flavor only, in-app updater | Library |
+| `REQUEST_INSTALL_PACKAGES` | install-time | In-app updater in the single app build | No |
 | `<package>.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION` | signature | Added by `androidx.core`, the app's own signature-level permission | Library |
 
 Everything marked "No" is optional. The app degrades to the feature being unavailable rather than
@@ -52,7 +52,7 @@ device and scanning it with the other, so the key never travels over the wire. T
 is bound only while that screen is open, frames are decoded locally by ZXing, and no image is
 stored or transmitted.
 
-Requested at: `app/src/main/java/io/github/aedev/flow/ui/screens/sync/SyncSetupContent.kt`
+Requested at: `app/src/main/java/io/github/shivytyahoo/glidetube/ui/screens/sync/SyncSetupContent.kt`
 
 Users who never open Device Sync are never asked for it.
 
@@ -65,9 +65,9 @@ audio fingerprint on device, and sends only that fingerprint to Shazam's public 
 uploaded. Recording stops as soon as the query is made or the screen is left. There is no
 background or passive listening.
 
-Requested at: `app/src/main/java/io/github/aedev/flow/ui/screens/recognition/RecognitionScreen.kt`
+Requested at: `app/src/main/java/io/github/shivytyahoo/glidetube/ui/screens/recognition/RecognitionScreen.kt`
 
-Gated at: `app/src/main/java/io/github/aedev/flow/data/recognition/MusicRecognitionRepository.kt`
+Gated at: `app/src/main/java/io/github/shivytyahoo/glidetube/data/recognition/MusicRecognitionRepository.kt`
 
 ### `READ_MEDIA_AUDIO`
 
@@ -93,10 +93,10 @@ permission is checked before that path is taken, and if it has not been granted 
 native PiP or with no popup at all. It is never used to draw over other apps for any other purpose,
 and no overlay exists outside an active playback session.
 
-Checked at: `app/src/main/java/io/github/aedev/flow/player/PictureInPictureHelper.kt`,
-`app/src/main/java/io/github/aedev/flow/service/VideoPlayerService.kt`
+Checked at: `app/src/main/java/io/github/shivytyahoo/glidetube/player/PictureInPictureHelper.kt`,
+`app/src/main/java/io/github/shivytyahoo/glidetube/service/VideoPlayerService.kt`
 
-Window created at: `app/src/main/java/io/github/aedev/flow/player/PopupPlayerWindow.kt`
+Window created at: `app/src/main/java/io/github/shivytyahoo/glidetube/player/PopupPlayerWindow.kt`
 
 ## The remaining permissions
 
@@ -158,7 +158,7 @@ because several OEM battery managers put the app in a restricted App Standby buc
 background network access, which silently starves the periodic subscription check. Declining leaves
 everything working while the app is open.
 
-Used at: `app/src/main/java/io/github/aedev/flow/notification/BackgroundWorkPolicy.kt`
+Used at: `app/src/main/java/io/github/shivytyahoo/glidetube/notification/BackgroundWorkPolicy.kt`
 
 ### Legacy
 
@@ -172,7 +172,7 @@ These are not declared in YouGlideTube's own manifest. They are merged in from d
 
 `RECEIVE_BOOT_COMPLETED` comes from `androidx.work:work-runtime`. WorkManager uses it to restore
 scheduled jobs after a reboot. YouGlideTube's jobs are the subscription check, the upcoming-video reminder,
-the optional auto-backup, and, on the `github` flavor, the update check. YouGlideTube registers no boot
+the optional auto-backup and the in-app update check. YouGlideTube registers no boot
 receiver of its own.
 
 `<package>.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION` comes from `androidx.core`. It is a
@@ -180,17 +180,9 @@ signature-level permission that the library defines under the app's own package 
 `ContextCompat.registerReceiver` can keep dynamically registered receivers non-exported. It grants
 nothing to other apps and takes no capability from the system.
 
-`REQUEST_INSTALL_PACKAGES` comes from `com.github.supersu-man:apkupdater-library` and is present in
-the `github` flavor only, for the in-app updater that offers to install a new release APK. The
-`foss` flavor does not include the updater library and does not carry this permission.
-
-## Build flavors
-
-YouGlideTube ships two flavors. The permission difference between them is the one above.
-
-- `foss`: no in-app updater, no `REQUEST_INSTALL_PACKAGES`. This is the build intended for F-Droid
-  style distribution.
-- `github`: adds the in-app updater and the optional Discord presence integration.
+`REQUEST_INSTALL_PACKAGES` is declared by the single YouGlideTube app build for its optional
+in-app updater. Android still requires the user to approve installation from this source, and the
+app does not install updates silently.
 
 ## Network endpoints
 
@@ -211,8 +203,7 @@ project-operated proxy or relay in between.
 - `sponsor.ajay.app` and `dearrow-thumb.ajay.app`: SponsorBlock and DeArrow, only if the user turns
   them on.
 - `returnyoutubedislikeapi.com`: Return YouTube Dislike, only if the user turns it on.
-- `api.github.com` and `github.com`: release check and changelog, `github` flavor only.
-- `discord.com`: rich presence, `github` flavor only, and only after the user links an account.
+- `api.github.com` and `github.com`: in-app release checks and changelog.
 - Local network addresses: DLNA renderers on the LAN, and the peer device during Device Sync.
 
 ## What YouGlideTube does not do

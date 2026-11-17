@@ -1,0 +1,84 @@
+package io.github.shivytyahoo.glidetube.player.quality
+
+import io.github.shivytyahoo.glidetube.player.resolver.AdaptiveDashManifest
+import io.github.shivytyahoo.glidetube.player.stream.VideoCodecUtils
+import org.schabi.newpipe.extractor.stream.VideoStream
+
+/**
+ * The qualities Auto hands to Media3 as one source: every describable stream in the anchor's codec
+ * and colour depth, one per height. Media3 cannot switch between codecs or between SDR and HDR
+ * without a visible decoder change, so those never share a ladder.
+ */
+internal object AdaptiveLadder {
+    private const val MIN_RUNGS = 2
+
+    /** Empty when fewer than two qualities qualify, which leaves Auto on a single stream. */
+    fun rungs(
+        anchor: VideoStream?,
+        streams: List<VideoStream>,
+    ): List<VideoStream> {
+        anchor ?: return emptyList()
+        val codec = VideoCodecUtils.codecKeyFromStream(anchor)
+        val deep = isHighBitDepth(anchor)
+        return streams
+            .filter {
+                AdaptiveDashManifest.canDescribe(it) &&
+                    VideoCodecUtils.codecKeyFromStream(it) == codec &&
+                    isHighBitDepth(it) == deep &&
+                    it.format == anchor.format
+            }.groupBy(VideoCodecUtils::qualityHeightFromStream)
+            .values
+            .map { sameHeight -> sameHeight.maxBy { it.bitrate } }
+            .sortedBy { it.bitrate }
+            .takeIf { it.size >= MIN_RUNGS }
+            .orEmpty()
+    }
+
+    /**
+     * The ladder a preloaded video plays on: none when a quality is pinned ([pinned] set), else one
+     * around the bandwidth-fitting anchor when an estimate is known. Promotion recomputes it from
+     * the same inputs to learn what is playing.
+     */
+    fun forPreload(
+        pinned: VideoStream?,
+        streams: List<VideoStream>,
+        preferredCodec: String?,
+        bandwidthEstimateBps: Long? = null,
+    ): List<VideoStream> =
+        if (pinned != null) {
+            emptyList()
+        } else {
+            rungs(anchorFor(streams, preferredCodec, bandwidthEstimateBps), streams)
+        }
+
+    /**
+     * The anchor of a ladder built before the video has had any bandwidth to judge by. With an
+     * estimate, the anchor is the tallest stream that fits the budget — the old highest-height
+     * anchor started slow networks on 1080p and stalled the first seconds. Without one, the
+     * highest height stays, as before.
+     */
+    private fun anchorFor(
+        streams: List<VideoStream>,
+        preferredCodec: String?,
+        bandwidthEstimateBps: Long? = null,
+    ): VideoStream? =
+        bandwidthEstimateBps?.let { AutoQualityPolicy.cappedInitialPick(streams, it, preferredCodec) }
+            ?: streams
+                .filter(AdaptiveDashManifest::canDescribe)
+                .minWithOrNull(
+                    compareBy<VideoStream> { VideoCodecUtils.codecRankWithPreference(it, preferredCodec) }
+                        .thenByDescending(VideoCodecUtils::qualityHeightFromStream),
+                )
+
+    /** HDR and 10-bit SDR: VP9 profile 2, AV1 at 10 bits, HEVC Main 10. */
+    internal fun isHighBitDepth(stream: VideoStream): Boolean {
+        val codecs = (stream.itagItem?.codec ?: "").lowercase()
+        val parts = codecs.split('.')
+        return when (parts.firstOrNull()) {
+            "vp09" -> parts.getOrNull(1) == "02" || parts.getOrNull(1) == "03"
+            "av01" -> parts.getOrNull(3) == "10" || parts.getOrNull(3) == "12"
+            "hev1", "hvc1" -> parts.getOrNull(1) == "2"
+            else -> false
+        }
+    }
+}

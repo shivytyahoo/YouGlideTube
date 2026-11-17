@@ -1,4 +1,4 @@
-package io.github.aedev.flow.ui.screens.player
+package io.github.shivytyahoo.glidetube.ui.screens.player
 
 import android.app.Activity
 import android.content.Context
@@ -42,22 +42,22 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.util.UnstableApi
-import io.github.aedev.flow.data.model.Video
-import io.github.aedev.flow.player.EnhancedPlayerManager
-import io.github.aedev.flow.player.GlobalPlayerState
-import io.github.aedev.flow.player.PictureInPictureHelper
-import io.github.aedev.flow.player.seekbarpreview.SeekbarPreviewThumbnailHelper
+import io.github.shivytyahoo.glidetube.data.model.Video
+import io.github.shivytyahoo.glidetube.player.EnhancedPlayerManager
+import io.github.shivytyahoo.glidetube.player.GlobalPlayerState
+import io.github.shivytyahoo.glidetube.player.PictureInPictureHelper
+import io.github.shivytyahoo.glidetube.player.seekbarpreview.SeekbarPreviewThumbnailHelper
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.SmartDisplay
-import io.github.aedev.flow.ui.components.*
-import io.github.aedev.flow.ui.screens.player.components.*
-import io.github.aedev.flow.ui.screens.player.util.VideoPlayerUtils
+import io.github.shivytyahoo.glidetube.ui.components.*
+import io.github.shivytyahoo.glidetube.ui.screens.player.components.*
+import io.github.shivytyahoo.glidetube.ui.screens.player.util.VideoPlayerUtils
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import androidx.compose.ui.res.stringResource
 import kotlinx.coroutines.launch
-import io.github.aedev.flow.R
+import io.github.shivytyahoo.glidetube.R
 
 
 
@@ -79,7 +79,7 @@ fun EnhancedVideoPlayerScreen(
     val configuration = LocalConfiguration.current
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { androidx.compose.material3.SnackbarHostState() }
-    val musicVm: io.github.aedev.flow.ui.screens.music.MusicPlayerViewModel = hiltViewModel()
+    val musicVm: io.github.shivytyahoo.glidetube.ui.screens.music.MusicPlayerViewModel = hiltViewModel()
     val lifecycleOwner = LocalLifecycleOwner.current
     
     // State
@@ -123,10 +123,10 @@ fun EnhancedVideoPlayerScreen(
 
     // PiP Preferences
     val autoPipEnabled by remember(context) { 
-        io.github.aedev.flow.data.local.PlayerPreferences(context).autoPipEnabled 
+        io.github.shivytyahoo.glidetube.data.local.PlayerPreferences(context).autoPipEnabled 
     }.collectAsState(initial = false)
     val manualPipButtonEnabled by remember(context) { 
-        io.github.aedev.flow.data.local.PlayerPreferences(context).manualPipButtonEnabled 
+        io.github.shivytyahoo.glidetube.data.local.PlayerPreferences(context).manualPipButtonEnabled 
     }.collectAsState(initial = true)
 
     var showQuickActions by remember { mutableStateOf(false) }
@@ -1014,7 +1014,7 @@ fun EnhancedVideoPlayerScreen(
 
     // Comments Bottom Sheet
     if (showCommentsSheet) {
-        FlowCommentsBottomSheet(
+        GlideCommentsBottomSheet(
             comments = sortedComments,
             commentCount = uiState.commentCountText,
             isLoading = isLoadingComments,
@@ -1059,7 +1059,7 @@ fun EnhancedVideoPlayerScreen(
             }
         }
 
-        FlowDescriptionBottomSheet(
+        GlideDescriptionBottomSheet(
             video = currentVideo,
             onDismiss = { showDescriptionSheet = false }
         )
@@ -1067,7 +1067,7 @@ fun EnhancedVideoPlayerScreen(
 
     // Chapters Bottom Sheet
     if (showChaptersSheet) {
-        FlowChaptersBottomSheet(
+        GlideChaptersBottomSheet(
             chapters = uiState.chapters,
             currentPosition = currentPosition,
             onChapterClick = { newPosition ->

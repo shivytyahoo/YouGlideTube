@@ -1,6 +1,6 @@
 {
   "keySpec": 2,
-  "about": "NeuroKeySpec stages 1 to 6 and 8 (stems): each input's chunks, model pairs and formats, read with the viewer's language profile (en unless a case names one) and the stop lists in resources/neuro/stop. Flow Desktop checks the same cases. Hand-reviewed; Chinese, Japanese and Thai need the platform word breaker and are checked on a device.",
+  "about": "NeuroKeySpec stages 1 to 6 and 8 (stems): each input's chunks, model pairs and formats, read with the viewer's language profile (en unless a case names one) and the stop lists in resources/neuro/stop. desktop companion checks the same cases. Hand-reviewed; Chinese, Japanese and Thai need the platform word breaker and are checked on a device.",
   "cases": [
     {"input": "Why Big Tech's Privacy Promises Are Lies", "chunks": [["big", "tech", "privaci", "promises"], ["lie"]], "modelPairs": [], "formats": []},
     {"input": "Why Big Tech’s Privacy Promises Are Lies", "chunks": [["big", "tech", "privaci", "promises"], ["lie"]], "modelPairs": [], "formats": []},

@@ -1,0 +1,44 @@
+package io.github.shivytyahoo.glidetube.ui.screens.settings.index
+
+import io.github.shivytyahoo.glidetube.R
+import io.github.shivytyahoo.glidetube.ui.components.settings.SettingEntry
+import io.github.shivytyahoo.glidetube.ui.components.settings.SettingsDestination
+
+internal object LanguageRegionIndex {
+    private val page = SettingsDestination.LANGUAGE_REGION
+
+    val appLanguage =
+        SettingEntry(
+            key = "language_region.app_language",
+            title = R.string.settings_item_app_language,
+            keywords = R.string.settings_keywords_language,
+            destination = page,
+        )
+    val contentLanguage =
+        SettingEntry(
+            key = "language_region.content_language",
+            title = R.string.music_content_language_title,
+            summary = R.string.settings_content_language_summary,
+            keywords = R.string.settings_keywords_language,
+            destination = page,
+        )
+    val contentCountry =
+        SettingEntry(
+            key = "language_region.content_country",
+            title = R.string.music_content_country_title,
+            summary = R.string.settings_content_country_summary,
+            keywords = R.string.settings_keywords_region,
+            destination = page,
+        )
+
+    val originalTitles =
+        SettingEntry(
+            key = "language_region.original_titles",
+            title = R.string.settings_original_titles,
+            summary = R.string.settings_original_titles_summary,
+            keywords = R.string.settings_keywords_original_titles,
+            destination = page,
+        )
+
+    val all = listOf(appLanguage, contentLanguage, contentCountry, originalTitles)
+}

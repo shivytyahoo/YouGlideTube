@@ -164,7 +164,7 @@
     <string name="new_update_available">नया अपडेट उपलब्ध</string>
     <string name="update_available_template">%1$s अब उपलब्ध है</string>
     <string name="release_notes">रिलीज़ नोट्स</string>
-    <string name="update_flow">फ्लो अपडेट करें</string>
+    <string name="update_glide">फ्लो अपडेट करें</string>
     <string name="maybe_later">बाद में शायद</string>
     <string name="nav_home">होम</string>
     <string name="nav_shorts">शॉर्ट्स</string>
@@ -267,7 +267,7 @@
     <string name="peace_and_quiet">शांति और सन्नाटा</string>
     <string name="notifications_empty_body">आप अपडेटेड हैं! आपकी सब्सक्रिप्शनस से नए अपडेट यहाँ दिखेंगे।</string>
     <string name="settings_title">सेटिंग्स</string>
-    <string name="settings_flow_engine_header">फ्लो इंजन</string>
+    <string name="settings_glide_engine_header">फ्लो इंजन</string>
     <string name="settings_active_learning">सक्रिय शिक्षण</string>
     <string name="settings_reset_brain_title">फ्लो व्यक्तित्व रीसेट करें?</string>
     <string name="settings_reset_brain_body">यह आपकी \'फ्लो ब्रेन\' रुचि प्रोफ़ाइल को पूरी तरह से मिटा देगा।\n\n• सभी सीखे गए विषय भूल जाएंगे।\n• व्यक्तित्व लक्षण तटस्थ पर रीसेट हो जाएंगे।\n• अनुशंसाएँ डिफ़ॉल्ट पर वापस आ जाएंगी।\n\nयह क्रिया पूर्ववत नहीं की जा सकती।</string>
@@ -331,8 +331,8 @@
     <string name="settings_item_export_data_subtitle">अपने डेटा का बैकअप लें</string>
     <string name="settings_item_import_data">डेटा आयात करें</string>
     <string name="settings_item_import_data_subtitle">बैकअप से पुनर्स्थापित करें या अन्य ऐप्स से आयात करें</string>
-    <string name="settings_item_about_flow">फ्लो के बारे में</string>
-    <string name="settings_item_about_flow_subtitle">संस्करण, लाइसेंस, योगदानकर्ता</string>
+    <string name="settings_item_about_glide">फ्लो के बारे में</string>
+    <string name="settings_item_about_glide_subtitle">संस्करण, लाइसेंस, योगदानकर्ता</string>
     <string name="settings_item_support">सहायता और दान</string>
     <string name="settings_item_support_subtitle">फ्लो के विकास में सहायता करें</string>
     <string name="settings_region_dialog_title">क्षेत्र चुनें</string>
@@ -349,7 +349,7 @@
     <string name="app_icon_picker_subtitle">लॉन्चर आइकन शैली चुनें। परिवर्तन तुरंत प्रभावी होगा और लॉन्चर संक्षेप में ताज़ा होगा।</string>
     <string name="app_icon_picker_warning">⚠ ध्यान दें: आइकन बदलने पर Android सिस्टम तंत्र का उपयोग होता है जो होम स्क्रीन से ऐप शॉर्टकट को अस्थायी रूप से हटा सकता है। यदि आवश्यक हो तो इसे वापस जोड़ने के लिए लॉन्चर को लंबे समय तक दबाएँ।</string>
     <string name="app_icon_apply_toast">आइकन अपडेट किया गया — आपका लॉन्चर ताज़ा होगा</string>
-    <string name="icon_name_flow_red">फ्लो लाल</string>
+    <string name="icon_name_glide_red">फ्लो लाल</string>
     <string name="icon_name_amoled">AMOLED गहरा</string>
     <string name="icon_name_monochrome">एकवर्णी</string>
     <string name="icon_name_ghost">प्रेत</string>
@@ -715,12 +715,12 @@
     <string name="period_six_months">6 महीने</string>
     <string name="period_one_year">1 वर्ष</string>
     <string name="import_data_title">डेटा आयात करें</string>
-    <string name="import_flow_backup_success">फ्लो बैकअप सफलतापूर्वक आयात किया गया</string>
-    <string name="import_flow_backup_failed_template">फ्लो बैकअप आयात करने में विफल: %1$s</string>
+    <string name="import_glide_backup_success">फ्लो बैकअप सफलतापूर्वक आयात किया गया</string>
+    <string name="import_glide_backup_failed_template">फ्लो बैकअप आयात करने में विफल: %1$s</string>
     <string name="import_newpipe_failed_template">न्यूपाइप बैकअप आयात करने में विफल: %1$s</string>
     <string name="import_youtube_failed_template">यूट्यूब बैकअप आयात करने में विफल: %1$s</string>
-    <string name="import_flow_backup_item_title">फ्लो बैकअप आयात करें</string>
-    <string name="import_flow_backup_desc">Glide बैकअप फ़ाइल से अपना इतिहास, सेटिंग्स और सब्सक्रिप्शनस पुनर्स्थापित करें।</string>
+    <string name="import_glide_backup_item_title">फ्लो बैकअप आयात करें</string>
+    <string name="import_glide_backup_desc">Glide बैकअप फ़ाइल से अपना इतिहास, सेटिंग्स और सब्सक्रिप्शनस पुनर्स्थापित करें।</string>
     <string name="import_from_newpipe">न्यूपाइप से आयात करें</string>
     <string name="import_from_newpipe_desc">NewPipe से एक्सपोर्ट की गई फ़ाइल (JSON) से सब्सक्रिप्शनें आयात करें।</string>
     <string name="import_from_libretube">लिब्रेट्यूब से आयात करें</string>
@@ -777,8 +777,8 @@
     <string name="location_badge_active">सक्रिय</string>
     <string name="select_threads_count_desc">थ्रेड्स की संख्या चुनें (1-8):</string>
     <string name="support_donations_title">सहायता और दान</string>
-    <string name="support_flow_dev_title">फ्लो विकास का समर्थन करें</string>
-    <string name="support_flow_dev_desc">यदि आप फ्लो को उपयोगी पाते हैं और इसके विकास का समर्थन करना चाहते हैं, तो आप निम्न पतों पर दान कर सकते हैं। आपका समर्थन परियोजना को जीवित रखने में मदद करता है!</string>
+    <string name="support_glide_dev_title">फ्लो विकास का समर्थन करें</string>
+    <string name="support_glide_dev_desc">यदि आप फ्लो को उपयोगी पाते हैं और इसके विकास का समर्थन करना चाहते हैं, तो आप निम्न पतों पर दान कर सकते हैं। आपका समर्थन परियोजना को जीवित रखने में मदद करता है!</string>
     <string name="thank_you_support_message">आपके समर्थन के लिए धन्यवाद! ❤️</string>
     <string name="address_copied_toast">पता क्लिपबोर्ड पर कॉपी किया गया</string>
     <string name="donation_address_clip_label">दान पता</string>
@@ -789,7 +789,7 @@
     <string name="newpipe_extractor_subtitle">कोर निष्कर्षण लाइब्रेरी</string>
     <string name="about_license">लाइसेंस</string>
     <string name="about_changelog">परिवर्तन सूची</string>
-    <string name="whats_new_in_flow">फ्लो में नया क्या है</string>
+    <string name="whats_new_in_glide">फ्लो में नया क्या है</string>
     <string name="about_device_info">डिवाइस जानकारी</string>
     <string name="gnu_license_full_title">GNU जनरल पब्लिक लाइसेंस</string>
     <string name="loading_ellipsis">लोड हो रहा है..।</string>
@@ -830,7 +830,7 @@
     <string name="playlist_empty_desc">अपनी प्लेलिस्ट बनाने के लिए\nवीडियो प्लेयर से वीडियो जोड़ें</string>
     <string name="delete_playlist_dialog_title">प्लेलिस्ट हटाएँ?</string>
     <string name="delete_playlist_dialog_text">यह \'%1$s\' और उसके सभी वीडियो को स्थायी रूप से हटा देगा।</string>
-    <string name="welcome_to_flow">फ्लो में आपका स्वागत है</string>
+    <string name="welcome_to_glide">फ्लो में आपका स्वागत है</string>
     <string name="onboarding_subtitle">हमें बताएँ कि आप किस चीज़ में रुचि रखते हैं</string>
     <string name="onboarding_instructions">अपने अनुभव को निजीकृत करने के लिए कम से कम 3 विषय चुनें</string>
     <string name="btn_skip_for_now">अभी के लिए छोड़ें</string>
@@ -847,7 +847,7 @@
     <string name="category_creative">रचनात्मक</string>
     <string name="category_science_nature">विज्ञान और प्रकृति</string>
     <string name="category_news_current_events">समाचार और वर्तमान घटनाएँ</string>
-    <string name="flow_control_center">फ्लो नियंत्रण केंद्र</string>
+    <string name="glide_control_center">फ्लो नियंत्रण केंद्र</string>
     <string name="action_refresh">ताज़ा करें</string>
     <string name="loading_neural_matrix">न्यूरल मैट्रिक्स लोड हो रहा है..।</string>
     <string name="neural_interest_map_subtitle">आपका तंत्रिका रुचि मानचित्र</string>
@@ -870,7 +870,7 @@
     <string name="stats_topics">विषय</string>
     <string name="empty_bubble_cloud_message">अपने इंटरेस्ट नेबुला को आबाद करने के लिए कुछ वीडियो देखें!</string>
     <string name="export_profile_data">प्रोफ़ाइल डेटा निर्यात करें</string>
-    <string name="flow_neural_profile_export_subject">फ्लो तंत्रिका प्रोफ़ाइल निर्यात</string>
+    <string name="glide_neural_profile_export_subject">फ्लो तंत्रिका प्रोफ़ाइल निर्यात</string>
     <string name="screen_title_music_library">संगीत लाइब्रेरी</string>
     <string name="header_your_collection">आपका संग्रह</string>
     <string name="subtitle_liked_music">आपके पसंदीदा गीत</string>
@@ -1026,7 +1026,7 @@
     <string name="check_for_updates">अपडेट्स के लिए जाँचें</string>
     <string name="check_for_updates_subtitle">नया वर्शन चेक करने के लिए टैप करें</string>
     <string name="checking_for_updates">अपडेट की जाँच की जा रही है…</string>
-    <string name="flow_is_up_to_date">Glide अपडेटेड है!</string>
+    <string name="glide_is_up_to_date">Glide अपडेटेड है!</string>
     <string name="update_check_failed">अपडेट की जाँच नहीं की जा सकी। अपना कनेक्शन जाँचें।</string>
     <string name="export_engine_data">इंजन प्रोफ़ाइल निर्यात करें</string>
     <string name="export_engine_data_subtitle">अपने AI व्यक्तित्व और सीखने के डेटा का बैकअप लें</string>

@@ -36,7 +36,7 @@
     <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
     <!-- Optional: allows saving downloads to public Movies/Music folders (survives app uninstall) -->
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
-    <!-- Required for DLNA/UPnP SSDP device discovery (FOSS casting, no Google services) -->
+    <!-- Required for DLNA/UPnP SSDP device discovery. -->
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
     <!--
         Request battery optimization exemption so Android Doze mode does not throttle
@@ -66,7 +66,7 @@
     </queries>
 
     <application
-        android:name=".FlowApplication"
+        android:name=".GlideApplication"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -76,7 +76,7 @@
         android:label="@string/app_launcher_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.Flow"
+        android:theme="@style/Theme.GlideTube"
         android:usesCleartextTraffic="true"
         android:resizeableActivity="true"
         android:requestLegacyExternalStorage="true"
@@ -105,12 +105,21 @@
             android:name="com.google.android.gms.car.application"
             android:resource="@xml/automotive_app_desc" />
 
+        <receiver
+            android:name=".updater.UpdateInstallReceiver"
+            android:exported="false" />
+
+        <service
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            android:foregroundServiceType="dataSync"
+            tools:node="merge" />
+
         <activity
             android:name=".ui.screens.settings.account.GoogleLoginActivity"
             android:exported="false"
             android:launchMode="singleTop"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|uiMode"
-            android:theme="@style/Theme.Flow"
+            android:theme="@style/Theme.GlideTube"
             android:windowSoftInputMode="adjustResize" />
 
         <activity
@@ -119,7 +128,7 @@
             android:exported="true"
             android:launchMode="singleTop"
             android:screenOrientation="landscape"
-            android:theme="@style/Theme.Flow.Starting">
+            android:theme="@style/Theme.GlideTube.Starting">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
@@ -135,7 +144,7 @@
             android:launchMode="singleTask"
             android:resizeableActivity="true"
             android:supportsPictureInPicture="true"
-            android:theme="@style/Theme.Flow.Starting"
+            android:theme="@style/Theme.GlideTube.Starting"
             android:windowSoftInputMode="adjustResize"
             android:windowLayoutInDisplayCutoutMode="shortEdges">
 
@@ -233,7 +242,7 @@
             </intent-filter>
         </service>
 
-        <!-- Media3 playback resumption: a headset's Play after Flow was killed reaches the music
+        <!-- Media3 playback resumption: a headset's Play after YouGlideTube was killed reaches the music
              service (the only MediaLibraryService), which resumes the saved queue. -->
         <receiver
             android:name="androidx.media3.session.MediaButtonReceiver"
@@ -259,11 +268,11 @@
             android:enabled="true"
             android:exported="false">
             <intent-filter>
-                <action android:name="io.github.aedev.flow.action.CANCEL_DOWNLOAD" />
-                <action android:name="io.github.aedev.flow.action.RETRY_DOWNLOAD" />
-                <action android:name="io.github.aedev.flow.action.PAUSE_DOWNLOAD" />
-                <action android:name="io.github.aedev.flow.action.RESUME_DOWNLOAD" />
-                <action android:name="io.github.aedev.flow.action.DISMISS_NOTIFICATION" />
+                <action android:name="io.github.shivytyahoo.glidetube.action.CANCEL_DOWNLOAD" />
+                <action android:name="io.github.shivytyahoo.glidetube.action.RETRY_DOWNLOAD" />
+                <action android:name="io.github.shivytyahoo.glidetube.action.PAUSE_DOWNLOAD" />
+                <action android:name="io.github.shivytyahoo.glidetube.action.RESUME_DOWNLOAD" />
+                <action android:name="io.github.shivytyahoo.glidetube.action.DISMISS_NOTIFICATION" />
             </intent-filter>
         </receiver>
 
@@ -273,8 +282,8 @@
             android:enabled="true"
             android:exported="false">
             <intent-filter>
-                <action android:name="io.github.aedev.flow.action.CLEAR_INBOX" />
-                <action android:name="io.github.aedev.flow.action.DISMISS_NOTIFICATION_VIDEO" />
+                <action android:name="io.github.shivytyahoo.glidetube.action.CLEAR_INBOX" />
+                <action android:name="io.github.shivytyahoo.glidetube.action.DISMISS_NOTIFICATION_VIDEO" />
             </intent-filter>
         </receiver>
 
@@ -312,7 +321,7 @@
             android:exported="true"
             android:excludeFromRecents="true"
             android:taskAffinity=""
-            android:theme="@style/Theme.Flow">
+            android:theme="@style/Theme.GlideTube">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
             </intent-filter>
@@ -408,9 +417,9 @@
         </receiver>
 
         <!-- App Icon Variants (via activity-alias)                          -->
-        <!-- Default: Flow Red -->
+        <!-- Default: YouGlideTube Red -->
         <activity-alias
-            android:name=".IconFlowRed"
+            android:name=".IconYouGlideTubeRed"
             android:enabled="true"
             android:exported="true"
             android:icon="@mipmap/ic_launcher"
@@ -422,13 +431,13 @@
             </intent-filter>
         </activity-alias>
 
-        <!-- Flow Light -->
+        <!-- YouGlideTube Light -->
         <activity-alias
-            android:name=".IconFlowLight"
+            android:name=".IconYouGlideTubeLight"
             android:enabled="false"
             android:exported="true"
-            android:icon="@mipmap/ic_launcher_flow_light"
-            android:roundIcon="@mipmap/ic_launcher_flow_light_round"
+            android:icon="@mipmap/ic_launcher_glidetube_light"
+            android:roundIcon="@mipmap/ic_launcher_glidetube_light_round"
             android:targetActivity=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -436,13 +445,13 @@
             </intent-filter>
         </activity-alias>
 
-        <!-- Flow Play (white background, red video frame + play mark) -->
+        <!-- YouGlideTube Play (white background, red video frame + play mark) -->
         <activity-alias
-            android:name=".IconFlowPlay"
+            android:name=".IconYouGlideTubePlay"
             android:enabled="false"
             android:exported="true"
-            android:icon="@mipmap/ic_launcher_flow_play"
-            android:roundIcon="@mipmap/ic_launcher_flow_play_round"
+            android:icon="@mipmap/ic_launcher_glidetube_play"
+            android:roundIcon="@mipmap/ic_launcher_glidetube_play_round"
             android:targetActivity=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -647,7 +656,7 @@
         </activity-alias>
 
 
-        <!-- Files Flow hands to other apps: recap cards and playlist files, only from their cache folders. -->
+        <!-- Files YouGlideTube hands to other apps: recap cards and playlist files, only from their cache folders. -->
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.files"

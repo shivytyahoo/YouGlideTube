@@ -18,9 +18,9 @@
 
 <!-- List the exact checks you ran and their results. Mark non-applicable checks as such instead of claiming they passed. -->
 
-- [ ] `./gradlew :app:assembleGithubDebug`
-- [ ] `./gradlew :app:testGithubDebugUnitTest`
-- [ ] I ran any additional flavor-specific build or test tasks affected by this change.
+- [ ] `./gradlew :app:assembleDebug`
+- [ ] `./gradlew :app:testDebugUnitTest`
+- [ ] I ran any additional build or test tasks affected by this change.
 - [ ] I manually tested the affected behavior on an Android device or emulator.
 
 **Test device and Android version:**

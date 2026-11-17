@@ -1,4 +1,4 @@
-package io.github.aedev.flow.ui.screens.music
+package io.github.shivytyahoo.glidetube.ui.screens.music
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -32,7 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
-import io.github.aedev.flow.data.search.SearchSuggestionsService
+import io.github.shivytyahoo.glidetube.data.search.SearchSuggestionsService
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch

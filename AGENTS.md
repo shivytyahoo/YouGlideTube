@@ -1,8 +1,8 @@
 # Working with YouGlideTube as an AI agent
 
-YouGlideTube (`shivyt.android.glidetube`) is a fork of Flow 3.0.0 — an Android music/video app written in Kotlin with Jetpack Compose, Hilt, and Media3/ExoPlayer. It plays YouTube content via a native InnerTube client with a NewPipe-based fallback extraction path, supports local media playback, offline downloads, casting, lyrics, a device-to-device sync feature, and an on-device recommendation engine (FlowNeuroEngine). It follows Material 3 design guidelines closely.
+YouGlideTube (`shivyt.android.glidetube`) is an Android music/video app written in Kotlin with Jetpack Compose, Hilt, and Media3/ExoPlayer. It plays YouTube content via a native InnerTube client with a NewPipe-based fallback extraction path, supports local media playback, offline downloads, casting, lyrics, a device-to-device sync feature, and an on-device recommendation engine (GlideNeuroEngine). It follows Material 3 design guidelines closely.
 
-Product flavors: `github` (default, in-app updater enabled) and `foss` (no updater). Always use flavor-prefixed Gradle tasks — e.g. `assembleGithubDebug`, `compileFossDebugKotlin` — never bare `assembleDebug`/`compileDebugKotlin`.
+There is one app variant. Use standard Gradle tasks such as `assembleDebug`, `assembleRelease`, and `testDebugUnitTest`. The release APK is universal and includes Android TV support.
 
 ## graphify
 
@@ -214,7 +214,7 @@ hard constraints, not suggestions.
 13. Sustained heat while the app is open = per-frame work; drain with the screen off = CPU/network
     loops. Diagnose in that order: (a) run the rule-2 audit over every composed-but-hidden tree;
     (b) count fetches per user action in logcat — any unexplained second fetch is the bug;
-    (c) check `adb shell dumpsys gfxinfo io.github.aedev.flow` for continuous frame production
+    (c) check `adb shell dumpsys gfxinfo io.github.shivytyahoo.glidetube` for continuous frame production
     while the UI should be idle; (d) only then suspect the player path. Do not "fix" heat by
     degrading visible design, motion, or update smoothness — find the invisible work instead.
 
@@ -293,8 +293,7 @@ and playback behavior.
     Android entry points change, also add or run an integration test that constructs the affected
     path; unit tests that instantiate the class directly do not validate Hilt wiring.
 13. Minimum validation for a non-player DI migration is `ktlintCheck`,
-    `:app:testGithubDebugUnitTest`, `:app:compileGithubDebugKotlin`, and
-    `:app:compileFossDebugKotlin`, followed by the relevant flavor build. Exercise the affected UI
+    `:app:testDebugUnitTest` and `:app:compileDebugKotlin`, followed by the app build. Exercise the affected UI
     or background flow on a device/emulator, including configuration change and an error path. A
     player/startup migration additionally requires the player golden paths above and relevant
     startup/playback measurements. Do not describe a migration as safe, risk-free, or behaviorally
@@ -386,8 +385,8 @@ Split by **responsibility**, never by line count. In order of preference:
 
 ### Naming conventions (already in force — match them)
 
-- `shared/` primitives with no domain meaning take the **`Flow`** prefix: `FlowFilterChip`,
-  `FlowSearchField`, `FlowEmptyState`, `FlowLoadingIndicator`.
+- `shared/` primitives with no domain meaning take the **`Glide`** prefix: `GlideFilterChip`,
+  `GlideSearchField`, `GlideEmptyState`, `GlideLoadingIndicator`.
 - `shared/` components in the media vocabulary take the **`Media`** prefix: `MediaRow`,
   `MediaThumbnail`, `MediaBadges`, `MediaKindSelector`.
 - Feature components take the **feature** prefix: `LibraryShelf`, `MusicTrackItem`,
@@ -420,8 +419,8 @@ identical before and after, unless the task explicitly asked for a visual change
 The route composable, its state hoisting, its effects and its layout. Not: bespoke cards, bespoke
 rows, bespoke empty/error states, bespoke badges, bespoke formatters, or a second copy of a
 `shared/` component. Before writing any of those, run `graphify query` and read
-`ui/components/shared/` — the app already has `FlowEmptyState`, `FlowErrorState`, `MediaRow`,
-`MediaThumbnail`, `MediaBadges`, `FlowSearchField`, `ShimmerLoading` and `FastScrollbar`.
+`ui/components/shared/` — the app already has `GlideEmptyState`, `GlideErrorState`, `MediaRow`,
+`MediaThumbnail`, `MediaBadges`, `GlideSearchField`, `ShimmerLoading` and `FastScrollbar`.
 
 ### ViewModels
 
@@ -450,16 +449,6 @@ rows, bespoke empty/error states, bespoke badges, bespoke formatters, or a secon
 3. Follow current Kotlin and Android best practices — when unsure, check official docs rather than guessing.
 4. DO NOT edit the app's Room database schema without explicit instruction (schema changes require a version bump and migration, handled deliberately).
 5. DO NOT bump the app version in any file — version bumps are done manually by the project owner.
-6. Every PR with a change users can notice adds a nightly note: one new file
-   `.github/nightly-notes/YYYY-MM-DD-<branch>.md` (the date the PR is opened, the branch name in
-   lowercase with `/` replaced by `-`) holding `## New`, `## Improved` or `## Fixed` headings, each
-   with one short `- ` bullet per change, written for users, issues as `(#123)`, no em-dashes. One
-   file per PR, never edit another PR's file. CI, test and refactor-only PRs add none. CI publishes
-   every note as the nightly release body that the in-app update screen shows, and the Checks job
-   fails on a malformed note (`python3 .github/scripts/nightly_notes.py --check`). This is separate
-   from the release changelog in `app/src/main/assets/changelog/v*.txt`; at a stable release the
-   notes are folded into it and into `release-notes.md`, and the note files are deleted (keep the
-   folder's `README.md`).
 
 ## AI-only guidelines
 
@@ -502,10 +491,10 @@ revision must pass the configured ktlint rules.
 
 ## Building and testing your changes
 
-1. After making changes, build the relevant flavor to check for compilation errors, e.g.:
+1. After making changes, build the single app variant to check for compilation errors, e.g.:
 
 ```bash
-./gradlew :app:assembleGithubDebug
+./gradlew :app:assembleDebug
 ```
 
 2. If the build fails, fix the reported errors and rebuild before proceeding.
@@ -516,17 +505,16 @@ revision must pass the configured ktlint rules.
 The app ships a generated baseline profile at `app/src/main/generated/baselineProfiles/`
 (`baseline-prof.txt` drives ART's AOT compilation; `startup-prof.txt` drives dex layout). It is
 generated on a real device by the `:benchmark` module, and the generated files **are committed**.
-`baselineProfile { mergeIntoMain = true }` makes every shipped variant (github, foss, nightly) read
-the same files, so foss and nightly startup match github release.
+`baselineProfile { mergeIntoMain = true }` merges the committed startup profile into the single universal release APK.
 
 ```bash
-./gradlew :app:generateGithubReleaseBaselineProfile
+./gradlew :app:generateReleaseBaselineProfile
 ```
 
 **Regenerate when:**
 
 1. Before tagging a release, if the profile has not been regenerated since the last one.
-2. After changing the cold-start path — `MainActivity.onCreate`, `FlowApp`, app-level DI graph,
+2. After changing the cold-start path — `MainActivity.onCreate`, `GlideApp`, app-level DI graph,
    theme resolution, or player/cache initialization.
 3. After changing a journey the generator exercises (app launch, Home feed scroll), or after
    editing `BaselineProfileGenerator` itself.

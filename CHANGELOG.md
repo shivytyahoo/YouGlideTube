@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.8 — 2026-11-17
+
+- TV tabs refresh properly now: tapping Home, Library, Subscriptions or Music again refreshes the feed on TV, just like on mobile
+- Music tags work now: tapping a tag in the Music tab filters the feed instead of doing nothing
+- Smoother playback: faster, steadier streaming with improved buffering, including Shorts
+- Single universal GitHub build now: no separate FOSS build, and no Discord or Reddit integration in the app
+
+
 ## 1.0.7 — 2026-11-16
 
 - Smoother playback on slow connections: videos start at a lower quality and climb only when the connection proves fast, and a stall steps the quality down instead of looping

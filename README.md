@@ -11,15 +11,15 @@
 <p align="center"><b>Buttery smooth. Truly yours.</b></p>
 
 <p align="center">
-  <a href="https://github.com/shivytyahoo/YouGlideTube/releases/tag/v1.0.7"><img src="https://img.shields.io/badge/version-1.0.7-blue?style=flat-square" alt="Version 1.0.7"></a>
+  <a href="https://github.com/shivytyahoo/YouGlideTube/releases/tag/v1.0.8"><img src="https://img.shields.io/badge/version-1.0.8-blue?style=flat-square" alt="Version 1.0.8"></a>
   <a href="https://github.com/shivytyahoo/YouGlideTube/releases"><img src="https://img.shields.io/github/v/release/shivytyahoo/YouGlideTube?style=flat-square" alt="Latest release"></a>
   <img src="https://img.shields.io/badge/platform-Android%208.0%2B-3DDC84?style=flat-square" alt="Android 8.0+">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0-blue?style=flat-square" alt="GPL-3.0"></a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/shivytyahoo/YouGlideTube/releases/tag/v1.0.7"><b>⬇️ Download YouGlideTube 1.0.7</b></a><br>
-  <sub><code>YouGlideTube-1.0.7.apk</code> · universal APK — one file for every device · 16,798,498 bytes · installs over 1.0.6 · Android 8.0 (API 26) or newer</sub>
+  <a href="https://github.com/shivytyahoo/YouGlideTube/releases/tag/v1.0.8"><b>⬇️ Download YouGlideTube 1.0.8</b></a><br>
+  <sub><code>YouGlideTube.apk</code> · one universal APK for Android phones, tablets and Android TV · Android 8.0 (API 26) or newer</sub>
 </p>
 
 ## About
@@ -29,16 +29,13 @@
 background play, downloads and a clean, distraction-free interface,
 on your phone and on your Android TV.
 
-It is a fork of [Flow 3.0.0](https://github.com/A-EDev/Flow), rebranded
-and extended end to end: the player foundation builds on open-source work
-licensed under the GNU General Public License v3.0, and this project is
-distributed under the same license. See [LICENSE](LICENSE) for the full
-text.
+The project is distributed under the GNU General Public License v3.0.
+See [LICENSE](LICENSE) for the full text.
 
 | | |
 |---|---|
 | **App** | `shivyt.android.glidetube` |
-| **Latest release** | [1.0.7](https://github.com/shivytyahoo/YouGlideTube/releases/tag/v1.0.7) |
+| **Latest release** | [1.0.8](https://github.com/shivytyahoo/YouGlideTube/releases/tag/v1.0.8) |
 | **Requires** | Android 8.0 (API 26) or newer |
 | **TV** | Android TV layout included — same app, big-screen interface |
 | **License** | GPL-3.0 |
@@ -280,7 +277,6 @@ See [CHANGELOG.md](CHANGELOG.md) for the full list.
 - **Music mode with lyrics** — synced lyrics, source choice and
   auto-romanization
 - **ListenBrainz scrobbling**
-- **Discord rich presence**
 
 ### 📱 Doubles as a media player
 
@@ -363,65 +359,6 @@ than pretend everything is fine. And when you move to the couch, it is
 there too: the same app on Android TV, with the same feed and the same
 look, built for the remote.
 
-## Differences from Flow
-
-YouGlideTube is a fork of Flow 3.0.0, modified in 2026. The player
-foundation, Media3 playback engine and InnerTube client come from Flow
-(under GPL-3.0, with credit below); everything below was changed,
-added or removed in this fork:
-
-**Rebrand**
-
-- New name, launcher icon, splash and About screens — nothing visible
-  still says Flow
-- New application ID: `shivyt.android.glidetube`
-- New look: dark-first theme, blue-to-teal brand, glass navigation pill,
-  floating circles background, and video cards coloured from their
-  thumbnails
-- Own versioning, starting at 1.0.0, with its own updater and release
-  channel
-
-**Removed**
-
-- Donations
-- Explorer tab
-- "Your taste" feature (the engine still runs inside)
-
-**Added**
-
-- Google sign-in, built from scratch, with multiple accounts (upstream
-  Flow had no sign-in)
-- Watch-history sync with your YouTube account, both ways
-- Full comment actions — post, reply, edit, delete and like, including
-  replies inside threads
-- Live chat — send messages and remove your own
-- Library and History that keep your latest watches and likes on top,
-  across restarts
-- Settings order with Google Account at the top
-- Subscription notifications — in-app inbox plus system notifications
-  on a schedule you choose
-- Feed previews with tap-to-continue and an unmute button
-- Shorts pre-buffering for pause-free scrolling
-- Slow-network playback tuning — videos buffer before play, quality
-  steps up smoothly
-- Glass navigation pill, circles background and redesigned video cards
-- In-app update checks with same-version rebuild detection
-- Android TV support — big-screen layout with a D-pad navigation rail,
-  Shorts tab, full TV player and the same feed, subscriptions and music
-- Live streams that play through your signed-in session, with Auto
-  quality by default
-- History Clear All and Delete that remove videos from the server
-  history, not just the local list
-- Playlists that load in full, Watch Later that saves on the server,
-  and a Library that updates live
-- Clip downloads and multi-audio downloads
-- Animated backgrounds — 30 festival looks — and Battery saver
-
-**Kept from Flow**
-
-- The buttery-smooth playback engine and workflow
-- SponsorBlock, DeArrow and Return YouTube Dislike
-- Local media playback, lyrics, downloads and Material 3 interface
 
 ## 🙏 Credits and thanks
 
@@ -429,14 +366,11 @@ YouGlideTube stands on the shoulders of open source. None of this exists
 without the projects and people below, and this project is grateful to
 every one of them.
 
-- **[Flow](https://github.com/A-EDev/Flow)** — the project this is
-  forked from. The playback engine, the native InnerTube client, the
-  Material 3 foundation and the whole workflow come from Flow and its
-  maintainers. Thank you for building it in the open under GPL-3.0.
+- **Flow 3.0.0** — special thanks to the original Flow developer for the
+  open-source foundation and the work that helped make YouGlideTube possible.
 - **[NewPipe](https://github.com/TeamNewPipe/NewPipe)** — the pioneering
-  open-source YouTube client. Flow's early versions ran on NewPipe's
-  extractor, and the whole independent-client ecosystem owes NewPipe and
-  its contributors a debt for proving this could be done, in the open.
+  open-source YouTube client. The independent-client ecosystem owes NewPipe and its contributors a
+  debt for proving this could be done in the open.
 - **[Morphe Manager](https://github.com/MorpheApp/morphe-manager)** —
   design inspiration for this interface. The dark-first surfaces,
   blue-to-teal brand and glass cards take cues from Morphe Manager's
@@ -497,7 +431,7 @@ works. It needs Android 8.0 (API 26) or newer.
 ```sh
 git clone https://github.com/shivytyahoo/YouGlideTube.git
 cd YouGlideTube
-./gradlew :app:assembleGithubRelease
+./gradlew :app:assembleRelease
 ```
 
 ## Changelog

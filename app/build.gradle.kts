@@ -1,4 +1,3 @@
-import com.android.build.api.variant.BuildConfigField
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.util.Properties
 
@@ -50,23 +49,23 @@ fun translatedLocaleTags(): List<String> =
         .sorted()
 
 android {
-    namespace = "io.github.aedev.flow"
-    compileSdk = 37
+    namespace = "io.github.shivytyahoo.glidetube"
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "shivyt.android.glidetube"
         minSdk = 26
         targetSdk = 36
-        versionCode = 7
-        versionName = "1.0.6"
+        versionCode = 8
+        versionName = "1.0.8"
 
-        buildConfigField("int", "NIGHTLY_RUN", "0")
+        buildConfigField("Boolean", "UPDATER_ENABLED", "true")
         buildConfigField("String", "APP_LANGUAGE_TAGS", "\"${(listOf("en") + translatedLocaleTags()).joinToString(",")}\"")
         // Last.fm keys come from the CI secrets; builds without them ask the viewer for their own key.
         buildConfigField("String", "LASTFM_API_KEY", "\"${secretValue("lastfmApiKey", "lastfm.apiKey", "LASTFM_API_KEY")}\"")
         buildConfigField("String", "LASTFM_API_SECRET", "\"${secretValue("lastfmApiSecret", "lastfm.apiSecret", "LASTFM_API_SECRET")}\"")
 
-        testInstrumentationRunner = "io.github.aedev.flow.HiltTestRunner"
+        testInstrumentationRunner = "io.github.shivytyahoo.glidetube.HiltTestRunner"
         vectorDrawables {
             useSupportLibrary = true
         }
@@ -84,28 +83,6 @@ android {
         includeInBundle = false
     }
 
-    splits {
-        abi {
-            isEnable = true
-            reset()
-            include("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
-            isUniversalApk = true
-        }
-    }
-
-    flavorDimensions += "version"
-    productFlavors {
-        create("github") {
-            dimension = "version"
-            isDefault = true
-            buildConfigField("Boolean", "UPDATER_ENABLED", "true")
-            buildConfigField("String", "DISCORD_APPLICATION_ID", "\"1526515771021328514\"")
-        }
-        create("foss") {
-            dimension = "version"
-            buildConfigField("Boolean", "UPDATER_ENABLED", "false")
-        }
-    }
 
     buildFeatures {
         buildConfig = true
@@ -132,27 +109,18 @@ android {
                 ?: System.getenv("KEY_PASSWORD")
                 ?: ""
         }
-        // One long-lived key for every nightly, so each build installs over the last one.
-        create("nightly") {
-            storeFile = rootDir.resolve("nightly.keystore")
-            storePassword = System.getenv("NIGHTLY_STORE_PASSWORD") ?: localProperties.getProperty("nightlyStorePassword") ?: ""
-            keyAlias = System.getenv("NIGHTLY_KEY_ALIAS") ?: localProperties.getProperty("nightlyKeyAlias") ?: ""
-            keyPassword = System.getenv("NIGHTLY_KEY_PASSWORD") ?: localProperties.getProperty("nightlyKeyPassword") ?: ""
-        }
     }
 
     buildTypes {
         debug {
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
-            buildConfigField("String", "UPDATE_CHANNEL", "\"stable\"")
-            isDebuggable = true
+                isDebuggable = true
             isMinifyEnabled = false
             isShrinkResources = false
         }
         release {
-            buildConfigField("String", "UPDATE_CHANNEL", "\"stable\"")
-            isDebuggable = false
+                isDebuggable = false
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
@@ -173,17 +141,6 @@ android {
                 signingConfig = null // Let Gradle build an unsigned APK for IzzyOnDroid/F-Droid
                 println("WARNING: Release keystore not found. Building UNSIGNED release APK.")
             }
-        }
-        // Nightly: release-level performance under its own app id. It must come after release,
-        // because initWith copies release as it stands at this point.
-        create("nightly") {
-            initWith(getByName("release"))
-            applicationIdSuffix = ".nightly"
-            versionNameSuffix = "-nightly"
-            matchingFallbacks += "release"
-            buildConfigField("String", "UPDATE_CHANNEL", "\"nightly\"")
-            val nightlyKey = signingConfigs.getByName("nightly")
-            signingConfig = if (nightlyKey.storeFile?.exists() == true) nightlyKey else signingConfigs.getByName("debug")
         }
     }
 
@@ -226,37 +183,9 @@ tasks.withType<Test>().configureEach {
     maxParallelForks = (Runtime.getRuntime().availableProcessors() / 2).coerceAtLeast(1)
 }
 
-// One profile for every shipped variant: foss, nightly and github run the same startup code, and
-// a per-variant profile left foss and nightly with library profiles only (#1301).
+// Merge the app startup profile into the single universal release build.
 baselineProfile {
     mergeIntoMain = true
-}
-
-// CI nightlies are numbered by workflow run: versionCode = run, versionName = <next>-nightly.<run>+<sha>.
-// Local nightly builds keep defaultConfig's version, so they never replace a CI nightly.
-androidComponents {
-    onVariants(selector().withBuildType("nightly")) { variant ->
-        val run = providers.environmentVariable("GITHUB_RUN_NUMBER").map(String::toInt)
-        val sha = providers.environmentVariable("GITHUB_SHA").map { it.take(7) }
-        val base = providers.gradleProperty("flow.nightlyBaseVersion")
-        variant.outputs.forEach { output ->
-            val localCode = output.versionCode.get()
-            val localName = output.versionName.get()
-            output.versionCode.set(run.orElse(localCode))
-            output.versionName.set(
-                base
-                    .zip(run) { name, number -> "$name-nightly.$number" }
-                    .zip(sha) { name, commit -> "$name+$commit" }
-                    .orElse(localName),
-            )
-        }
-        variant.buildConfigFields?.put(
-            "NIGHTLY_RUN",
-            run
-                .map { BuildConfigField("int", it.toString(), null) }
-                .orElse(BuildConfigField("int", "0", null)),
-        )
-    }
 }
 
 room {
@@ -350,9 +279,6 @@ dependencies {
     // Serialization & JSON
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.gson)
-
-    // conscrypt for OkHttp TLS support on older Android versions
-    implementation(libs.conscrypt.android)
 
     // --- Media Playback ---
     implementation(libs.androidx.media3.exoplayer)

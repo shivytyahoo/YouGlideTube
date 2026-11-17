@@ -1,4 +1,4 @@
-package io.github.aedev.flow.ui.components
+package io.github.shivytyahoo.glidetube.ui.components
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -20,8 +20,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
-import io.github.aedev.flow.player.EnhancedMusicPlayerManager
-import io.github.aedev.flow.ui.screens.music.MusicTrack
+import io.github.shivytyahoo.glidetube.player.EnhancedMusicPlayerManager
+import io.github.shivytyahoo.glidetube.ui.screens.music.MusicTrack
 
 /**
   mini floating music player with modern design and dismiss functionality

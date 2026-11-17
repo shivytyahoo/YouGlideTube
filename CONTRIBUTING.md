@@ -2,7 +2,7 @@
 
 Thank you for your interest in contributing to YouGlideTube! We welcome contributions from the community.
 
-YouGlideTube (`shivyt.android.glidetube`) is a fork of [Flow 3.0.0](https://github.com/A-EDev/Flow) — an Android music/video app written in Kotlin with Jetpack Compose, Hilt, and Media3/ExoPlayer. It plays YouTube content via a native InnerTube client with a NewPipe-based fallback extraction path, and supports local media playback, offline downloads, casting, lyrics, device-to-device sync, and an on-device recommendation engine. On top of that foundation, YouGlideTube adds Google sign-in, watch-history sync, full comment actions, live chat, feed previews, subscription notifications and an Android TV layout.
+YouGlideTube (`shivyt.android.glidetube`) is an Android music/video app written in Kotlin with Jetpack Compose, Hilt, and Media3/ExoPlayer. It plays YouTube content via a native InnerTube client with a NewPipe-based fallback extraction path, and supports local media playback, offline downloads, casting, lyrics, device-to-device sync, and an on-device recommendation engine. On top of that foundation, YouGlideTube adds Google sign-in, watch-history sync, full comment actions, live chat, feed previews, subscription notifications and an Android TV layout.
 
 **Read this file before opening a pull request.** Most review round-trips on this project come from
 one of the rules below, not from the feature itself. `AGENTS.md` in the repository root carries the
@@ -64,11 +64,9 @@ git checkout -b feature/your-feature-name
 
 Always pull the latest `main` before starting work, to minimize merge conflicts.
 
-### Product Flavors
+### Build variants
 
-YouGlideTube builds two flavors: `github` (default, in-app updater enabled) and `foss` (no updater).
-**Always use flavor-prefixed Gradle tasks** — `assembleGithubDebug`, `compileFossDebugKotlin` —
-never bare `assembleDebug` or `compileDebugKotlin`.
+YouGlideTube has one application variant and produces a single universal release APK for Android phones, tablets and Android TV. Use standard Gradle tasks such as `:app:assembleDebug`, `:app:assembleRelease` and `:app:testDebugUnitTest`.
 
 ## 🎨 Material 3 — Strict Guidelines
 
@@ -128,8 +126,8 @@ maintained implementation is on the classpath.
 Before writing any component, effect, animation, formatter, parser, scheduler, or player behaviour:
 
 1. **Check what the app already has.** Read `ui/components/shared/` and `utils/`. The commonest
-   waste is re-implementing something this codebase already exports — `FlowEmptyState`,
-   `FlowErrorState`, `MediaRow`, `MediaThumbnail`, `MediaBadges`, `FlowSearchField`,
+   waste is re-implementing something this codebase already exports — `GlideEmptyState`,
+   `GlideErrorState`, `MediaRow`, `MediaThumbnail`, `MediaBadges`, `GlideSearchField`,
    `ShimmerLoading`, and `FastScrollbar` all exist already.
 2. **Check the version catalog.** `gradle/libs.versions.toml` is the list of what is available.
 3. **Check the actual artifact, not your memory.** The app is on alpha Compose/M3; confirm against
@@ -263,7 +261,7 @@ real shipped regression that had to be found and fixed on-device.
 13. Sustained heat while the app is open = per-frame work; drain with the screen off = CPU/network
     loops. Diagnose in that order: (a) run the rule-2 audit over every composed-but-hidden tree;
     (b) count fetches per user action in logcat — any unexplained second fetch is the bug;
-    (c) check `adb shell dumpsys gfxinfo io.github.aedev.flow` for continuous frame production while
+    (c) check `adb shell dumpsys gfxinfo io.github.shivytyahoo.glidetube` for continuous frame production while
     the UI should be idle; (d) only then suspect the player path. Do not "fix" heat by degrading
     visible design, motion, or update smoothness — find the invisible work instead.
 
@@ -354,8 +352,8 @@ Split by **responsibility**, never by line count:
 
 ### Naming conventions (already in force — match them)
 
-- `shared/` primitives with no domain meaning take the **`Flow`** prefix: `FlowFilterChip`,
-  `FlowSearchField`, `FlowEmptyState`, `FlowLoadingIndicator`.
+- `shared/` primitives with no domain meaning take the **`Glide`** prefix: `GlideFilterChip`,
+  `GlideSearchField`, `GlideEmptyState`, `GlideLoadingIndicator`.
 - `shared/` components in the media vocabulary take the **`Media`** prefix: `MediaRow`,
   `MediaThumbnail`, `MediaBadges`, `MediaKindSelector`.
 - Feature components take the **feature** prefix: `LibraryShelf`, `MusicTrackItem`,
@@ -508,22 +506,21 @@ Review the resulting diff before committing.
 
 ## 🧪 Building and Testing
 
-Build the relevant flavor to check for compilation errors:
+Build the app to check for compilation errors:
 
 ```bash
-./gradlew :app:assembleGithubDebug
+./gradlew :app:assembleDebug
 ```
 
 The minimum validation for a non-trivial change:
 
 ```bash
 ./gradlew ktlintCheck
-./gradlew :app:testGithubDebugUnitTest
-./gradlew :app:compileGithubDebugKotlin
-./gradlew :app:compileFossDebugKotlin
+./gradlew :app:testDebugUnitTest
+./gradlew :app:compileDebugKotlin
 ```
 
-Both flavors must compile — a change that only builds `github` will fail CI on `foss`.
+The single app variant must compile and pass its tests.
 
 - **For UI changes, actually run the app** on an emulator or device and exercise the golden path plus
   edge cases. A passing build does not mean the feature works.

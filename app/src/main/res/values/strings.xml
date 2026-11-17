@@ -376,7 +376,7 @@
     <string name="new_update_available">New Update Available</string>
     <string name="update_available_template">%1$s is now available</string>
     <string name="release_notes">RELEASE NOTES</string>
-    <string name="update_flow">Update YouGlideTube</string>
+    <string name="update_glide">Update YouGlideTube</string>
     <string name="maybe_later">Maybe later</string>
     <!-- Navigation -->
     <string name="nav_home">Home</string>
@@ -696,39 +696,39 @@
     <string name="notifications_empty_body">You\'re all caught up! New updates from your subscriptions will appear here.</string>
     <!-- Settings Screen -->
     <string name="settings_title">Settings</string>
-    <string name="settings_flow_engine_header">YouGlideTube Engine</string>
+    <string name="settings_glide_engine_header">YouGlideTube Engine</string>
     <string name="settings_reset_brain_title">Reset YouGlideTube Personality?</string>
     <string name="settings_reset_brain_body">This erases your YouGlideTube Brain profile.\n\n• Learned topics are forgotten.\n• Personality traits reset.\n• Recommendations go back to default.\n\nThis cannot be undone.</string>
     <string name="settings_reset_everything">Reset Everything</string>
     <string name="settings_analyzing_interactions">Analyzing your interactions...</string>
     <string name="settings_view_analytics">View Analytics</string>
     <!-- Deep Glide Mode -->
-    <string name="deep_flow_mode_title">Deep Glide Mode</string>
-    <string name="deep_flow_mode_subtitle">Browse privately: video pauses, history and scrobbling stop</string>
-    <string name="deep_flow_expires_in">Expires in %s</string>
-    <string name="deep_flow_expire_duration_title">Auto-disable after</string>
-    <string name="deep_flow_expire_duration_subtitle">Private mode switches off automatically after %s</string>
-    <string name="deep_flow_save_history_title">Save to watch history</string>
-    <string name="deep_flow_save_history_subtitle">Keep watch history without teaching recommendations</string>
-    <string name="deep_flow_scrobble_title">Scrobble during Deep Glide</string>
-    <string name="deep_flow_scrobble_subtitle">Keep sending listens to Last.fm, Libre.fm and ListenBrainz</string>
-    <string name="deep_flow_on_search_title">Show on search</string>
-    <string name="deep_flow_on_search_subtitle">A Deep Glide switch above recent searches</string>
-    <string name="deep_flow_dialog_title">Pause Duration</string>
-    <string name="deep_flow_dialog_body">How long should private mode stay on?</string>
-    <string name="deep_flow_enabled_message">Deep Glide enabled</string>
-    <string name="deep_flow_disabled_message">Deep Glide disabled</string>
-    <string name="deep_flow_expired_message">Deep Glide timer ended</string>
-    <string name="deep_flow_active_until_disabled">Deep Glide stays active until you turn it off</string>
-    <string name="deep_flow_duration_never">Never</string>
-    <string name="deep_flow_duration_1h">1 hour</string>
-    <string name="deep_flow_duration_2h">2 hours</string>
-    <string name="deep_flow_duration_4h">4 hours</string>
-    <string name="deep_flow_duration_6h">6 hours</string>
-    <string name="deep_flow_duration_8h">8 hours</string>
-    <string name="deep_flow_duration_12h">12 hours</string>
-    <string name="deep_flow_duration_24h">24 hours</string>
-    <plurals name="deep_flow_duration_hours">
+    <string name="deep_glide_mode_title">Deep Glide Mode</string>
+    <string name="deep_glide_mode_subtitle">Browse privately: video pauses, history and scrobbling stop</string>
+    <string name="deep_glide_expires_in">Expires in %s</string>
+    <string name="deep_glide_expire_duration_title">Auto-disable after</string>
+    <string name="deep_glide_expire_duration_subtitle">Private mode switches off automatically after %s</string>
+    <string name="deep_glide_save_history_title">Save to watch history</string>
+    <string name="deep_glide_save_history_subtitle">Keep watch history without teaching recommendations</string>
+    <string name="deep_glide_scrobble_title">Scrobble during Deep Glide</string>
+    <string name="deep_glide_scrobble_subtitle">Keep sending listens to Last.fm, Libre.fm and ListenBrainz</string>
+    <string name="deep_glide_on_search_title">Show on search</string>
+    <string name="deep_glide_on_search_subtitle">A Deep Glide switch above recent searches</string>
+    <string name="deep_glide_dialog_title">Pause Duration</string>
+    <string name="deep_glide_dialog_body">How long should private mode stay on?</string>
+    <string name="deep_glide_enabled_message">Deep Glide enabled</string>
+    <string name="deep_glide_disabled_message">Deep Glide disabled</string>
+    <string name="deep_glide_expired_message">Deep Glide timer ended</string>
+    <string name="deep_glide_active_until_disabled">Deep Glide stays active until you turn it off</string>
+    <string name="deep_glide_duration_never">Never</string>
+    <string name="deep_glide_duration_1h">1 hour</string>
+    <string name="deep_glide_duration_2h">2 hours</string>
+    <string name="deep_glide_duration_4h">4 hours</string>
+    <string name="deep_glide_duration_6h">6 hours</string>
+    <string name="deep_glide_duration_8h">8 hours</string>
+    <string name="deep_glide_duration_12h">12 hours</string>
+    <string name="deep_glide_duration_24h">24 hours</string>
+    <plurals name="deep_glide_duration_hours">
         <item quantity="one">%1$d hour</item>
         <item quantity="other">%1$d hours</item>
     </plurals>
@@ -801,8 +801,8 @@
     <string name="settings_item_export_data_subtitle">Backup your data</string>
     <string name="settings_item_import_data">Import Data</string>
     <string name="settings_item_import_data_subtitle">Restore from backup or import from other apps</string>
-    <string name="settings_item_about_flow">About YouGlideTube</string>
-    <string name="settings_item_about_flow_subtitle">Version, License, Contributors</string>
+    <string name="settings_item_about_glide">About YouGlideTube</string>
+    <string name="settings_item_about_glide_subtitle">Version, License, Contributors</string>
     <string name="settings_item_support">Support &amp; Donations</string>
     <string name="settings_item_support_subtitle">Help support the development of YouGlideTube</string>
     <string name="settings_region_dialog_title">Select Region</string>
@@ -886,9 +886,9 @@
     <string name="app_icon_picker_subtitle">Choose a launcher icon style. The change takes effect immediately and the launcher will briefly refresh.</string>
     <string name="app_icon_picker_warning">Changing the icon may remove YouGlideTube from your home screen for a moment. Add it back from the app drawer if needed.</string>
     <string name="app_icon_apply_toast">Icon updated - your launcher will refresh</string>
-    <string name="icon_name_flow_red">YouGlideTube Red</string>
-    <string name="icon_name_flow_light">YouGlideTube Light</string>
-    <string name="icon_name_flow_play">YouGlideTube Play</string>
+    <string name="icon_name_glide_red">YouGlideTube Red</string>
+    <string name="icon_name_glide_light">YouGlideTube Light</string>
+    <string name="icon_name_glide_play">YouGlideTube Play</string>
     <string name="icon_name_amoled">YouGlideTube AMOLED</string>
     <string name="icon_name_monochrome">YouGlideTube Mono</string>
     <string name="icon_name_ghost">YouGlideTube Ghost</string>
@@ -1524,6 +1524,7 @@
     <string name="quality_1080p_full_hd">1080p Full HD</string>
     <string name="quality_1440p_qhd">1440p QHD</string>
     <string name="quality_2160p_4k">2160p 4K</string>
+    <string name="quality_4320p_8k">4320p 8K</string>
     <!-- Buffer Settings -->
     <string name="buffer_settings_title">Buffer Settings</string>
     <string name="buffer_settings_desc">Tune video buffering for your connection.</string>
@@ -1736,12 +1737,12 @@
     </plurals>
     <!-- Import Data Screen -->
     <string name="import_data_title">Import Data</string>
-    <string name="import_flow_backup_success">YouGlideTube backup imported successfully</string>
-    <string name="import_flow_backup_failed_template">Failed to import YouGlideTube backup: %1$s</string>
+    <string name="import_glide_backup_success">YouGlideTube backup imported successfully</string>
+    <string name="import_glide_backup_failed_template">Failed to import YouGlideTube backup: %1$s</string>
     <string name="import_newpipe_failed_template">Failed to import NewPipe backup: %1$s</string>
     <string name="import_youtube_failed_template">Failed to import YouTube backup: %1$s</string>
-    <string name="import_flow_backup_item_title">Import YouGlideTube Backup</string>
-    <string name="import_flow_backup_desc">Restore your history, settings, and subscriptions from a YouGlideTube backup file.</string>
+    <string name="import_glide_backup_item_title">Import YouGlideTube Backup</string>
+    <string name="import_glide_backup_desc">Restore your history, settings, and subscriptions from a YouGlideTube backup file.</string>
     <string name="import_from_newpipe">Import from NewPipe</string>
     <string name="import_from_newpipe_desc">Import subscriptions from a NewPipe export file (JSON).</string>
     <string name="import_from_libretube">Import from LibreTube</string>
@@ -1888,9 +1889,9 @@
         <item quantity="other">%1$d threads</item>
     </plurals>
     <!-- Donations Screen -->
-    <string name="support_flow_dev_desc">If YouGlideTube is useful to you, you can support it on Open Collective, Patreon or with crypto below. Thank you!</string>
-    <string name="support_flow_open_collective">Support YouGlideTube on Open Collective</string>
-    <string name="support_flow_patreon">Support YouGlideTube on Patreon</string>
+    <string name="support_glide_dev_desc">If YouGlideTube is useful to you, you can support it on Open Collective, Patreon or with crypto below. Thank you!</string>
+    <string name="support_glide_open_collective">Support YouGlideTube on Open Collective</string>
+    <string name="support_glide_patreon">Support YouGlideTube on Patreon</string>
     <string name="thank_you_support_message">Thank you for your support! ❤️</string>
     <string name="address_copied_toast">Address copied to clipboard</string>
     <!-- One-time support prompt -->
@@ -1907,7 +1908,7 @@
     <string name="about_notices_summary">Word lists and code from other projects</string>
     <string name="about_license_name">GNU GPL v3</string>
     <string name="about_changelog">Changelog</string>
-    <string name="whats_new_in_flow">What\'s new in YouGlideTube</string>
+    <string name="whats_new_in_glide">What\'s new in YouGlideTube</string>
     <string name="about_device_info">Device Info</string>
     <string name="gnu_license_full_title">GNU General Public License</string>
     <string name="loading_ellipsis">Loading...</string>
@@ -1964,7 +1965,7 @@
     <string name="remove_selected_playlist_text">They will be removed from this playlist.</string>
     <string name="remove_selected_watch_later_text">They will be removed from Watch later.</string>
     <!-- Onboarding -->
-    <string name="welcome_to_flow">Welcome to YouGlideTube</string>
+    <string name="welcome_to_glide">Welcome to YouGlideTube</string>
     <string name="onboarding_subtitle">Tell us what you\'re interested in</string>
     <string name="onboarding_instructions">Select at least 3 topics to personalize your experience</string>
     <string name="onboarding_interests_title">What do you enjoy?</string>
@@ -2003,7 +2004,7 @@
     <string name="tv_signin_unavailable_text">TV sign-in is coming back in a later update. For now, you can keep watching without signing in.</string>
     <string name="onboarding_step_channels">Channels</string>
     <string name="onboarding_step_import">Import</string>
-    <string name="onboarding_import_source_flow">YouGlideTube backup</string>
+    <string name="onboarding_import_source_glide">YouGlideTube backup</string>
     <string name="onboarding_import_source_youtube">YouTube</string>
     <string name="onboarding_import_footnote">Everything here is optional. Settings has the same imports.</string>
     <string name="onboarding_import_done">Imported</string>
@@ -2067,7 +2068,7 @@
     <string name="category_science_nature">Science &amp; Nature</string>
     <string name="category_news_current_events">News &amp; Current Events</string>
     <!-- YouGlideTube Personality Screen -->
-    <string name="flow_control_center">YouGlideTube Control Center</string>
+    <string name="glide_control_center">YouGlideTube Control Center</string>
     <string name="action_refresh">Refresh</string>
     <string name="loading_neural_matrix">Loading Neural Matrix...</string>
     <string name="neural_interest_map_subtitle">Your neural interest map</string>
@@ -2111,7 +2112,7 @@
     <string name="stats_topics">Topics</string>
     <string name="empty_bubble_cloud_message">Watch some videos to populate your interest nebula!</string>
     <string name="export_profile_data">Export Profile Data</string>
-    <string name="flow_neural_profile_export_subject">YouGlideTube Neural Profile Export</string>
+    <string name="glide_neural_profile_export_subject">YouGlideTube Neural Profile Export</string>
     <!-- Music Playlists Screen -->
     <string name="screen_title_music_library">Music Library</string>
     <string name="header_your_collection">Your Collection</string>
@@ -2610,7 +2611,7 @@
     <string name="check_for_updates">Check for Updates</string>
     <string name="check_for_updates_subtitle">Tap to check for the latest version</string>
     <string name="checking_for_updates">Checking for updates…</string>
-    <string name="flow_is_up_to_date">YouGlideTube is up to date!</string>
+    <string name="glide_is_up_to_date">YouGlideTube is up to date!</string>
     <string name="update_check_failed">Couldn\'t check for updates. Check your connection.</string>
     <!-- Export / Import YouGlideTube Engine data (Settings + ImportDataScreen) -->
     <string name="export_engine_data">Export Engine Profile</string>
@@ -2700,7 +2701,7 @@
     <string name="sync_error_peer_also_receive">The other device is also set to Receive. Set it to Send, then try again.</string>
     <string name="sync_error_qr_expired">This code has expired. Ask the other device to create a fresh one. If codes keep expiring right away, check that the date and time are correct on both devices.</string>
     <string name="sync_error_qr_wrong_version">Incompatible app version on the other device.</string>
-    <string name="sync_error_qr_not_flow">That doesn\'t look like valid YouGlideTube connection data.</string>
+    <string name="sync_error_qr_not_glide">That doesn\'t look like valid YouGlideTube connection data.</string>
     <string name="sync_error_qr_bad_address">The connection data is missing a valid network address.</string>
     <string name="sync_error_qr_not_local">This code points outside your local network, so YouGlideTube won\'t connect to it. Only use codes shown by your own devices.</string>
     <string name="sync_error_no_peer">No device connected before the code expired. Check that both devices are on the same Wi-Fi, then try again.</string>
@@ -3065,61 +3066,12 @@
     <string name="no_match_found">No match found</string>
     <string name="recognition_error">Recognition failed</string>
     <string name="try_again">Try again</string>
-    <string name="search_in_flow">Search in YouGlideTube</string>
+    <string name="search_in_glide">Search in YouGlideTube</string>
     <string name="recognition_search_history">Search recognized songs</string>
     <string name="recognition_history_empty">Recognized songs will appear here</string>
     <string name="recognition_clear_history">Clear history?</string>
     <string name="recognition_clear_history_body">This removes all recognized songs. This cannot be undone.</string>
     <string name="close_popup_player">Close popup player</string>
-    <!-- Discord Rich Presence -->
-    <string name="discord_presence_title">Discord Rich Presence</string>
-    <string name="discord_presence_enable">Share playback activity</string>
-    <string name="discord_presence_enable_description">Stays connected during pauses and background playback</string>
-    <string name="discord_presence_off">Off</string>
-    <string name="discord_presence_not_connected">Not connected</string>
-    <string name="discord_presence_ready">Linked and ready</string>
-    <string name="discord_presence_ready_as">Linked as %1$s · connects during playback</string>
-    <string name="discord_presence_connected">Connected</string>
-    <string name="discord_presence_connected_as">Connected as %1$s</string>
-    <string name="discord_presence_connected_account">Discord account: %1$s</string>
-    <string name="discord_presence_unavailable">Unavailable in this build</string>
-    <string name="discord_presence_connection_error">Connection error</string>
-    <string name="discord_presence_linking">Waiting for Discord sign-in…</string>
-    <string name="discord_presence_connecting">Connecting to Discord…</string>
-    <string name="discord_presence_connect">Connect Discord account</string>
-    <string name="discord_presence_connect_action">Connect</string>
-    <string name="discord_presence_disconnect">Disconnect and unlink</string>
-    <string name="discord_presence_unlink_action">Unlink</string>
-    <string name="discord_presence_retry">Retry connection</string>
-    <string name="discord_presence_description">Show what you play as your Discord status.</string>
-    <string name="discord_presence_connection_section">Connection</string>
-    <string name="discord_presence_account">Discord account</string>
-    <string name="discord_presence_privacy_section">Privacy and account risk</string>
-    <string name="discord_presence_privacy_title">Privacy</string>
-    <string name="discord_presence_privacy_body">YouGlideTube shares the title, creator, artwork and progress of what you play. Off by default. Your Discord token is encrypted and never logged.</string>
-    <string name="discord_presence_gateway_warning">This signs in with your Discord token instead of an official login. It breaks Discord\'s Terms of Service and can get your account limited or banned.</string>
-    <string name="discord_presence_risk_dialog_title">Accept Discord account risk?</string>
-    <string name="discord_presence_risk_dialog_body">Connecting gives YouGlideTube your Discord token. It stays encrypted on this device and is only sent to Discord. This method breaks Discord\'s Terms of Service, so your account could be limited or banned.</string>
-    <string name="discord_presence_risk_accept">I understand, connect</string>
-    <string name="discord_error_not_initialized">Discord Rich Presence has not initialized.</string>
-    <string name="discord_error_enable_before_connect">Enable Discord Rich Presence before connecting an account.</string>
-    <string name="discord_error_unavailable">Discord Rich Presence is unavailable in this build.</string>
-    <string name="discord_error_open_flow">Open YouGlideTube before connecting Discord.</string>
-    <string name="discord_error_connection_in_progress">A Discord connection is already in progress.</string>
-    <string name="discord_error_login_timeout">Discord sign-in timed out.</string>
-    <string name="discord_error_login_cancelled">Discord connection was cancelled.</string>
-    <string name="discord_error_connection_incomplete">Discord connection did not complete.</string>
-    <string name="discord_error_empty_token">Discord returned an empty session token.</string>
-    <string name="discord_error_missing_application_id">Discord application ID is missing from this build.</string>
-    <string name="discord_error_gateway_timeout">Discord Gateway connection timed out.</string>
-    <string name="discord_error_gateway_reconnect">Discord requested a reconnect.</string>
-    <string name="discord_error_session_rejected">Discord rejected the session. Reconnect your account.</string>
-    <string name="discord_error_gateway_failed">Discord Gateway connection failed.</string>
-    <string name="discord_error_heartbeat_unacknowledged">Discord Gateway heartbeat was not acknowledged.</string>
-    <string name="discord_error_heartbeat_failed">Discord Gateway heartbeat failed.</string>
-    <string name="discord_account_fallback">Discord user</string>
-    <string name="discord_presence_playing_fallback">Playing in YouGlideTube</string>
-    <string name="discord_presence_by_creator">by %1$s</string>
     <!-- Android TV -->
     <string name="settings_item_interface_mode">Interface mode</string>
     <string name="settings_item_interface_mode_subtitle">Choose automatic, mobile, or TV layout</string>
@@ -3246,7 +3198,7 @@
     <string name="ui_navigate">Navigate</string>
     <string name="ui_options">Options</string>
     <string name="ui_selected">Selected</string>
-    <string name="ui_flow_logo">YouGlideTube logo</string>
+    <string name="ui_youglidetube_logo">YouGlideTube logo</string>
     <string name="ui_list_view">List view</string>
     <string name="ui_grid_view">Grid view</string>
     <string name="ui_back">Back</string>
@@ -3818,7 +3770,6 @@
     <string name="settings_keywords_topics">interests, not interested, hide, block, mute, recommendations</string>
     <string name="settings_keywords_sponsorblock">skip sponsors, ads, segments, intro, outro</string>
     <string name="settings_keywords_dearrow">clickbait, titles, thumbnails</string>
-    <string name="settings_keywords_discord">rich presence, now playing, status</string>
     <string name="settings_segment_colour">Colour for %1$s</string>
     <string name="settings_truncated">%1$s…</string>
     <string name="settings_backup_exporting">Exporting…</string>
@@ -3827,7 +3778,7 @@
     <string name="settings_backup_tab_auto">Automatic</string>
     <string name="settings_backup_full">Full backup</string>
     <string name="settings_backup_individual">Individual exports</string>
-    <string name="settings_backup_restore_flow">Restore from YouGlideTube</string>
+    <string name="settings_backup_restore_glide">Restore from YouGlideTube</string>
     <string name="settings_backup_source_youtube">YouTube and Google Takeout</string>
     <string name="settings_backup_source_newpipe">NewPipe</string>
     <string name="settings_backup_source_libretube">LibreTube</string>
@@ -3882,7 +3833,7 @@
     <string name="diagnostics_snapshot_exported">Snapshot exported</string>
     <string name="diagnostics_snapshot_export_failed">Couldn\'t export the snapshot</string>
     <string name="settings_keywords_diagnostics">logs, crash, bug report, debug, support, logcat</string>
-    <string name="settings_keywords_about">version, license, open source, github, reddit, contact, changelog</string>
+    <string name="settings_keywords_about">version, license, open source, github, contact, changelog</string>
     <string name="settings_changelog_version">Version %1$s</string>
     <string name="settings_changelog_installed">Installed</string>
     <string name="settings_changelog_prerelease">Pre-release</string>

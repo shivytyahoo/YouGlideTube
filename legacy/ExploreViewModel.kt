@@ -1,9 +1,9 @@
-package io.github.aedev.flow.ui.screens.explore
+package io.github.shivytyahoo.glidetube.ui.screens.explore
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import io.github.aedev.flow.data.model.Video
-import io.github.aedev.flow.data.repository.YouTubeRepository
+import io.github.shivytyahoo.glidetube.data.model.Video
+import io.github.shivytyahoo.glidetube.data.repository.YouTubeRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

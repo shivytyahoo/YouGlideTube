@@ -1,0 +1,247 @@
+package io.github.shivytyahoo.glidetube.ui.screens.player.content
+
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.content.Intent
+import android.widget.Toast
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.shivytyahoo.glidetube.R
+import io.github.shivytyahoo.glidetube.data.localmedia.LocalMediaIds
+import io.github.shivytyahoo.glidetube.data.model.Comment
+import io.github.shivytyahoo.glidetube.data.model.Video
+import io.github.shivytyahoo.glidetube.innertube.YouTube
+import io.github.shivytyahoo.glidetube.player.EnhancedPlayerManager
+import io.github.shivytyahoo.glidetube.ui.components.shared.SaveVideoSheet
+import io.github.shivytyahoo.glidetube.ui.components.shared.SaveVideoViewModel
+import io.github.shivytyahoo.glidetube.ui.components.shared.rememberVideoShareAction
+import io.github.shivytyahoo.glidetube.ui.components.shared.shareMediaFiles
+import io.github.shivytyahoo.glidetube.ui.components.shared.subscribedCollaboratorIds
+import io.github.shivytyahoo.glidetube.ui.components.videoplayer.info.CommentsPreview
+import io.github.shivytyahoo.glidetube.ui.components.videoplayer.info.VideoInfoSection
+import io.github.shivytyahoo.glidetube.ui.screens.player.VideoPlayerViewModel
+import io.github.shivytyahoo.glidetube.ui.screens.player.state.PlayerCommentsUiState
+import io.github.shivytyahoo.glidetube.ui.screens.player.state.PlayerScreenState
+import io.github.shivytyahoo.glidetube.ui.screens.player.state.PlayerSheet
+import io.github.shivytyahoo.glidetube.ui.screens.player.state.VideoPlayerUiState
+import io.github.shivytyahoo.glidetube.ui.screens.settings.account.GoogleLoginActivity
+import io.github.shivytyahoo.glidetube.utils.youtubeWatchUrl
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
+
+@Composable
+internal fun VideoInfoContent(
+    video: Video,
+    uiState: VideoPlayerUiState,
+    viewModel: VideoPlayerViewModel,
+    saveVideoViewModel: SaveVideoViewModel = hiltViewModel(),
+    screenState: PlayerScreenState,
+    commentsUiState: PlayerCommentsUiState,
+    commentsEnabled: Boolean = true,
+    showCommentsPreview: Boolean = true,
+    deArrowEnabled: Boolean,
+    context: Context,
+    scope: CoroutineScope,
+    snackbarHostState: SnackbarHostState,
+    onChannelClick: (String) -> Unit,
+) {
+    var showAddToPlaylistDialog by remember(video.id) { mutableStateOf(false) }
+    val shareVideoAction = rememberVideoShareAction()
+    val metadata =
+        rememberPlayerVideoMetadata(
+            video = video,
+            uiState = uiState,
+            deArrowEnabled = deArrowEnabled,
+            context = context,
+        )
+    val resolvedVideoTitle = metadata.resolvedVideoTitle
+    val resolvedCollaborators = metadata.resolvedCollaborators
+    val resolvedChannelName = metadata.resolvedChannelName
+    val streamUploadDate = metadata.streamUploadDate
+    val dialogVideo = metadata.dialogVideo
+
+    // ── Error details panel ─────────────────────────────────────────────────
+    if (uiState.error != null) {
+        PlayerErrorPanel(
+            errorHint = uiState.errorHint,
+            videoId = video.id,
+            context = context,
+            onRetryClick = { viewModel.retryLoadVideo() },
+            onResetSession = if (uiState.errorOffersSessionReset) ({ viewModel.resetSessionAndRetry() }) else null,
+        )
+    }
+
+    val downloadedVideoIds by viewModel.downloadedVideoIds.collectAsStateWithLifecycle()
+    val isVideoDownloaded = remember(downloadedVideoIds, video.id) { downloadedVideoIds.contains(video.id) }
+    // The Save button reads the save sheet's own live membership: the sheet's
+    // toggles update it at once, so the button flips the moment a save lands
+    // instead of waiting for a reload. The old one-shot flow ran once per
+    // video and never heard about the sheet's saves (report 25).
+    val savedPlaylistIds by saveVideoViewModel.savedIds.collectAsStateWithLifecycle()
+    LaunchedEffect(video.id) { saveVideoViewModel.loadMembership(video.id) }
+    val isVideoSaved = savedPlaylistIds.isNotEmpty()
+
+    if (showAddToPlaylistDialog) {
+        SaveVideoSheet(
+            video = dialogVideo,
+            onDismiss = { showAddToPlaylistDialog = false },
+        )
+    }
+
+    VideoInfoSection(
+        video = video,
+        title = resolvedVideoTitle,
+        viewCount = video.viewCount,
+        uploadDate = streamUploadDate ?: video.uploadDate,
+        description = video.description,
+        isUpcoming = uiState.isUpcoming,
+        channelName = resolvedChannelName,
+        channelAvatarUrl = uiState.channelAvatarUrl ?: video.channelThumbnailUrl,
+        channelAvatarUrls = video.channelThumbnailUrls,
+        collaborators = resolvedCollaborators,
+        subscribedCollaboratorIds = if (resolvedCollaborators.size > 1) subscribedCollaboratorIds(resolvedCollaborators) else emptySet(),
+        subscriberCount = uiState.channelSubscriberCount,
+        isSubscribed = uiState.isSubscribed,
+        isNotificationsEnabled = uiState.isNotificationsEnabled,
+        likeState = uiState.likeState ?: "NONE",
+        likeCount = (video.likeCount + uiState.likeCountDelta).coerceAtLeast(0),
+        dislikeCount = uiState.dislikeCount?.plus(uiState.dislikeCountDelta)?.coerceAtLeast(0),
+        onLikeClick = {
+            if (!YouTube.isSignedIn()) {
+                context.startActivity(Intent(context, GoogleLoginActivity::class.java))
+            } else {
+                val thumbnailUrl = video.thumbnailUrl
+
+                when (uiState.likeState) {
+                    "LIKED" -> {
+                        viewModel.removeLikeState(video.id)
+                    }
+
+                    else -> {
+                        viewModel.likeVideo(
+                            video.id,
+                            resolvedVideoTitle,
+                            thumbnailUrl,
+                            video.channelName,
+                        )
+                    }
+                }
+            }
+        },
+        onDislikeClick = {
+            if (!YouTube.isSignedIn()) {
+                context.startActivity(Intent(context, GoogleLoginActivity::class.java))
+            } else {
+                when (uiState.likeState) {
+                    "DISLIKED" -> viewModel.removeLikeState(video.id)
+                    else -> viewModel.dislikeVideo(video.id)
+                }
+            }
+        },
+        onSubscribeClick = {
+            if (!YouTube.isSignedIn()) {
+                context.startActivity(Intent(context, GoogleLoginActivity::class.java))
+            } else {
+                val channelThumbSafe =
+                    uiState.channelAvatarUrl?.takeIf { it.isNotEmpty() }
+                        ?: video.channelThumbnailUrl?.takeIf { it.isNotEmpty() }
+                        ?: ""
+
+                viewModel.toggleSubscription(video.channelId, video.channelName, channelThumbSafe)
+
+                scope.launch {
+                    val message =
+                        if (uiState.isSubscribed) {
+                            context.getString(R.string.unsubscribed_from, video.channelName)
+                        } else {
+                            context.getString(R.string.subscribed_to, video.channelName)
+                        }
+
+                    val result =
+                        snackbarHostState.showSnackbar(
+                            message,
+                            actionLabel = if (uiState.isSubscribed) context.getString(R.string.undo) else null,
+                        )
+
+                    if (result == SnackbarResult.ActionPerformed && uiState.isSubscribed) {
+                        viewModel.toggleSubscription(video.channelId, video.channelName, channelThumbSafe)
+                    }
+                }
+            }
+        },
+        onUnsubscribeClick = {
+            if (!YouTube.isSignedIn()) {
+                context.startActivity(Intent(context, GoogleLoginActivity::class.java))
+            } else {
+                val channelThumbSafe =
+                    uiState.channelAvatarUrl?.takeIf { it.isNotEmpty() }
+                        ?: video.channelThumbnailUrl?.takeIf { it.isNotEmpty() }
+                        ?: ""
+                viewModel.toggleSubscription(video.channelId, video.channelName, channelThumbSafe)
+                scope.launch {
+                    snackbarHostState.showSnackbar(
+                        context.getString(R.string.unsubscribed_from, video.channelName),
+                    )
+                }
+            }
+        },
+        onNotificationChange = { enabled -> viewModel.setNotificationEnabled(video.channelId, enabled) },
+        onChannelClick = { onChannelClick(video.channelId) },
+        onSaveClick = { showAddToPlaylistDialog = true },
+        onShareClick = {
+            val fileUri = LocalMediaIds.videoUri(video.id)
+            if (fileUri != null) {
+                context.shareMediaFiles(listOf(fileUri), mimeType = "video/*")
+            } else {
+                shareVideoAction(video.id, resolvedVideoTitle, video.isShort)
+            }
+        },
+        isDeviceFile = LocalMediaIds.isLocal(video.id),
+        onDownloadClick = { screenState.open(PlayerSheet.Download) },
+        isSaved = isVideoSaved,
+        isDownloaded = isVideoDownloaded,
+        onBackgroundPlayClick = { viewModel.startBackgroundPlayback() },
+        onCopyLinkClick = {
+            val url = youtubeWatchUrl(video.id)
+            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            clipboard.setPrimaryClip(ClipData.newPlainText("video_link", url))
+            Toast.makeText(context, context.getString(R.string.link_copied), Toast.LENGTH_SHORT).show()
+        },
+        onCopyLinkAtTimeClick = {
+            val positionMs = EnhancedPlayerManager.getInstance().getCurrentPosition()
+            val url = youtubeWatchUrl(video.id, positionMs / 1000L)
+            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            clipboard.setPrimaryClip(ClipData.newPlainText("video_link_at_time", url))
+            Toast.makeText(context, context.getString(R.string.link_with_timestamp_copied), Toast.LENGTH_SHORT).show()
+        },
+        onDescriptionClick = { screenState.open(PlayerSheet.Description) },
+    )
+
+    if (uiState.isLiveChatAvailable) {
+        io.github.shivytyahoo.glidetube.ui.components.videoplayer.sheet.LiveChatPreview(
+            onClick = { screenState.open(PlayerSheet.LiveChat()) },
+        )
+    }
+
+    if (commentsEnabled) {
+        CommentsPreview(
+            latestComment = if (showCommentsPreview) commentsUiState.comments.firstOrNull()?.text else null,
+            authorAvatar = if (showCommentsPreview) commentsUiState.comments.firstOrNull()?.authorThumbnail else null,
+            totalText = commentsUiState.totalText,
+            showPreviewText = showCommentsPreview,
+            onClick = { screenState.open(PlayerSheet.Comments()) },
+        )
+    }
+
+}

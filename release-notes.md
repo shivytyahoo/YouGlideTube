@@ -44,4 +44,4 @@
 - Library and History keep your latest watches and likes on top, across restarts.
 - Sign in with your Google account, with multiple accounts.
 
-YouGlideTube is a fork of [Flow 3.0.0](https://github.com/A-EDev/Flow), rebranded and extended end to end, and distributed under the GNU General Public License v3.0. See [LICENSE](LICENSE) for the full text.
+YouGlideTube is distributed under the GNU General Public License v3.0. See [LICENSE](LICENSE) for the full text.

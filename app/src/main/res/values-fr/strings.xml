@@ -161,7 +161,7 @@
     <string name="new_update_available">Mise à jour disponible</string>
     <string name="update_available_template">%1$s est maintenant disponible</string>
     <string name="release_notes">NOTES DE VERSION</string>
-    <string name="update_flow">Mettre à jour Glide</string>
+    <string name="update_glide">Mettre à jour Glide</string>
     <string name="maybe_later">Peut-être plus tard</string>
     <!-- Navigation -->
     <string name="nav_home">Accueil</string>
@@ -264,7 +264,7 @@
     <string name="notifications_empty_body">Vous êtes à jour ! Les nouvelles mises à jour de vos abonnements apparaîtront ici.</string>
     <!-- Écran des Paramètres -->
     <string name="settings_title">Paramètres</string>
-    <string name="settings_flow_engine_header">Moteur Glide</string>
+    <string name="settings_glide_engine_header">Moteur Glide</string>
     <string name="settings_active_learning">APPRENTISSAGE ACTIF</string>
     <string name="settings_reset_brain_title">Réinitialiser la personnalité ?</string>
     <string name="settings_reset_brain_body">Cela effacera complètement votre profil d\'intérêt \'Glide Brain\'.\n\n• Tous les sujets appris seront oubliés.\n• Les traits de personnalité reviendront à neutre.\n• Les recommandations reviendront aux valeurs par défaut.\n\nCette action ne peut pas être annulée.</string>
@@ -297,8 +297,8 @@
     <string name="settings_item_export_data_subtitle">Sauvegardez vos données</string>
     <string name="settings_item_import_data">Importer des données</string>
     <string name="settings_item_import_data_subtitle">Restaurer depuis une sauvegarde ou importer depuis d\'autres applications</string>
-    <string name="settings_item_about_flow">À propos de Glide</string>
-    <string name="settings_item_about_flow_subtitle">Version, Licence, Contributeurs</string>
+    <string name="settings_item_about_glide">À propos de Glide</string>
+    <string name="settings_item_about_glide_subtitle">Version, Licence, Contributeurs</string>
     <string name="settings_item_support">Soutien et dons</string>
     <string name="settings_item_support_subtitle">Aidez à soutenir le développement de Glide</string>
     <string name="settings_region_dialog_title">Sélectionner la région</string>
@@ -532,12 +532,12 @@
     <string name="period_one_year">1 an</string>
     <!-- Écran d'Importation de Données -->
     <string name="import_data_title">Importer des données</string>
-    <string name="import_flow_backup_success">Sauvegarde Glide importée avec succès</string>
-    <string name="import_flow_backup_failed_template">Échec de l\'importation de la sauvegarde Glide : %1$s</string>
+    <string name="import_glide_backup_success">Sauvegarde Glide importée avec succès</string>
+    <string name="import_glide_backup_failed_template">Échec de l\'importation de la sauvegarde Glide : %1$s</string>
     <string name="import_newpipe_failed_template">Échec de l\'importation de la sauvegarde NewPipe : %1$s</string>
     <string name="import_youtube_failed_template">Échec de l\'importation de la sauvegarde YouTube : %1$s</string>
-    <string name="import_flow_backup_item_title">Importer une sauvegarde Glide</string>
-    <string name="import_flow_backup_desc">Restaurez votre historique, vos paramètres et vos abonnements depuis un fichier de sauvegarde Glide.</string>
+    <string name="import_glide_backup_item_title">Importer une sauvegarde Glide</string>
+    <string name="import_glide_backup_desc">Restaurez votre historique, vos paramètres et vos abonnements depuis un fichier de sauvegarde Glide.</string>
     <string name="import_from_newpipe">Importer depuis NewPipe</string>
     <string name="import_from_newpipe_desc">Importer les abonnements depuis un fichier d\'exportation NewPipe (JSON).</string>
     <string name="import_from_libretube">Importer depuis LibreTube</string>
@@ -580,8 +580,8 @@
     <string name="select_threads_count_desc">Sélectionnez le nombre de threads (1-8) :</string>
     <!-- Écran des Dons -->
     <string name="support_donations_title">Soutien et dons</string>
-    <string name="support_flow_dev_title">Soutenir le développement de Glide</string>
-    <string name="support_flow_dev_desc">Si vous trouvez Glide utile et souhaitez soutenir son développement, vous pouvez le faire sur Patreon ou faire un don via les adresses de cryptomonnaie ci-dessous. Votre soutien contribue à la pérennité du projet !</string>
+    <string name="support_glide_dev_title">Soutenir le développement de Glide</string>
+    <string name="support_glide_dev_desc">Si vous trouvez Glide utile et souhaitez soutenir son développement, vous pouvez le faire sur Patreon ou faire un don via les adresses de cryptomonnaie ci-dessous. Votre soutien contribue à la pérennité du projet !</string>
     <string name="thank_you_support_message">Merci pour votre soutien ! ❤️</string>
     <string name="address_copied_toast">Adresse copiée dans le presse-papiers</string>
     <string name="donation_address_clip_label">Adresse de Don</string>
@@ -593,7 +593,7 @@
     <string name="newpipe_extractor_subtitle">Bibliothèque d\'extraction principale</string>
     <string name="about_license">Licence</string>
     <string name="about_changelog">Journal des modifications</string>
-    <string name="whats_new_in_flow">Quoi de neuf dans Glide</string>
+    <string name="whats_new_in_glide">Quoi de neuf dans Glide</string>
     <string name="about_device_info">Informations sur l\'appareil</string>
     <string name="gnu_license_full_title">Licence Publique Générale GNU</string>
     <string name="loading_ellipsis">Chargement...</string>
@@ -631,7 +631,7 @@
     <string name="delete_playlist_dialog_title">Supprimer la playlist ?</string>
     <string name="delete_playlist_dialog_text">Cela supprimera définitivement \'%1$s\' et toutes ses vidéos.</string>
     <!-- Accueil -->
-    <string name="welcome_to_flow">Bienvenue dans Glide</string>
+    <string name="welcome_to_glide">Bienvenue dans Glide</string>
     <string name="onboarding_subtitle">Dites-nous ce qui vous intéresse</string>
     <string name="onboarding_instructions">Sélectionnez au moins 3 sujets pour personnaliser votre expérience</string>
     <string name="btn_skip_for_now">Passer pour l\'instant</string>
@@ -650,7 +650,7 @@
     <string name="category_science_nature">Sciences &amp; Nature</string>
     <string name="category_news_current_events">Actualités &amp; Événements</string>
     <!-- Écran de Contrôle de Glide -->
-    <string name="flow_control_center">Centre de contrôle de Glide</string>
+    <string name="glide_control_center">Centre de contrôle de Glide</string>
     <string name="action_refresh">Rafraîchir</string>
     <string name="loading_neural_matrix">Chargement de la matrice neurale...</string>
     <string name="neural_interest_map_subtitle">Votre carte d\'intérêt neurale</string>
@@ -673,7 +673,7 @@
     <string name="stats_topics">Sujets</string>
     <string name="empty_bubble_cloud_message">Regardez quelques vidéos pour remplir votre nébuleuse d\'intérêts !</string>
     <string name="export_profile_data">Exporter les données de profil</string>
-    <string name="flow_neural_profile_export_subject">Exportation du Profil Neural de Glide</string>
+    <string name="glide_neural_profile_export_subject">Exportation du Profil Neural de Glide</string>
     <!-- Écran des Playlists Musicales -->
     <string name="screen_title_music_library">Bibliothèque Musicale</string>
     <string name="header_your_collection">Votre Collection</string>
@@ -861,21 +861,21 @@
     <string name="channel_search_open">Rechercher dans la chaîne</string>
     <string name="channel_search_close">Fermer la recherche</string>
     <string name="channel_search_no_results">Aucun résultat trouvé pour %1$s</string>
-    <string name="deep_flow_mode_title">Mode Deep Glide</string>
-    <string name="deep_flow_mode_subtitle">Mettre l\'apprentissage en pause — naviguer sans influencer votre profil</string>
-    <string name="deep_flow_learning_paused">APPRENTISSAGE EN PAUSE</string>
-    <string name="deep_flow_expires_in">Se désactive dans %s</string>
-    <string name="deep_flow_expire_duration_title">Délai avant désactivation automatique</string>
-    <string name="deep_flow_expire_duration_subtitle">L\'apprentissage reprend automatiquement après %s</string>
-    <string name="deep_flow_dialog_title">Durée de la pause</string>
-    <string name="deep_flow_dialog_body">Combien de temps l\'apprentissage devrait-il rester en pause ?</string>
-    <string name="deep_flow_duration_1h">1 heure</string>
-    <string name="deep_flow_duration_2h">2 heures</string>
-    <string name="deep_flow_duration_4h">4 heures</string>
-    <string name="deep_flow_duration_6h">6 heures</string>
-    <string name="deep_flow_duration_8h">8 heures</string>
-    <string name="deep_flow_duration_12h">12 heures</string>
-    <string name="deep_flow_duration_24h">24 heures</string>
+    <string name="deep_glide_mode_title">Mode Deep Glide</string>
+    <string name="deep_glide_mode_subtitle">Mettre l\'apprentissage en pause — naviguer sans influencer votre profil</string>
+    <string name="deep_glide_learning_paused">APPRENTISSAGE EN PAUSE</string>
+    <string name="deep_glide_expires_in">Se désactive dans %s</string>
+    <string name="deep_glide_expire_duration_title">Délai avant désactivation automatique</string>
+    <string name="deep_glide_expire_duration_subtitle">L\'apprentissage reprend automatiquement après %s</string>
+    <string name="deep_glide_dialog_title">Durée de la pause</string>
+    <string name="deep_glide_dialog_body">Combien de temps l\'apprentissage devrait-il rester en pause ?</string>
+    <string name="deep_glide_duration_1h">1 heure</string>
+    <string name="deep_glide_duration_2h">2 heures</string>
+    <string name="deep_glide_duration_4h">4 heures</string>
+    <string name="deep_glide_duration_6h">6 heures</string>
+    <string name="deep_glide_duration_8h">8 heures</string>
+    <string name="deep_glide_duration_12h">12 heures</string>
+    <string name="deep_glide_duration_24h">24 heures</string>
     <string name="notif_type_reminders_subtitle">Rappels pour l\'heure du coucher et les pauses, par Time Management</string>
     <string name="notif_type_updates">Mises à jour de l’application</string>
     <string name="notif_type_updates_subtitle">Recevez une notification lorsqu\'une nouvelle version de Glide est disponible</string>
@@ -907,11 +907,11 @@
     <string name="appearance_customizer_save">Enregistrer le thème</string>
     <string name="appearance_role_primary">Primaire</string>
     <string name="appearance_role_on_primary">Aux primaires</string>
-    <string name="deep_flow_enabled_message">Deep Glide activé</string>
-    <string name="deep_flow_disabled_message">Deep Glide désactivé</string>
-    <string name="deep_flow_expired_message">Le minuteur Deep Glide s\'est arrêté</string>
-    <string name="deep_flow_active_until_disabled">Deep Glide reste actif jusqu\'à ce que vous le désactiviez</string>
-    <string name="deep_flow_duration_never">Jamais</string>
+    <string name="deep_glide_enabled_message">Deep Glide activé</string>
+    <string name="deep_glide_disabled_message">Deep Glide désactivé</string>
+    <string name="deep_glide_expired_message">Le minuteur Deep Glide s\'est arrêté</string>
+    <string name="deep_glide_active_until_disabled">Deep Glide reste actif jusqu\'à ce que vous le désactiviez</string>
+    <string name="deep_glide_duration_never">Jamais</string>
     <string name="appearance_role_secondary">Secondaire</string>
     <string name="appearance_role_tertiary">Tertiaire</string>
     <string name="app_icon_picker_subtitle">Choisissez un style d\'icône pour le lanceur. La modification prend effet immédiatement et le lanceur s\'actualise brièvement.</string>
@@ -1051,7 +1051,7 @@
     <string name="settings_language_dialog_title">Sélectionner la langue de l\'application</string>
     <string name="settings_language_system_default">Paramètres par défaut du système</string>
     <string name="app_icon_apply_toast">L\'icône a été mise à jour – votre lanceur va s\'actualiser</string>
-    <string name="icon_name_flow_red">Glide Rouge</string>
+    <string name="icon_name_glide_red">Glide Rouge</string>
     <string name="icon_name_monochrome">Monochrome</string>
     <string name="icon_name_ghost">Fantôme</string>
     <string name="icon_name_dynamic">Material You</string>
@@ -1094,7 +1094,7 @@
     <string name="sb_action_show_toast">Notification uniquement</string>
     <string name="sb_action_ignore">Ignorer</string>
     <string name="select_text">Sélectionner le texte</string>
-    <string name="flow_is_up_to_date">Glide est à jour !</string>
+    <string name="glide_is_up_to_date">Glide est à jour !</string>
     <string name="error_not_supported_hint">Ce format ou ce type de contenu ne peut pas être lu dans Glide.</string>
     <string name="proxy_settings_invalid_port">Entrez un port proxy valide compris entre 1 et 65535.</string>
     <string name="proxy_settings_saved">Paramètres de proxy enregistrés</string>
@@ -1153,7 +1153,7 @@
     <string name="audio_access_title">Accès à la musique &amp; à l\'audio</string>
     <string name="audio_access_granted_subtitle">Autorisé</string>
     <string name="audio_access_denied_subtitle">Non autorisé — appuyez pour activer</string>
-    <string name="support_flow_patreon">Soutenez Glide sur Patreon</string>
+    <string name="support_glide_patreon">Soutenez Glide sur Patreon</string>
     <string name="section_app">Application</string>
     <string name="section_contact">Contact</string>
     <string name="section_legal">Légal</string>
@@ -1488,7 +1488,7 @@
     <string name="appearance_system_defaults_subtitle">Choisissez le thème à utiliser lorsque votre appareil passe du mode clair au mode sombre.</string>
     <string name="appearance_system_light_theme">Thème en mode clair</string>
     <string name="appearance_system_dark_theme">Thème en mode sombre</string>
-    <string name="icon_name_flow_light">Glide clair</string>
+    <string name="icon_name_glide_light">Glide clair</string>
     <string name="icon_name_material_sky">Material Sky</string>
     <string name="icon_name_material_mint">Material Mint</string>
     <string name="theme_name_material_you">Material You</string>
@@ -1667,12 +1667,12 @@
     <string name="local_media_grant">Accorder l\'accès</string>
     <string name="history_tab_local_videos">Vidéos locales</string>
     <string name="history_tab_local_music">Musique locale</string>
-    <string name="deep_flow_save_history_title">Ajouter à l\'historique</string>
-    <string name="deep_flow_save_history_subtitle">Conserver les vidéos visionnées dans l\'historique (avec la progression). Le moteur ne s\'en servira toutefois pas pour s\'améliorer. Désactivé = rien n\'est enregistré.</string>
+    <string name="deep_glide_save_history_title">Ajouter à l\'historique</string>
+    <string name="deep_glide_save_history_subtitle">Conserver les vidéos visionnées dans l\'historique (avec la progression). Le moteur ne s\'en servira toutefois pas pour s\'améliorer. Désactivé = rien n\'est enregistré.</string>
     <string name="share_link_only_template">https://youtube.com/watch?v=%1$s</string>
     <string name="content_settings_share_without_text_title">Partager des liens sans texte</string>
     <string name="content_settings_share_without_text_subtitle">Partagez uniquement le lien vers la vidéo, sans le message « Regardez cette vidéo »</string>
-    <string name="icon_name_flow_play">Glide Lecture</string>
+    <string name="icon_name_glide_play">Glide Lecture</string>
     <string name="player_appearance_controls_while_loading_title">Commandes pendant le chargement</string>
     <string name="player_appearance_controls_while_loading_subtitle">Afficher les commandes avant la fin du chargement de la vidéo</string>
     <string name="player_settings_autoplay_countdown_title">Délai de lecture automatique</string>
@@ -1701,7 +1701,7 @@
     <string name="no_match_found">Aucun résultat trouvé</string>
     <string name="recognition_error">Échec de la reconnaissance</string>
     <string name="try_again">Réessayez</string>
-    <string name="search_in_flow">Rechercher dans Glide</string>
+    <string name="search_in_glide">Rechercher dans Glide</string>
     <string name="recognition_search_history">Rechercher des morceaux reconnus</string>
     <string name="recognition_history_empty">Les morceaux identifiés s\'afficheront ici</string>
     <string name="recognition_clear_history">Effacer l\'historique ?</string>
@@ -1759,7 +1759,7 @@
     <string name="sync_error_peer_also_receive">L\'autre appareil est également réglé sur « Réception ». Réglez-le sur « Émission », puis relancez la recherche.</string>
     <string name="sync_error_qr_expired">Ce QR code a expiré. Demandez à l\'autre appareil d\'en afficher un nouveau.</string>
     <string name="sync_error_qr_wrong_version">Version de l\'application incompatible sur l\'autre appareil.</string>
-    <string name="sync_error_qr_not_flow">Ça ne ressemble pas à un code de synchronisation Glide.</string>
+    <string name="sync_error_qr_not_glide">Ça ne ressemble pas à un code de synchronisation Glide.</string>
     <string name="sync_error_qr_bad_address">Il manque une adresse réseau valide dans le code de synchronisation.</string>
     <string name="sync_collection_subscriptions">Abonnements</string>
     <string name="sync_collection_settings">Paramètres</string>
@@ -1966,7 +1966,7 @@
     <string name="ui_navigate">Naviguer</string>
     <string name="ui_options">Options</string>
     <string name="ui_selected">Sélectionné</string>
-    <string name="ui_flow_logo">Logo Glide</string>
+    <string name="ui_youglidetube_logo">Logo Glide</string>
     <string name="ui_list_view">Affichage sous forme de liste</string>
     <string name="ui_grid_view">Affichage en grille</string>
     <string name="ui_back">Retour</string>
@@ -2066,38 +2066,7 @@
     <string name="notification_channel_reminders">Rappels</string>
     <string name="notification_channel_updates">Mises à jour de l\'application</string>
     <string name="notification_channel_imports">Importation de données</string>
-    <string name="discord_presence_title">Fonctionnalités avancées de Discord</string>
-    <string name="discord_presence_enable">Partager l\'activité de lecture</string>
-    <string name="discord_presence_enable_description">Reste connecté pendant les pauses et la lecture en arrière-plan</string>
-    <string name="discord_presence_retry">Réessayer la connexion</string>
-    <string name="discord_error_login_timeout">Le délai d\'attente pour la connexion à Discord a expiré.</string>
-    <string name="discord_error_login_cancelled">La connexion à Discord a été interrompue.</string>
-    <string name="discord_error_connection_incomplete">La connexion à Discord n\'a pas abouti.</string>
     <string name="tv_library_history">Historique</string>
-    <string name="discord_presence_off">Off</string>
-    <string name="discord_presence_not_connected">Non connecté</string>
-    <string name="discord_presence_ready">Connecté et prêt</string>
-    <string name="discord_presence_ready_as">Lié en tant que %1$s · se connecte pendant la lecture</string>
-    <string name="discord_presence_connected">Connecté</string>
-    <string name="discord_presence_connected_as">Connecté en tant que %1$s</string>
-    <string name="discord_presence_connected_account">Compte Discord : %1$s</string>
-    <string name="discord_presence_unavailable">Indisponible dans cette version</string>
-    <string name="discord_presence_connection_error">Erreur de connexion</string>
-    <string name="discord_presence_linking">En attente de connexion à Discord…</string>
-    <string name="discord_presence_connecting">Connexion à Discord…</string>
-    <string name="discord_presence_connect">Connecter un compte Discord</string>
-    <string name="discord_presence_connect_action">Se connecter</string>
-    <string name="discord_presence_disconnect">Déconnecter et dissocier</string>
-    <string name="discord_presence_unlink_action">Dissocier</string>
-    <string name="discord_error_missing_application_id">L\'identifiant de l\'application Discord est absent de cette version.</string>
-    <string name="discord_error_gateway_timeout">Le délai de connexion à Discord Gateway a expiré.</string>
-    <string name="discord_error_gateway_reconnect">Discord a demandé une reconnexion.</string>
-    <string name="discord_error_session_rejected">Discord a rejeté la session. Reconnectez-vous à votre compte.</string>
-    <string name="discord_error_gateway_failed">Échec de la connexion à Discord Gateway.</string>
-    <string name="discord_error_heartbeat_unacknowledged">Le signal de vérification de la connexion de la passerelle Discord n\'a pas été confirmé.</string>
-    <string name="discord_error_heartbeat_failed">Échec du signal de vérification de la passerelle Discord.</string>
-    <string name="discord_account_fallback">Utilisateur de Discord</string>
-    <string name="discord_presence_by_creator">par %1$s</string>
     <string name="settings_item_interface_mode">Mode d\'interface</string>
     <string name="settings_item_interface_mode_subtitle">Choisissez la mise en page automatique, mobile ou TV</string>
     <string name="interface_mode_title">Mode d\'interface</string>
@@ -2117,7 +2086,6 @@
     <string name="tv_search_hint">Recherche de vidéos</string>
     <string name="tv_search_empty">Rechercher des vidéos à regarder</string>
     <string name="tv_search_no_results">Aucune vidéo trouvée</string>
-    <string name="discord_error_empty_token">Discord a renvoyé un jeton de session vide.</string>
     <string name="error_failed_to_load_videos">Impossible de charger les vidéos.</string>
     <string name="error_invalid_channel_url">URL de chaîne non valide</string>
     <string name="error_channel_loading_timed_out">Délai d\'attente dépassé pour le chargement de la chaîne</string>
@@ -2169,21 +2137,6 @@
     <string name="download_muxing_failed_retry">Le multiplexage a échoué — essayez de télécharger à nouveau.</string>
     <string name="download_url_expired">URL expirée (403). Une nouvelle requête est nécessaire.</string>
     <string name="download_sabr_failed">Échec du téléchargement SABR</string>
-    <string name="discord_presence_description">Affichez ce à quoi vous jouez dans Glide en tant que profil enrichi Discord.</string>
-    <string name="discord_presence_connection_section">Connexion</string>
-    <string name="discord_presence_account">Compte Discord</string>
-    <string name="discord_presence_privacy_section">Confidentialité et risques liés au compte</string>
-    <string name="discord_presence_privacy_title">Confidentialité</string>
-    <string name="discord_presence_privacy_body">Lorsqu\'elle est activée, l\'application Glide partage avec Discord le titre de la vidéo, du « Short », du live ou du morceau en cours de lecture, ainsi que le nom du créateur ou de l\'artiste, la pochette et la durée de lecture. Ce paramètre est désactivé par défaut. Votre jeton de session Discord est chiffré à l\'aide du Keystore Android et n\'est jamais ajouté aux journaux de l\'application.</string>
-    <string name="discord_presence_gateway_warning">Glide utilise une connexion non officielle de type « self-bot » via le jeton de votre compte Discord, et non via OAuth. Cela constitue une violation des Conditions d\'utilisation de Discord et peut entraîner la suspension ou la résiliation de votre compte. Les clients non pris en charge peuvent également déclencher des alertes de fuite de jeton, des réinitialisations de mot de passe, des CAPTCHA ou des verrouillages nécessitant une vérification par téléphone.</string>
-    <string name="discord_presence_risk_dialog_title">Accepter les risques liés au compte Discord ?</string>
-    <string name="discord_presence_risk_dialog_body">En vous connectant via Discord, vous fournissez à Glide le jeton de votre compte Discord. Glide le stocke en le chiffrant à l\'aide du Keystore Android et ne l\'envoie qu\'à Discord, mais cette méthode non officielle d\'utilisation d\'un bot personnel enfreint les Conditions d\'utilisation de Discord. Discord peut suspendre ou résilier votre compte, vous obliger à réinitialiser votre mot de passe, vous demander de saisir des CAPTCHA ou verrouiller votre compte en exigeant une vérification par téléphone.</string>
-    <string name="discord_presence_risk_accept">Je comprends, me connecter</string>
-    <string name="discord_error_not_initialized">La fonctionnalité « Rich Presence » de Discord ne s\'est pas initialisée.</string>
-    <string name="discord_error_enable_before_connect">Activez la fonctionnalité « Rich Presence » de Discord avant de connecter un compte.</string>
-    <string name="discord_error_unavailable">La fonctionnalité « Rich Presence » de Discord n\'est pas disponible dans cette version.</string>
-    <string name="discord_error_open_flow">Lancez Glide avant de vous connecter à Discord.</string>
-    <string name="discord_error_connection_in_progress">Une connexion à Discord est déjà en cours.</string>
     <string name="tv_library_liked">Vidéos aimées</string>
     <string name="tv_library_playlists">Playlists</string>
     <string name="tv_library_empty">Votre bibliothèque est vide</string>
@@ -2209,11 +2162,8 @@
     <string name="import_external_services">Services externes</string>
     <string name="import_other_youtube_clients">Importer depuis d\'autres clients YouTube</string>
     <string name="fallback_your_saved_shorts">Vos shorts enregistrés</string>
-    <string name="discord_presence_playing_fallback">Joué dans Glide</string>
     <string name="about_creator_name">shivytyahoo</string>
     <string name="about_website_address">github.com/shivytyahoo/YouGlideTube</string>
-    <string name="about_reddit">Reddit</string>
-    <string name="about_reddit_subtitle">r/Flow_Official</string>
     <string name="about_license_name">GNU GPL v3</string>
     <string name="tv_music_empty">Aucune musique à recommander pour le moment</string>
     <string name="tv_music_charts">Classement musical</string>
@@ -2245,7 +2195,7 @@
     <string name="tv_music_no_lyrics">Aucune parole trouvée</string>
     <string name="tv_music_radio">Radio</string>
     <string name="tv_settings_appearance">Apparence</string>
-    <string name="tv_settings_flow_engine">Moteur Glide</string>
+    <string name="tv_settings_glide_engine">Moteur Glide</string>
     <string name="tv_settings_sync">Synchroniser les appareils</string>
     <string name="tv_sync_qr_session_active">Ce code reste actif tant que cet écran est ouvert.</string>
     <string name="tv_remote_guide_title">Guide d\'utilisation de la télécommande et du clavier</string>
@@ -2424,7 +2374,7 @@
     <string name="load_failed">Échec du chargement</string>
     <string name="import_success_count">%1$d %2$s importé</string>
     <string name="import_success">%1$s a été importé avec succès</string>
-    <plurals name="deep_flow_duration_hours">
+    <plurals name="deep_glide_duration_hours">
         <item quantity="one">%1$d heure</item>
         <item quantity="many">%1$d heures</item>
         <item quantity="other">%1$d heures</item>

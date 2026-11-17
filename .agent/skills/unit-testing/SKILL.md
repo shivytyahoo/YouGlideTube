@@ -5,7 +5,7 @@ description: Guidelines, patterns, and best practices for writing Kotlin unit te
 
 # Kotlin Unit Testing Guidelines & Best Practices for Flow
 
-This skill outlines the standards and conventions for writing unit tests in the Flow codebase (`io.github.aedev.flow`).
+This skill outlines the standards and conventions for writing unit tests in the YouGlideTube codebase (`io.github.shivytyahoo.glidetube`).
 
 ## 1. Naming Conventions
 
@@ -103,4 +103,4 @@ fun `removeLike calls repository to remove item`() = runTest {
 3. ✅ MockK is used for dependencies with `unmockkAll()` in `@After`.
 4. ✅ Main dispatcher rule/setup is present for ViewModel tests.
 5. ✅ Google Truth (`assertThat`) is used for assertions.
-6. ✅ Test passes cleanly via `./gradlew :app:testGithubDebugUnitTest`.
+6. ✅ Test passes cleanly via `./gradlew :app:testDebugUnitTest`.

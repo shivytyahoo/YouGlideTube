@@ -1,6 +1,6 @@
 {
     "keySpec": 2,
-    "about": "Tables NeuroKeySpec reads titles by, written by KeySpecTablesTest. Flow Desktop mirrors this file.",
+    "about": "Tables NeuroKeySpec reads titles by, written by KeySpecTablesTest. desktop companion mirrors this file.",
     "maxRunWords": 3,
     "maxKeyLength": 40,
     "minStem": 3,

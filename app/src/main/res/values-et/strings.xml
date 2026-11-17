@@ -196,7 +196,7 @@
     <string name="tap_to_close">Sulgemiseks klõpsa</string>
     <string name="new_update_available">Saadaval on rakenduse uuendus</string>
     <string name="update_available_template">%1$s on nüüd saadaval</string>
-    <string name="update_flow">Uuenda rakendust Glide</string>
+    <string name="update_glide">Uuenda rakendust Glide</string>
     <string name="maybe_later">Võib-olla hiljem</string>
     <string name="select_artist">Vali esitaja</string>
     <string name="copy_description">Kopeeri kirjeldus</string>
@@ -298,7 +298,7 @@
     <string name="settings_item_diagnostics">Diagnostika</string>
     <string name="no_groups_yet">Gruppe veel pole. Oma sisuvoo filtreerimiseks loo mõni.</string>
     <string name="settings_title">Seadistused</string>
-    <string name="settings_flow_engine_header">Glide sisumootor</string>
+    <string name="settings_glide_engine_header">Glide sisumootor</string>
     <string name="settings_active_learning">AKTIIVÕPE</string>
     <string name="settings_reset_brain_title">Kas lähtestad Glide isiksuse?</string>
     <string name="settings_reset_brain_body">Järgnevaga kustutad täielikult su „Glide Brain“ huvide profiili.\n\n• Kõik õpitud teemad ununevad.\n• Isiksuseomadused taastuvad neutraalsele tasemele.\n• Soovitused taastuvad vaikimisi valikuteks.\n\nSeda toimingut ei saa tagasi võtta.</string>

@@ -1,4 +1,4 @@
-package io.github.aedev.flow.ui.screens.music
+package io.github.shivytyahoo.glidetube.ui.screens.music
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -110,7 +110,7 @@ fun MusicScreen(
                                 }
                             }
                             Text(
-                                text = "Flow Music",
+                                text = "YouGlideTube Music",
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold
                             )

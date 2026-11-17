@@ -1,4 +1,4 @@
-package io.github.aedev.flow.player
+package io.github.shivytyahoo.glidetube.player
 
 import android.content.Context
 import android.content.Intent
@@ -37,11 +37,11 @@ import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.audio.SilenceSkippingAudioProcessor
-import io.github.aedev.flow.service.VideoPlayerService
-import io.github.aedev.flow.player.datasource.YouTubeHttpDataSource
-import io.github.aedev.flow.player.renderer.CustomRenderersFactory
-import io.github.aedev.flow.player.resolver.VideoPlaybackResolver
-import io.github.aedev.flow.data.local.PlayerPreferences
+import io.github.shivytyahoo.glidetube.service.VideoPlayerService
+import io.github.shivytyahoo.glidetube.player.datasource.YouTubeHttpDataSource
+import io.github.shivytyahoo.glidetube.player.renderer.CustomRenderersFactory
+import io.github.shivytyahoo.glidetube.player.resolver.VideoPlaybackResolver
+import io.github.shivytyahoo.glidetube.data.local.PlayerPreferences
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -60,8 +60,8 @@ import okhttp3.Dispatcher
 import okhttp3.ConnectionPool
 import java.util.concurrent.TimeUnit
 
-import io.github.aedev.flow.data.repository.SponsorBlockRepository
-import io.github.aedev.flow.data.model.SponsorBlockSegment
+import io.github.shivytyahoo.glidetube.data.repository.SponsorBlockRepository
+import io.github.shivytyahoo.glidetube.data.model.SponsorBlockSegment
 
 @UnstableApi
 class EnhancedPlayerManager private constructor() {
@@ -191,7 +191,7 @@ class EnhancedPlayerManager private constructor() {
                                 // Only log if actually stuck for more than 1 second
                                 if (stuckCount >= 2) {
                                     val bufferAhead = bufferedPos - currentPos
-                                    Log.d("FlowDebug", "STALL: Pos=${currentPos}ms | Buff=${bufferedPos}ms (+${bufferAhead}ms ahead) | StuckFor=${stuckCount * 500}ms")
+                                    Log.d("GlideDebug", "STALL: Pos=${currentPos}ms | Buff=${bufferedPos}ms (+${bufferAhead}ms ahead) | StuckFor=${stuckCount * 500}ms")
                                     
                                     // Track buffering for adaptive quality downgrade
                                     if (isAdaptiveQualityEnabled) {
@@ -929,7 +929,7 @@ class EnhancedPlayerManager private constructor() {
                     ?: DefaultDataSource.Factory(
                         ctx,
                         androidx.media3.datasource.okhttp.OkHttpDataSource.Factory(okhttp3.OkHttpClient())
-                            .setUserAgent("Mozilla/5.0 (X11; Android) FlowPlayer")
+                            .setUserAgent("Mozilla/5.0 (X11; Android) GlidePlayer")
                     )
                 
                 // Normalize lists and dedupe by resolution / bitrate / url / content

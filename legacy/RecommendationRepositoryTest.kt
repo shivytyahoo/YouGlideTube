@@ -1,11 +1,11 @@
-package io.github.aedev.flow.legacy
+package io.github.shivytyahoo.glidetube.legacy
 
 import android.content.Context
 import android.util.Log
-import io.github.aedev.flow.data.local.*
-import io.github.aedev.flow.data.model.Video
-import io.github.aedev.flow.data.repository.YouTubeRepository
-import io.github.aedev.flow.legacy.RecommendationRepository
+import io.github.shivytyahoo.glidetube.data.local.*
+import io.github.shivytyahoo.glidetube.data.model.Video
+import io.github.shivytyahoo.glidetube.data.repository.YouTubeRepository
+import io.github.shivytyahoo.glidetube.legacy.RecommendationRepository
 import com.google.common.truth.Truth.assertThat
 import io.mockk.*
 import kotlinx.coroutines.flow.flowOf
@@ -99,10 +99,10 @@ class RecommendationRepositoryTest {
         coEvery { youtubeRepository.searchVideos(any()) } returns Pair(listOf(createVideo("res1")), null)
         
         // Mocking the algorithm V2 if necessary, but it's an object with static methods
-        mockkObject(FlowAlgorithmV2)
-        every { FlowAlgorithmV2.mergeAndDeduplicate(any(), any(), any(), any(), any()) } returns emptyList()
-        coEvery { FlowAlgorithmV2.scoreAndRank(context = any(), candidates = any(), subscriptionChannelIds = any(), recentWatchHistory = any(), likedVideoIds = any(), searchInterestVideoIds = any(), currentTime = any()) } returns emptyList()
-        every { FlowAlgorithmV2.lightShuffle(any(), any()) } answers { it.invocation.args[0] as List<ScoredVideo> }
+        mockkObject(GlideAlgorithmV2)
+        every { GlideAlgorithmV2.mergeAndDeduplicate(any(), any(), any(), any(), any()) } returns emptyList()
+        coEvery { GlideAlgorithmV2.scoreAndRank(context = any(), candidates = any(), subscriptionChannelIds = any(), recentWatchHistory = any(), likedVideoIds = any(), searchInterestVideoIds = any(), currentTime = any()) } returns emptyList()
+        every { GlideAlgorithmV2.lightShuffle(any(), any()) } answers { it.invocation.args[0] as List<ScoredVideo> }
 
         // Mocks for internal caching
         mockkStatic("androidx.datastore.preferences.core.PreferencesKt")

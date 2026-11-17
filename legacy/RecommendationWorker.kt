@@ -1,4 +1,4 @@
-package io.github.aedev.flow.data.recommendation
+package io.github.shivytyahoo.glidetube.data.recommendation
 
 import android.content.Context
 import android.util.Log
@@ -6,7 +6,7 @@ import androidx.work.*
 import java.util.concurrent.TimeUnit
 
 /**
- * WorkManager worker that refreshes the Flow recommendation feed in the background.
+ * WorkManager worker that refreshes the YouGlideTube recommendation feed in the background.
  * Scheduled to run every 4-6 hours to keep recommendations fresh.
  */
 class RecommendationWorker(

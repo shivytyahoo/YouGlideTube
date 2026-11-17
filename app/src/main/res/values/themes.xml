@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.Flow" parent="android:Theme.Material.Light.NoActionBar">
+    <style name="Theme.GlideTube" parent="android:Theme.Material.Light.NoActionBar">
         <!-- Enable edge-to-edge -->
         <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
@@ -13,149 +13,149 @@
     <!-- The platform splash. Before Android 13 it follows the system night mode; from 13 on,
          SplashController picks one of the styles below so each launch matches the app theme
          and launcher icon the user chose. -->
-    <style name="Theme.Flow.Starting" parent="Theme.SplashScreen">
+    <style name="Theme.GlideTube.Starting" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/splash_background</item>
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_dynamic_foreground</item>
-        <item name="postSplashScreenTheme">@style/Theme.Flow</item>
+        <item name="postSplashScreenTheme">@style/Theme.GlideTube</item>
     </style>
 
-    <style name="Theme.Flow.Starting.Light">
+    <style name="Theme.GlideTube.Starting.Light">
         <item name="windowSplashScreenBackground">@color/splash_background_light</item>
     </style>
-    <style name="Theme.Flow.Starting.Light.Play">
+    <style name="Theme.GlideTube.Starting.Light.Play">
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_dynamic_foreground</item>
     </style>
-    <style name="Theme.Flow.Starting.Light.Amoled">
+    <style name="Theme.GlideTube.Starting.Light.Amoled">
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_dynamic_foreground</item>
     </style>
-    <style name="Theme.Flow.Starting.Light.Monochrome">
+    <style name="Theme.GlideTube.Starting.Light.Monochrome">
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_dynamic_foreground</item>
     </style>
-    <style name="Theme.Flow.Starting.Light.Dynamic" parent="Theme.SplashScreen.IconBackground">
+    <style name="Theme.GlideTube.Starting.Light.Dynamic" parent="Theme.SplashScreen.IconBackground">
         <item name="windowSplashScreenBackground">@color/splash_background_light</item>
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_dynamic_foreground</item>
         <item name="windowSplashScreenIconBackgroundColor">@color/icon_bg_dynamic</item>
-        <item name="postSplashScreenTheme">@style/Theme.Flow</item>
+        <item name="postSplashScreenTheme">@style/Theme.GlideTube</item>
     </style>
 
-    <style name="Theme.Flow.Starting.Dark">
+    <style name="Theme.GlideTube.Starting.Dark">
         <item name="windowSplashScreenBackground">@color/splash_background_dark</item>
     </style>
-    <style name="Theme.Flow.Starting.Dark.Play">
+    <style name="Theme.GlideTube.Starting.Dark.Play">
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_dynamic_foreground</item>
     </style>
-    <style name="Theme.Flow.Starting.Dark.Amoled">
+    <style name="Theme.GlideTube.Starting.Dark.Amoled">
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_dynamic_foreground</item>
     </style>
-    <style name="Theme.Flow.Starting.Dark.Monochrome">
+    <style name="Theme.GlideTube.Starting.Dark.Monochrome">
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_dynamic_foreground</item>
     </style>
-    <style name="Theme.Flow.Starting.Dark.Ghost">
+    <style name="Theme.GlideTube.Starting.Dark.Ghost">
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_dynamic_foreground</item>
     </style>
-    <style name="Theme.Flow.Starting.Dark.Dynamic" parent="Theme.SplashScreen.IconBackground">
+    <style name="Theme.GlideTube.Starting.Dark.Dynamic" parent="Theme.SplashScreen.IconBackground">
         <item name="windowSplashScreenBackground">@color/splash_background_dark</item>
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_dynamic_foreground</item>
         <item name="windowSplashScreenIconBackgroundColor">@color/icon_bg_dynamic</item>
-        <item name="postSplashScreenTheme">@style/Theme.Flow</item>
+        <item name="postSplashScreenTheme">@style/Theme.GlideTube</item>
     </style>
 
-    <style name="Theme.Flow.Starting.Black">
+    <style name="Theme.GlideTube.Starting.Black">
         <item name="windowSplashScreenBackground">@color/splash_background_black</item>
     </style>
-    <style name="Theme.Flow.Starting.Black.Play">
+    <style name="Theme.GlideTube.Starting.Black.Play">
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_dynamic_foreground</item>
     </style>
-    <style name="Theme.Flow.Starting.Black.Amoled">
+    <style name="Theme.GlideTube.Starting.Black.Amoled">
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_dynamic_foreground</item>
     </style>
-    <style name="Theme.Flow.Starting.Black.Monochrome">
+    <style name="Theme.GlideTube.Starting.Black.Monochrome">
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_dynamic_foreground</item>
     </style>
-    <style name="Theme.Flow.Starting.Black.Ghost">
+    <style name="Theme.GlideTube.Starting.Black.Ghost">
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_dynamic_foreground</item>
     </style>
-    <style name="Theme.Flow.Starting.Black.Dynamic" parent="Theme.SplashScreen.IconBackground">
+    <style name="Theme.GlideTube.Starting.Black.Dynamic" parent="Theme.SplashScreen.IconBackground">
         <item name="windowSplashScreenBackground">@color/splash_background_black</item>
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_dynamic_foreground</item>
         <item name="windowSplashScreenIconBackgroundColor">@color/icon_bg_dynamic</item>
-        <item name="postSplashScreenTheme">@style/Theme.Flow</item>
+        <item name="postSplashScreenTheme">@style/Theme.GlideTube</item>
     </style>
 
-    <!-- Expressive icons: their own art at logo size over the tone's window, like the Flow badge. -->
-    <style name="Theme.Flow.Starting.Light.Expressive" />
-    <style name="Theme.Flow.Starting.Light.Expressive.Scallop">
+    <!-- Expressive icons: their own art at logo size over the tone's window, like the YouGlideTube badge. -->
+    <style name="Theme.GlideTube.Starting.Light.Expressive" />
+    <style name="Theme.GlideTube.Starting.Light.Expressive.Scallop">
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_dynamic_foreground</item>
     </style>
-    <style name="Theme.Flow.Starting.Light.Expressive.Segmented">
+    <style name="Theme.GlideTube.Starting.Light.Expressive.Segmented">
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_dynamic_foreground</item>
     </style>
-    <style name="Theme.Flow.Starting.Light.Expressive.Play">
+    <style name="Theme.GlideTube.Starting.Light.Expressive.Play">
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_dynamic_foreground</item>
     </style>
-    <style name="Theme.Flow.Starting.Light.Expressive.Sky">
+    <style name="Theme.GlideTube.Starting.Light.Expressive.Sky">
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_dynamic_foreground</item>
     </style>
-    <style name="Theme.Flow.Starting.Light.Expressive.Mint">
+    <style name="Theme.GlideTube.Starting.Light.Expressive.Mint">
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_dynamic_foreground</item>
     </style>
-    <style name="Theme.Flow.Starting.Light.Expressive.Cookie">
+    <style name="Theme.GlideTube.Starting.Light.Expressive.Cookie">
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_dynamic_foreground</item>
     </style>
-    <style name="Theme.Flow.Starting.Light.Expressive.Oval">
+    <style name="Theme.GlideTube.Starting.Light.Expressive.Oval">
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_dynamic_foreground</item>
     </style>
-    <style name="Theme.Flow.Starting.Light.Expressive.Pill">
+    <style name="Theme.GlideTube.Starting.Light.Expressive.Pill">
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_dynamic_foreground</item>
     </style>
-    <style name="Theme.Flow.Starting.Dark.Expressive" />
-    <style name="Theme.Flow.Starting.Dark.Expressive.Scallop">
+    <style name="Theme.GlideTube.Starting.Dark.Expressive" />
+    <style name="Theme.GlideTube.Starting.Dark.Expressive.Scallop">
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_dynamic_foreground</item>
     </style>
-    <style name="Theme.Flow.Starting.Dark.Expressive.Segmented">
+    <style name="Theme.GlideTube.Starting.Dark.Expressive.Segmented">
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_dynamic_foreground</item>
     </style>
-    <style name="Theme.Flow.Starting.Dark.Expressive.Play">
+    <style name="Theme.GlideTube.Starting.Dark.Expressive.Play">
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_dynamic_foreground</item>
     </style>
-    <style name="Theme.Flow.Starting.Dark.Expressive.Sky">
+    <style name="Theme.GlideTube.Starting.Dark.Expressive.Sky">
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_dynamic_foreground</item>
     </style>
-    <style name="Theme.Flow.Starting.Dark.Expressive.Mint">
+    <style name="Theme.GlideTube.Starting.Dark.Expressive.Mint">
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_dynamic_foreground</item>
     </style>
-    <style name="Theme.Flow.Starting.Dark.Expressive.Cookie">
+    <style name="Theme.GlideTube.Starting.Dark.Expressive.Cookie">
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_dynamic_foreground</item>
     </style>
-    <style name="Theme.Flow.Starting.Dark.Expressive.Oval">
+    <style name="Theme.GlideTube.Starting.Dark.Expressive.Oval">
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_dynamic_foreground</item>
     </style>
-    <style name="Theme.Flow.Starting.Dark.Expressive.Pill">
+    <style name="Theme.GlideTube.Starting.Dark.Expressive.Pill">
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_dynamic_foreground</item>
     </style>
-    <style name="Theme.Flow.Starting.Black.Expressive" />
-    <style name="Theme.Flow.Starting.Black.Expressive.Scallop">
+    <style name="Theme.GlideTube.Starting.Black.Expressive" />
+    <style name="Theme.GlideTube.Starting.Black.Expressive.Scallop">
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_dynamic_foreground</item>
     </style>
-    <style name="Theme.Flow.Starting.Black.Expressive.Segmented">
+    <style name="Theme.GlideTube.Starting.Black.Expressive.Segmented">
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_dynamic_foreground</item>
     </style>
-    <style name="Theme.Flow.Starting.Black.Expressive.Play">
+    <style name="Theme.GlideTube.Starting.Black.Expressive.Play">
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_dynamic_foreground</item>
     </style>
-    <style name="Theme.Flow.Starting.Black.Expressive.Sky">
+    <style name="Theme.GlideTube.Starting.Black.Expressive.Sky">
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_dynamic_foreground</item>
     </style>
-    <style name="Theme.Flow.Starting.Black.Expressive.Mint">
+    <style name="Theme.GlideTube.Starting.Black.Expressive.Mint">
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_dynamic_foreground</item>
     </style>
-    <style name="Theme.Flow.Starting.Black.Expressive.Cookie">
+    <style name="Theme.GlideTube.Starting.Black.Expressive.Cookie">
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_dynamic_foreground</item>
     </style>
-    <style name="Theme.Flow.Starting.Black.Expressive.Oval">
+    <style name="Theme.GlideTube.Starting.Black.Expressive.Oval">
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_dynamic_foreground</item>
     </style>
-    <style name="Theme.Flow.Starting.Black.Expressive.Pill">
+    <style name="Theme.GlideTube.Starting.Black.Expressive.Pill">
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_dynamic_foreground</item>
     </style>
 </resources>

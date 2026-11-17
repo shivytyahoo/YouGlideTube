@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "io.github.aedev.flow.benchmark"
+    namespace = "io.github.shivytyahoo.glidetube.benchmark"
     compileSdk = 37
 
     compileOptions {
@@ -19,7 +19,6 @@ android {
         targetSdk = 36
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        missingDimensionStrategy("version", "github")
     }
 
     targetProjectPath = ":app"

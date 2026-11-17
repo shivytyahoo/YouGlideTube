@@ -77,12 +77,12 @@
     <string name="total_hours_template">合計: %s 時間</string>
     <string name="duration_hours_minutes">%1$d 時間 %2$d 分</string>
     <string name="duration_hours_short">%1$d時間</string>
-    <string name="deep_flow_duration_2h">2 時間</string>
-    <string name="deep_flow_duration_4h">4 時間</string>
-    <string name="deep_flow_duration_6h">6 時間</string>
-    <string name="deep_flow_duration_8h">8 時間</string>
-    <string name="deep_flow_duration_12h">12 時間</string>
-    <string name="deep_flow_duration_24h">24 時間</string>
+    <string name="deep_glide_duration_2h">2 時間</string>
+    <string name="deep_glide_duration_4h">4 時間</string>
+    <string name="deep_glide_duration_6h">6 時間</string>
+    <string name="deep_glide_duration_8h">8 時間</string>
+    <string name="deep_glide_duration_12h">12 時間</string>
+    <string name="deep_glide_duration_24h">24 時間</string>
     <string name="notif_interval_2h">2 時間</string>
     <string name="notif_interval_3h">3 時間</string>
     <string name="ago">前</string>
@@ -161,7 +161,7 @@
     <string name="dont_show_channel">チャンネルを表示しない</string>
     <string name="go_to_channel">チャンネルを表示</string>
     <string name="search_channel_go_to">チャンネルを表示</string>
-    <string name="deep_flow_duration_1h">1 時間</string>
+    <string name="deep_glide_duration_1h">1 時間</string>
     <string name="shuffle">シャッフル</string>
     <string name="filter_newest">新しい順</string>
     <string name="filter_timed">時間指定</string>
@@ -181,7 +181,7 @@
     <string name="onboarding_channels_search_placeholder">チャンネルを検索…</string>
     <string name="onboarding_import_title">データのインポート</string>
     <string name="onboarding_import_subtitle">他のアプリから、チャンネル登録や再生履歴を引き継ぐことができます。スキップすることもできます。</string>
-    <string name="onboarding_import_source_flow">Glide バックアップ</string>
+    <string name="onboarding_import_source_glide">Glide バックアップ</string>
     <string name="onboarding_import_source_youtube">YouTube</string>
     <string name="onboarding_import_footnote">ここに表示されているものはオプションで、スキップできます。設定からもインポートできます。</string>
     <string name="onboarding_btn_skip">スキップ</string>

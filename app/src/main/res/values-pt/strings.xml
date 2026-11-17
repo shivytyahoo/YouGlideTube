@@ -143,7 +143,7 @@
     <string name="new_update_available">Nova atualização disponível</string>
     <string name="update_available_template">%1$s já está disponível</string>
     <string name="release_notes">NOTAS DE LANÇAMENTO</string>
-    <string name="update_flow">Fluxo de atualização</string>
+    <string name="update_glide">Fluxo de atualização</string>
     <string name="maybe_later">Talvez mais tarde</string>
     <string name="nav_home">Casa</string>
     <string name="nav_music">Música</string>

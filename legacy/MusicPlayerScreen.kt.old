@@ -1,4 +1,4 @@
-package io.github.aedev.flow.ui.screens.music
+package io.github.shivytyahoo.glidetube.ui.screens.music
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -26,7 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import kotlin.math.roundToInt
-import io.github.aedev.flow.player.RepeatMode
+import io.github.shivytyahoo.glidetube.player.RepeatMode
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -117,7 +117,7 @@ fun MusicPlayerScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = "Flow Music",
+                        text = "YouGlideTube Music",
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.SemiBold
                     )

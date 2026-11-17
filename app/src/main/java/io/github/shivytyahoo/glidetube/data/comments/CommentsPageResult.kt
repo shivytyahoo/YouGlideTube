@@ -1,0 +1,31 @@
+package io.github.shivytyahoo.glidetube.data.comments
+
+import io.github.shivytyahoo.glidetube.data.model.Comment
+import io.github.shivytyahoo.glidetube.innertube.pages.VideoCommentSort
+import org.schabi.newpipe.extractor.Page
+
+/**
+ * One page of comments and whatever the source needs to fetch the next one.
+ *
+ * Two sources produce this. InnerTube pages with [continuation] and describes the orders the
+ * section offers in [sortOptions]; the extractor, which stands in when a response cannot be
+ * parsed, pages with [legacyPage] and offers no orders at all.
+ */
+data class CommentsPageResult(
+    val comments: List<Comment> = emptyList(),
+    val continuation: String? = null,
+    val legacyPage: Page? = null,
+    val sortOptions: List<VideoCommentSort> = emptyList(),
+    val totalText: String? = null,
+    val totalCount: Long? = null,
+    /** The create box token for posting, present only when the section was fetched signed in. */
+    val createCommentParams: String? = null,
+    /** Every create token the section carried, in order; the poster tries them in turn. */
+    val createCommentParamsCandidates: List<String> = emptyList(),
+) {
+    val hasMore: Boolean get() = continuation != null || legacyPage != null
+
+    companion object {
+        val EMPTY = CommentsPageResult()
+    }
+}
