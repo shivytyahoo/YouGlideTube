@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.9 — 2026-11-17
+
+- Content country now works: changing the country refreshes the Home feed for that country, just like changing the language
+- View counts follow the country: India shows lakh/crore (10L, 1Cr), the US shows million/billion (1M, 1B) — and the format switches as soon as you change the country
+
+
 ## 1.0.8 — 2026-11-17
 
 - TV tabs refresh properly now: tapping Home, Library, Subscriptions or Music again refreshes the feed on TV, just like on mobile

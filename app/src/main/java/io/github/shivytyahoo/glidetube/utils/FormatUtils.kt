@@ -58,11 +58,30 @@ fun formatSubscriberCount(count: Long): String {
     return compactCountFormatter().format(count)
 }
 
-private fun compactCountFormatter(): CompactDecimalFormat =
-    CompactDecimalFormat.getInstance(
-        Locale.getDefault(),
+/**
+ * The content country (ISO 3166 region, e.g. "IN", "US") the view/subscriber counts are
+ * formatted for. WHY: the compact form follows the country — India renders 1,000,000 as
+ * "10L" (lakh) and 10,000,000 as "1Cr", while the US renders them as "1M" and "10M".
+ * Updated from GlideApplication whenever the user changes the content country, so the
+ * counts switch style as soon as the country changes. Defaults to "US" (M/B) until the
+ * app locale loads.
+ */
+@Volatile
+var contentRegion: String = "US"
+
+/**
+ * Counts render in the content country's own compact form. Language is fixed to English
+ * (Latin digits); only the region varies, so the form follows the country's convention
+ * (lakh/crore for IN, M/B for US, ...). gl is always a normalized 2-letter code
+ * (see normalizeYouTubeCountry), so the Builder cannot fail here.
+ */
+private fun compactCountFormatter(): CompactDecimalFormat {
+    val locale = Locale.Builder().setLanguage("en").setRegion(contentRegion).build()
+    return CompactDecimalFormat.getInstance(
+        locale,
         CompactDecimalFormat.CompactStyle.SHORT,
     )
+}
 
 fun formatYouTubeRelativeTime(
     timestampMillis: Long,

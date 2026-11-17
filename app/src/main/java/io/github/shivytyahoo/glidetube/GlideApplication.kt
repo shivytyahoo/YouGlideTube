@@ -18,11 +18,12 @@ import io.github.shivytyahoo.glidetube.notification.BackgroundCheckScheduler
 import io.github.shivytyahoo.glidetube.notification.NotificationHelper
 import io.github.shivytyahoo.glidetube.player.PlaybackShutdown
 import io.github.shivytyahoo.glidetube.player.SleepTimerManager
-import io.github.shivytyahoo.glidetube.ui.screens.home.HomeFeedLanguageReset
+import io.github.shivytyahoo.glidetube.ui.screens.home.HomeFeedLocaleReset
 import io.github.shivytyahoo.glidetube.utils.AppLanguageManager
 import io.github.shivytyahoo.glidetube.utils.GlideCrashHandler
 import io.github.shivytyahoo.glidetube.utils.PerformanceDispatcher
 import io.github.shivytyahoo.glidetube.utils.cipher.PipePipeNsigDecoder
+import io.github.shivytyahoo.glidetube.utils.contentRegion
 import io.github.shivytyahoo.glidetube.utils.contentYouTubeLocale
 import io.github.shivytyahoo.glidetube.utils.newPipeContentCountry
 import io.github.shivytyahoo.glidetube.utils.newPipeLocalization
@@ -77,7 +78,7 @@ class GlideApplication :
     lateinit var oauthSessionManager: io.github.shivytyahoo.glidetube.data.account.OAuthSessionManager
 
     @Inject
-    internal lateinit var homeFeedLanguageReset: HomeFeedLanguageReset
+    internal lateinit var homeFeedLocaleReset: HomeFeedLocaleReset
 
     // Created at startup so the guest history disk restore starts before any screen reads it.
     @Inject
@@ -225,12 +226,13 @@ class GlideApplication :
                 contentYouTubeLocale(appLanguage, contentLanguage, region, AppLanguageManager.deviceLocale(this@GlideApplication))
             }.distinctUntilChanged().collectLatest { newLocale ->
                 YouTube.locale = newLocale
+                contentRegion = newLocale.gl
                 NewPipe.setupLocalization(
                     newPipeLocalization(newLocale.hl),
                     ContentCountry(newLocale.gl),
                 )
                 Log.d(TAG, "Dynamic YouTube Locale updated: gl=${newLocale.gl}, hl=${newLocale.hl}")
-                homeFeedLanguageReset.onContentLanguage(newLocale.hl)
+                homeFeedLocaleReset.onContentLocale(newLocale)
             }
         }
 

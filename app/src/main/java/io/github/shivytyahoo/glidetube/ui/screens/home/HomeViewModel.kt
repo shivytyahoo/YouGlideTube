@@ -223,6 +223,19 @@ class HomeViewModel
                     }
                 }
             }
+            // A content country or language change must reload the feed: the new
+            // locale applies to the next request, but the visible feed is the old
+            // locale's until it is re-fetched. The first emission is the stored
+            // locale, not a change, so it is dropped.
+            viewModelScope.launch {
+                combine(
+                    playerPreferences.contentLanguage,
+                    playerPreferences.trendingRegion,
+                ) { language, region -> language to region }
+                    .distinctUntilChanged()
+                    .drop(1)
+                    .collect { refreshFeed() }
+            }
             if (HomeFeedCache.isFresh()) {
                 _uiState.update {
                     it.copy(
