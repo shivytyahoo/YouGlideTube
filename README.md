@@ -11,14 +11,14 @@
 <p align="center"><b>Buttery smooth. Truly yours.</b></p>
 
 <p align="center">
-  <a href="https://github.com/shivytyahoo/YouGlideTube/releases/tag/v1.0.8"><img src="https://img.shields.io/badge/version-1.0.8-blue?style=flat-square" alt="Version 1.0.8"></a>
+  <a href="https://github.com/shivytyahoo/YouGlideTube/releases/tag/v1.0.9"><img src="https://img.shields.io/badge/version-1.0.9-blue?style=flat-square" alt="Version 1.0.9"></a>
   <a href="https://github.com/shivytyahoo/YouGlideTube/releases"><img src="https://img.shields.io/github/v/release/shivytyahoo/YouGlideTube?style=flat-square" alt="Latest release"></a>
   <img src="https://img.shields.io/badge/platform-Android%208.0%2B-3DDC84?style=flat-square" alt="Android 8.0+">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0-blue?style=flat-square" alt="GPL-3.0"></a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/shivytyahoo/YouGlideTube/releases/tag/v1.0.8"><b>⬇️ Download YouGlideTube 1.0.8</b></a><br>
+  <a href="https://github.com/shivytyahoo/YouGlideTube/releases/tag/v1.0.9"><b>⬇️ Download YouGlideTube 1.0.9</b></a><br>
   <sub><code>YouGlideTube.apk</code> · one universal APK for Android phones, tablets and Android TV · Android 8.0 (API 26) or newer</sub>
 </p>
 
@@ -35,7 +35,7 @@ See [LICENSE](LICENSE) for the full text.
 | | |
 |---|---|
 | **App** | `shivyt.android.glidetube` |
-| **Latest release** | [1.0.8](https://github.com/shivytyahoo/YouGlideTube/releases/tag/v1.0.8) |
+| **Latest release** | [1.0.9](https://github.com/shivytyahoo/YouGlideTube/releases/tag/v1.0.9) |
 | **Requires** | Android 8.0 (API 26) or newer |
 | **TV** | Android TV layout included — same app, big-screen interface |
 | **License** | GPL-3.0 |
