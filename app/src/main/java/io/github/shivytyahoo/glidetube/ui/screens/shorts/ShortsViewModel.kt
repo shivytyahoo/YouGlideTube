@@ -442,10 +442,15 @@ class ShortsViewModel
          */
         suspend fun toggleLike(short: ShortVideo) {
             val video = short.toVideo()
+            // The rail shows short.likeCount, which only moves when the reel is
+            // enriched: without this the icon toggles but the number freezes.
             if (engagement.likeState(video.id).first() == "LIKED") {
                 engagement.removeLike(video.id)
+                enrich(video.id) { it.copy(likeCount = (it.likeCount - 1).coerceAtLeast(0)) }
             } else {
-                engagement.like(video)
+                engagement.like(video) {
+                    enrich(video.id) { it.copy(likeCount = it.likeCount + 1) }
+                }
             }
         }
 

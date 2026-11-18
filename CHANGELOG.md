@@ -6,6 +6,7 @@
 - View counts follow the country: India shows lakh/crore (10L, 1Cr), the US shows million/billion (1M, 1B) — and the format switches as soon as you change the country
 - Music tags removed from the Music tab: the feed always shows everything now, just like "All"
 - Mixes play now: tapping a mix plays its songs instead of failing to load
+- Shorts like count now updates: liking a short adds 1 to the count, unliking takes it back
 
 
 ## 1.0.8 — 2026-11-17
