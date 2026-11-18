@@ -8,6 +8,7 @@ import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
@@ -101,6 +102,7 @@ fun TvSearchScreen(
     onPlayTrack: (MusicTrack, List<MusicTrack>, String?) -> Unit,
     onOpenAlbum: (String) -> Unit,
     onOpenArtist: (String) -> Unit,
+    onOpenChannel: (String) -> Unit,
     onOpenMusicPlaylist: (String) -> Unit,
     onOpenMood: (MoodAndGenres.Item) -> Unit,
     onOpenMoods: () -> Unit,
@@ -119,6 +121,9 @@ fun TvSearchScreen(
     var kind by rememberSaveable { mutableStateOf(MediaKind.Videos) }
     val text = state.textFieldState
     val kinds = MediaKind.entries.map { GlideToggleOption(it, stringResource(it.labelRes), it.icon) }
+
+    // As on the phone: a query edited over finished results goes back to those results first.
+    BackHandler(enabled = kind != MediaKind.Music && state.isTyping && uiState.query.isNotBlank()) { state.stopTyping() }
 
     fun submit() {
         softwareKeyboard?.hide()
@@ -320,6 +325,7 @@ fun TvSearchScreen(
                                 onTrackClick = onPlayTrack,
                                 onAlbumClick = onOpenAlbum,
                                 onArtistClick = onOpenArtist,
+                                onChannelClick = onOpenChannel,
                                 onPlaylistClick = onOpenMusicPlaylist,
                                 onMoodClick = onOpenMood,
                                 onMoodsSeeAll = onOpenMoods,
@@ -334,6 +340,7 @@ fun TvSearchScreen(
                         onTrackClick = onPlayTrack,
                         onAlbumClick = onOpenAlbum,
                         onArtistClick = onOpenArtist,
+                        onChannelClick = onOpenChannel,
                         onPlaylistClick = onOpenMusicPlaylist,
                         onMoodClick = onOpenMood,
                         onMoodsSeeAll = onOpenMoods,

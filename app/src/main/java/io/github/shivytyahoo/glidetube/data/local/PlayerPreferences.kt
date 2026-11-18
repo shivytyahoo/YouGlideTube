@@ -106,6 +106,13 @@ class PlayerPreferences(
         val AUTO_PIP_ENABLED = booleanPreferencesKey("auto_pip_enabled")
         val MANUAL_PIP_BUTTON_ENABLED = booleanPreferencesKey("manual_pip_button_enabled")
         val STABLE_VOLUME_ENABLED = booleanPreferencesKey("stable_volume_enabled")
+        val MUSIC_CROSSFADE_SECONDS = intPreferencesKey("music_crossfade_seconds")
+        val MUSIC_CROSSFADE_ENABLED = booleanPreferencesKey("music_crossfade_enabled")
+        val MUSIC_CROSSFADE_MS = intPreferencesKey("music_crossfade_ms")
+        val MUSIC_CROSSFADE_KEEP_ALBUMS = booleanPreferencesKey("music_crossfade_keep_albums")
+        val MUSIC_CROSSFADE_CURVE = stringPreferencesKey("music_crossfade_curve")
+        val MUSIC_CROSSFADE_AUTO_ADVANCE = booleanPreferencesKey("music_crossfade_auto_advance")
+        val MUSIC_CROSSFADE_MANUAL_SKIP = booleanPreferencesKey("music_crossfade_manual_skip")
 
         // Buffer settings
         val MIN_BUFFER_MS = intPreferencesKey("min_buffer_ms")
@@ -206,6 +213,17 @@ class PlayerPreferences(
         val LYRICS_SHOW_ROMANIZATION = booleanPreferencesKey("lyrics_show_romanization")
         val LYRICS_AUTO_ROMANIZE = booleanPreferencesKey("lyrics_auto_romanize")
         val LYRICS_KEEP_SCREEN_ON = booleanPreferencesKey("lyrics_keep_screen_on")
+        val LYRICS_IN_MINI_PLAYER = booleanPreferencesKey("lyrics_in_mini_player")
+        val LYRICS_ON_DEMAND = booleanPreferencesKey("lyrics_on_demand")
+        val LYRICS_ON_LOCK_SCREEN = booleanPreferencesKey("lyrics_on_lock_screen")
+        val LYRICS_ON_LOCK_SCREEN_DELAY_MS = intPreferencesKey("lyrics_on_lock_screen_delay_ms")
+        val LOCK_SCREEN_PLAYER = booleanPreferencesKey("lock_screen_player")
+        val LYRICS_SPONSORBLOCK_TIMING = booleanPreferencesKey("lyrics_sponsorblock_timing")
+        val LYRICS_ROMANIZATION_ONLY = booleanPreferencesKey("lyrics_romanization_only")
+        val LYRICS_BLUR_OTHER_LINES = booleanPreferencesKey("lyrics_blur_other_lines")
+        val LYRICS_ANIMATION_STYLE = stringPreferencesKey("lyrics_animation_style")
+        val LYRICS_GLOW = stringPreferencesKey("lyrics_glow")
+        val LYRICS_BACKGROUND = stringPreferencesKey("lyrics_background")
         val LYRICS_PROVIDER_ENABLED_BETTERLYRICS = booleanPreferencesKey("lyrics_provider_enabled_betterlyrics")
         val LYRICS_PROVIDER_ENABLED_SIMPMUSIC = booleanPreferencesKey("lyrics_provider_enabled_simpmusic")
         val LYRICS_PROVIDER_ENABLED_LYRICSPLUS = booleanPreferencesKey("lyrics_provider_enabled_lyricsplus")
@@ -216,6 +234,8 @@ class PlayerPreferences(
         val LYRICS_PROVIDER_ENABLED_YOUTUBESUBTITLE = booleanPreferencesKey("lyrics_provider_enabled_youtubesubtitle")
         val LYRICS_PROVIDER_ENABLED_LRCRED = booleanPreferencesKey("lyrics_provider_enabled_lrcred")
         val LYRICS_PROVIDER_ENABLED_UNISON = booleanPreferencesKey("lyrics_provider_enabled_unison")
+        val LYRICS_PROVIDER_ENABLED_NETEASE = booleanPreferencesKey("lyrics_provider_enabled_netease")
+        val LYRICS_PROVIDER_ENABLED_AMLL = booleanPreferencesKey("lyrics_provider_enabled_amll")
         val SWIPE_GESTURES_ENABLED = booleanPreferencesKey("swipe_gestures_enabled")
         val BRIGHTNESS_SWIPE_GESTURES_ENABLED = booleanPreferencesKey("brightness_swipe_gestures_enabled")
         val REMEMBER_BRIGHTNESS_ENABLED = booleanPreferencesKey("remember_brightness_enabled")
@@ -309,6 +329,16 @@ class PlayerPreferences(
         val MINI_PLAYER_CONTINUE_WATCHING_ENABLED = booleanPreferencesKey("mini_player_continue_watching_enabled")
         val SHOW_RESTORED_MUSIC_MINI_PLAYER = booleanPreferencesKey("show_restored_music_mini_player")
         val OPEN_MUSIC_PLAYER_ON_PLAY = booleanPreferencesKey("open_music_player_on_play")
+        val MINI_COVER_SHAPE = stringPreferencesKey("mini_cover_shape")
+        val MINI_COVER_MOTION = stringPreferencesKey("mini_cover_motion")
+        val MINI_COVER_SHAPES = stringPreferencesKey("mini_cover_shapes")
+        val MINI_COVER_PAUSED_SHAPE = stringPreferencesKey("mini_cover_paused_shape")
+        val MINI_BAR_PROGRESS = stringPreferencesKey("mini_bar_progress")
+        val MINI_BAR_BACKGROUND = stringPreferencesKey("mini_bar_background")
+        val MINI_COVER_RING = booleanPreferencesKey("mini_cover_ring")
+        val MINI_BAR_BUTTONS = stringPreferencesKey("mini_bar_buttons")
+        val MINI_COVER_TAP = stringPreferencesKey("mini_cover_tap")
+        val MINI_LONG_PRESS = stringPreferencesKey("mini_long_press")
 
         // Audio focus during calls
         val PLAY_DURING_CALLS = booleanPreferencesKey("play_during_calls")
@@ -1564,6 +1594,82 @@ class PlayerPreferences(
     suspend fun setMusicEndlessRadioEnabled(enabled: Boolean) {
         context.playerPreferencesDataStore.edit { preferences ->
             preferences[Keys.MUSIC_ENDLESS_RADIO_ENABLED] = enabled
+        }
+    }
+
+    /** Whether a song blends into the next. Before the switch, a length above 0 seconds meant on. */
+    val musicCrossfadeEnabled: Flow<Boolean> =
+        context.playerPreferencesDataStore.data
+            .map { preferences ->
+                preferences[Keys.MUSIC_CROSSFADE_ENABLED] ?: ((preferences[Keys.MUSIC_CROSSFADE_SECONDS] ?: 0) > 0)
+            }.distinctUntilChanged()
+
+    suspend fun setMusicCrossfadeEnabled(enabled: Boolean) {
+        context.playerPreferencesDataStore.edit { preferences ->
+            preferences[Keys.MUSIC_CROSSFADE_ENABLED] = enabled
+        }
+    }
+
+    /** How long a crossfade lasts, carried over from the length in seconds that settings saved before. */
+    val musicCrossfadeMs: Flow<Int> =
+        context.playerPreferencesDataStore.data
+            .map { preferences ->
+                preferences[Keys.MUSIC_CROSSFADE_MS]
+                    ?: preferences[Keys.MUSIC_CROSSFADE_SECONDS]?.takeIf { it > 0 }?.times(MS_PER_CROSSFADE_SECOND)
+                    ?: DEFAULT_CROSSFADE_MS
+            }.distinctUntilChanged()
+
+    suspend fun setMusicCrossfadeMs(ms: Int) {
+        context.playerPreferencesDataStore.edit { preferences ->
+            preferences[Keys.MUSIC_CROSSFADE_MS] = ms
+        }
+    }
+
+    /** Tracks of one album play gapless even with crossfade on. */
+    val musicCrossfadeKeepAlbums: Flow<Boolean> =
+        context.playerPreferencesDataStore.data
+            .map { preferences -> preferences[Keys.MUSIC_CROSSFADE_KEEP_ALBUMS] ?: true }
+            .distinctUntilChanged()
+
+    suspend fun setMusicCrossfadeKeepAlbums(enabled: Boolean) {
+        context.playerPreferencesDataStore.edit { preferences ->
+            preferences[Keys.MUSIC_CROSSFADE_KEEP_ALBUMS] = enabled
+        }
+    }
+
+    /** Whether a song blends into the next when it ends by itself. */
+    val musicCrossfadeOnAutoAdvance: Flow<Boolean> =
+        context.playerPreferencesDataStore.data
+            .map { preferences -> preferences[Keys.MUSIC_CROSSFADE_AUTO_ADVANCE] ?: true }
+            .distinctUntilChanged()
+
+    suspend fun setMusicCrossfadeOnAutoAdvance(enabled: Boolean) {
+        context.playerPreferencesDataStore.edit { preferences ->
+            preferences[Keys.MUSIC_CROSSFADE_AUTO_ADVANCE] = enabled
+        }
+    }
+
+    /** Whether a song blends into the one the user skips to; off keeps Next immediate. */
+    val musicCrossfadeOnManualSkip: Flow<Boolean> =
+        context.playerPreferencesDataStore.data
+            .map { preferences -> preferences[Keys.MUSIC_CROSSFADE_MANUAL_SKIP] ?: true }
+            .distinctUntilChanged()
+
+    suspend fun setMusicCrossfadeOnManualSkip(enabled: Boolean) {
+        context.playerPreferencesDataStore.edit { preferences ->
+            preferences[Keys.MUSIC_CROSSFADE_MANUAL_SKIP] = enabled
+        }
+    }
+
+    /** How the two songs' volumes move during a crossfade. */
+    val musicCrossfadeCurve: Flow<CrossfadeCurve> =
+        context.playerPreferencesDataStore.data
+            .map { preferences -> CrossfadeCurve.fromString(preferences[Keys.MUSIC_CROSSFADE_CURVE]) }
+            .distinctUntilChanged()
+
+    suspend fun setMusicCrossfadeCurve(curve: CrossfadeCurve) {
+        context.playerPreferencesDataStore.edit { preferences ->
+            preferences[Keys.MUSIC_CROSSFADE_CURVE] = curve.name
         }
     }
 
@@ -3621,6 +3727,8 @@ class PlayerPreferences(
             "YouTubeSubtitle" to Keys.LYRICS_PROVIDER_ENABLED_YOUTUBESUBTITLE,
             "LrcRed" to Keys.LYRICS_PROVIDER_ENABLED_LRCRED,
             "Unison" to Keys.LYRICS_PROVIDER_ENABLED_UNISON,
+            "NetEase" to Keys.LYRICS_PROVIDER_ENABLED_NETEASE,
+            "AMLL" to Keys.LYRICS_PROVIDER_ENABLED_AMLL,
         )
 
     fun isLyricsProviderEnabled(providerName: String): Flow<Boolean> =
@@ -3685,6 +3793,93 @@ class PlayerPreferences(
         context.playerPreferencesDataStore.edit { it[Keys.LYRICS_KEEP_SCREEN_ON] = enabled }
     }
 
+    val lyricsInMiniPlayer: Flow<Boolean> =
+        context.playerPreferencesDataStore.data.map { it[Keys.LYRICS_IN_MINI_PLAYER] ?: false }
+
+    suspend fun setLyricsInMiniPlayer(enabled: Boolean) {
+        context.playerPreferencesDataStore.edit { it[Keys.LYRICS_IN_MINI_PLAYER] = enabled }
+    }
+
+    /** Whether lyrics are looked up only when the player or its lyrics open. */
+    val lyricsOnDemand: Flow<Boolean> =
+        context.playerPreferencesDataStore.data.map { it[Keys.LYRICS_ON_DEMAND] ?: false }
+
+    suspend fun setLyricsOnDemand(enabled: Boolean) {
+        context.playerPreferencesDataStore.edit { it[Keys.LYRICS_ON_DEMAND] = enabled }
+    }
+
+    /** Whether the current lyric line shows as the song title on the lock screen and in other apps. */
+    val lyricsOnLockScreen: Flow<Boolean> =
+        context.playerPreferencesDataStore.data.map { it[Keys.LYRICS_ON_LOCK_SCREEN] ?: false }
+
+    suspend fun setLyricsOnLockScreen(enabled: Boolean) {
+        context.playerPreferencesDataStore.edit { it[Keys.LYRICS_ON_LOCK_SCREEN] = enabled }
+    }
+
+    /** How late lock screen lines appear, in milliseconds. Below zero they appear early. */
+    val lyricsOnLockScreenDelayMs: Flow<Int> =
+        context.playerPreferencesDataStore.data.map { it[Keys.LYRICS_ON_LOCK_SCREEN_DELAY_MS] ?: 0 }
+
+    suspend fun setLyricsOnLockScreenDelayMs(delayMs: Int) {
+        context.playerPreferencesDataStore.edit { it[Keys.LYRICS_ON_LOCK_SCREEN_DELAY_MS] = delayMs }
+    }
+
+    /** Whether a player with the cover and controls opens over the lock screen when the screen turns off during music. */
+    val lockScreenPlayer: Flow<Boolean> =
+        context.playerPreferencesDataStore.data.map { it[Keys.LOCK_SCREEN_PLAYER] ?: false }
+
+    suspend fun setLockScreenPlayer(enabled: Boolean) {
+        context.playerPreferencesDataStore.edit { it[Keys.LOCK_SCREEN_PLAYER] = enabled }
+    }
+
+    /** Whether lyrics skip a music video's non-music parts. Each song played is looked up on SponsorBlock while on. */
+    val lyricsSponsorBlockTiming: Flow<Boolean> =
+        context.playerPreferencesDataStore.data.map { it[Keys.LYRICS_SPONSORBLOCK_TIMING] ?: false }
+
+    suspend fun setLyricsSponsorBlockTiming(enabled: Boolean) {
+        context.playerPreferencesDataStore.edit { it[Keys.LYRICS_SPONSORBLOCK_TIMING] = enabled }
+    }
+
+    val lyricsRomanizationOnly: Flow<Boolean> =
+        context.playerPreferencesDataStore.data.map { it[Keys.LYRICS_ROMANIZATION_ONLY] ?: false }
+
+    suspend fun setLyricsRomanizationOnly(enabled: Boolean) {
+        context.playerPreferencesDataStore.edit { it[Keys.LYRICS_ROMANIZATION_ONLY] = enabled }
+    }
+
+    val lyricsBackground: Flow<LyricsBackgroundStyle> =
+        context.playerPreferencesDataStore.data.map { LyricsBackgroundStyle.fromStored(it[Keys.LYRICS_BACKGROUND]) }
+
+    suspend fun setLyricsBackground(style: LyricsBackgroundStyle) {
+        context.playerPreferencesDataStore.edit { it[Keys.LYRICS_BACKGROUND] = style.name }
+    }
+
+    val lyricsBlurOtherLines: Flow<Boolean> =
+        context.playerPreferencesDataStore.data.map { it[Keys.LYRICS_BLUR_OTHER_LINES] ?: true }
+
+    suspend fun setLyricsBlurOtherLines(enabled: Boolean) {
+        context.playerPreferencesDataStore.edit { it[Keys.LYRICS_BLUR_OTHER_LINES] = enabled }
+    }
+
+    val lyricsAnimationStyle: Flow<LyricsAnimationStyle> =
+        context.playerPreferencesDataStore.data.map { preferences ->
+            runCatching { LyricsAnimationStyle.valueOf(preferences[Keys.LYRICS_ANIMATION_STYLE] ?: LyricsAnimationStyle.CADENCE.name) }
+                .getOrDefault(LyricsAnimationStyle.CADENCE)
+        }
+
+    suspend fun setLyricsAnimationStyle(style: LyricsAnimationStyle) {
+        context.playerPreferencesDataStore.edit { it[Keys.LYRICS_ANIMATION_STYLE] = style.name }
+    }
+
+    val lyricsGlow: Flow<LyricsGlow> =
+        context.playerPreferencesDataStore.data.map { preferences ->
+            runCatching { LyricsGlow.valueOf(preferences[Keys.LYRICS_GLOW] ?: LyricsGlow.NORMAL.name) }.getOrDefault(LyricsGlow.NORMAL)
+        }
+
+    suspend fun setLyricsGlow(glow: LyricsGlow) {
+        context.playerPreferencesDataStore.edit { it[Keys.LYRICS_GLOW] = glow.name }
+    }
+
     // ========== MINI PLAYER PREFERENCES ==========
 
     val miniPlayerScale: Flow<Float> =
@@ -3733,6 +3928,134 @@ class PlayerPreferences(
     suspend fun setOpenMusicPlayerOnPlay(enabled: Boolean) {
         context.playerPreferencesDataStore.edit { preferences ->
             preferences[Keys.OPEN_MUSIC_PLAYER_ON_PLAY] = enabled
+        }
+    }
+
+    /** How the music mini player cuts out its cover. */
+    val miniCoverShape: Flow<MiniCoverShape> =
+        context.playerPreferencesDataStore.data
+            .map { preferences ->
+                runCatching { MiniCoverShape.valueOf(preferences[Keys.MINI_COVER_SHAPE] ?: MiniCoverShape.CIRCLE.name) }
+                    .getOrDefault(MiniCoverShape.CIRCLE)
+            }
+
+    suspend fun setMiniCoverShape(shape: MiniCoverShape) {
+        context.playerPreferencesDataStore.edit { preferences ->
+            preferences[Keys.MINI_COVER_SHAPE] = shape.name
+        }
+    }
+
+    /** When a morphing mini player cover changes shape. */
+    val miniCoverMotion: Flow<MiniCoverMotion> =
+        context.playerPreferencesDataStore.data
+            .map { preferences ->
+                runCatching { MiniCoverMotion.valueOf(preferences[Keys.MINI_COVER_MOTION] ?: MiniCoverMotion.ON_PLAY.name) }
+                    .getOrDefault(MiniCoverMotion.ON_PLAY)
+            }
+
+    suspend fun setMiniCoverMotion(motion: MiniCoverMotion) {
+        context.playerPreferencesDataStore.edit { preferences ->
+            preferences[Keys.MINI_COVER_MOTION] = motion.name
+        }
+    }
+
+    /** The shapes tracks draw their mini player cover from, in the order they were stored. */
+    val miniCoverShapes: Flow<List<CoverShape>> =
+        context.playerPreferencesDataStore.data
+            .map { preferences -> parseCoverShapes(preferences[Keys.MINI_COVER_SHAPES]) }
+
+    suspend fun setMiniCoverShapes(shapes: List<CoverShape>) {
+        context.playerPreferencesDataStore.edit { preferences ->
+            preferences[Keys.MINI_COVER_SHAPES] = shapes.joinToString(",") { it.name }
+        }
+    }
+
+    /** The shape a paused morphing cover rests in; null keeps the track's own shape. */
+    val miniCoverPausedShape: Flow<CoverShape?> =
+        context.playerPreferencesDataStore.data
+            .map { preferences -> parsePausedCoverShape(preferences[Keys.MINI_COVER_PAUSED_SHAPE]) }
+
+    suspend fun setMiniCoverPausedShape(shape: CoverShape?) {
+        context.playerPreferencesDataStore.edit { preferences ->
+            preferences[Keys.MINI_COVER_PAUSED_SHAPE] = shape?.name ?: KEEP_TRACK_SHAPE
+        }
+    }
+
+    /** How the music mini player's bar shows how far the song is, beside or instead of the cover's ring. */
+    val miniBarProgress: Flow<MiniBarProgress> =
+        context.playerPreferencesDataStore.data
+            .map { preferences ->
+                runCatching { MiniBarProgress.valueOf(preferences[Keys.MINI_BAR_PROGRESS] ?: MiniBarProgress.NONE.name) }
+                    .getOrDefault(MiniBarProgress.NONE)
+            }
+
+    suspend fun setMiniBarProgress(progress: MiniBarProgress) {
+        context.playerPreferencesDataStore.edit { preferences ->
+            preferences[Keys.MINI_BAR_PROGRESS] = progress.name
+        }
+    }
+
+    /** What the music mini player is painted with. */
+    val miniBarBackground: Flow<MiniBarBackground> =
+        context.playerPreferencesDataStore.data
+            .map { preferences ->
+                runCatching { MiniBarBackground.valueOf(preferences[Keys.MINI_BAR_BACKGROUND] ?: MiniBarBackground.TINTED.name) }
+                    .getOrDefault(MiniBarBackground.TINTED)
+            }
+
+    suspend fun setMiniBarBackground(background: MiniBarBackground) {
+        context.playerPreferencesDataStore.edit { preferences ->
+            preferences[Keys.MINI_BAR_BACKGROUND] = background.name
+        }
+    }
+
+    /** Whether the mini player's cover keeps its progress ring. */
+    val miniCoverRing: Flow<Boolean> =
+        context.playerPreferencesDataStore.data
+            .map { preferences -> preferences[Keys.MINI_COVER_RING] ?: true }
+
+    suspend fun setMiniCoverRing(enabled: Boolean) {
+        context.playerPreferencesDataStore.edit { preferences ->
+            preferences[Keys.MINI_COVER_RING] = enabled
+        }
+    }
+
+    /** The music mini player's buttons, in their order; empty when every one is off. */
+    val miniBarButtons: Flow<List<MiniBarButton>> =
+        context.playerPreferencesDataStore.data
+            .map { preferences -> parseMiniBarButtons(preferences[Keys.MINI_BAR_BUTTONS]) }
+
+    suspend fun setMiniBarButtons(buttons: List<MiniBarButton>) {
+        context.playerPreferencesDataStore.edit { preferences ->
+            preferences[Keys.MINI_BAR_BUTTONS] = buttons.joinToString(",") { it.name }
+        }
+    }
+
+    /** What a tap on the mini player's cover does. */
+    val miniCoverTap: Flow<MiniCoverTap> =
+        context.playerPreferencesDataStore.data
+            .map { preferences ->
+                runCatching { MiniCoverTap.valueOf(preferences[Keys.MINI_COVER_TAP] ?: MiniCoverTap.OPEN.name) }
+                    .getOrDefault(MiniCoverTap.OPEN)
+            }
+
+    suspend fun setMiniCoverTap(tap: MiniCoverTap) {
+        context.playerPreferencesDataStore.edit { preferences ->
+            preferences[Keys.MINI_COVER_TAP] = tap.name
+        }
+    }
+
+    /** What holding the mini player does. */
+    val miniLongPress: Flow<MiniLongPress> =
+        context.playerPreferencesDataStore.data
+            .map { preferences ->
+                runCatching { MiniLongPress.valueOf(preferences[Keys.MINI_LONG_PRESS] ?: MiniLongPress.NOTHING.name) }
+                    .getOrDefault(MiniLongPress.NOTHING)
+            }
+
+    suspend fun setMiniLongPress(press: MiniLongPress) {
+        context.playerPreferencesDataStore.edit { preferences ->
+            preferences[Keys.MINI_LONG_PRESS] = press.name
         }
     }
 
@@ -4044,6 +4367,154 @@ enum class MusicPlayerBackgroundStyle {
     DEFAULT,
 }
 
+/** The music mini player's cover: cut out with a shape that changes with the music, or a plain circle. Stored by name. */
+enum class MiniCoverShape {
+    MORPHING,
+    CIRCLE,
+}
+
+/**
+ * The Material 3 Expressive shapes a mini player cover can take, by their MaterialShapes name. [roomy]
+ * is false for shapes that leave much of a square cover out. Stored by name.
+ */
+enum class CoverShape(
+    val roomy: Boolean = true,
+) {
+    CIRCLE,
+    SQUARE,
+    SLANTED(roomy = false),
+    ARCH(roomy = false),
+    FAN(roomy = false),
+    ARROW(roomy = false),
+    SEMI_CIRCLE(roomy = false),
+    OVAL,
+    PILL,
+    TRIANGLE(roomy = false),
+    DIAMOND,
+    CLAM_SHELL,
+    PENTAGON,
+    GEM,
+    SUNNY,
+    VERY_SUNNY,
+    COOKIE_4,
+    COOKIE_6,
+    COOKIE_7,
+    COOKIE_9,
+    COOKIE_12,
+    GHOSTISH,
+    CLOVER_4,
+    CLOVER_8,
+    BURST,
+    SOFT_BURST,
+    BOOM,
+    SOFT_BOOM,
+    FLOWER,
+    PUFFY,
+    PUFFY_DIAMOND,
+    PIXEL_CIRCLE,
+    PIXEL_TRIANGLE,
+    BUN,
+    HEART,
+}
+
+/** The shapes a morphing cover uses until the user picks their own. */
+val DefaultCoverShapes =
+    listOf(CoverShape.COOKIE_9, CoverShape.CLOVER_4, CoverShape.COOKIE_6, CoverShape.FLOWER, CoverShape.SUNNY, CoverShape.SOFT_BURST)
+
+private const val KEEP_TRACK_SHAPE = "TRACK"
+
+/** Stored shape names back as shapes; unknown names are skipped, and an empty result means the defaults. */
+internal fun parseCoverShapes(stored: String?): List<CoverShape> =
+    stored
+        ?.split(',')
+        ?.mapNotNull { name -> runCatching { CoverShape.valueOf(name) }.getOrNull() }
+        ?.distinct()
+        ?.takeIf { it.isNotEmpty() }
+        ?: DefaultCoverShapes
+
+/** The stored paused shape: a circle by default, null when the track keeps its own shape. */
+internal fun parsePausedCoverShape(stored: String?): CoverShape? =
+    when (stored) {
+        null -> CoverShape.CIRCLE
+        KEEP_TRACK_SHAPE -> null
+        else -> runCatching { CoverShape.valueOf(stored) }.getOrDefault(CoverShape.CIRCLE)
+    }
+
+/** The music mini player's paint: the cover's tone on a quiet container (today), or one of the other looks. */
+enum class MiniBarBackground {
+    TINTED,
+    VIVID,
+    APP_THEME,
+    COVER_COLOURS,
+    BLACK,
+    OUTLINED,
+}
+
+/**
+ * How the music mini player's bar shows progress: a tonal fill behind it, a line around its edge, a
+ * line along its bottom, a wavy one, or nothing. Stored by name.
+ */
+enum class MiniBarProgress {
+    NONE,
+    FILL,
+    EDGE,
+    LINE,
+    WAVY_LINE,
+}
+
+/** A button the music mini player can show. Stored by name, in the user's order. */
+enum class MiniBarButton {
+    PREVIOUS,
+    PLAY_PAUSE,
+    NEXT,
+    LIKE,
+    ADD_TO_PLAYLIST,
+    SHUFFLE,
+    REPEAT,
+    QUEUE,
+    LYRICS,
+    SLEEP_TIMER,
+    BACK_10,
+    FORWARD_10,
+    CLOSE,
+}
+
+/** How many buttons a mini player shows at most; a wide window adds Previous on top when it's left out. */
+const val MAX_MINI_BAR_BUTTONS = 3
+
+/** Today's buttons, until the user picks their own. */
+val DefaultMiniBarButtons = listOf(MiniBarButton.PLAY_PAUSE, MiniBarButton.NEXT)
+
+/** Stored button names back as buttons: unknown names skipped, at most [MAX_MINI_BAR_BUTTONS]; nothing stored means the defaults. */
+internal fun parseMiniBarButtons(stored: String?): List<MiniBarButton> =
+    stored
+        ?.split(',')
+        ?.mapNotNull { name -> runCatching { MiniBarButton.valueOf(name) }.getOrNull() }
+        ?.distinct()
+        ?.take(MAX_MINI_BAR_BUTTONS)
+        ?: DefaultMiniBarButtons
+
+/** What a tap on the mini player's cover does: open the player as the rest of the bar does, or play and pause. */
+enum class MiniCoverTap {
+    OPEN,
+    PLAY_PAUSE,
+}
+
+/** What holding the mini player does. Stored by name. */
+enum class MiniLongPress {
+    NOTHING,
+    OPTIONS,
+    LIKE,
+    QUEUE,
+}
+
+/** When a morphing cover moves: as playback starts, stops and changes track, all the time it plays, or never. Stored by name. */
+enum class MiniCoverMotion {
+    ON_PLAY,
+    ALWAYS,
+    STILL,
+}
+
 /** Which side of the fullscreen player a vertical swipe changes the playback speed on, in place of brightness or volume. */
 enum class SpeedSwipeSide {
     OFF,
@@ -4193,6 +4664,53 @@ enum class SharedLinkAction {
 
     /** Always offer the video's menu. */
     ALWAYS_ASK,
+}
+
+const val DEFAULT_CROSSFADE_MS = 3_000
+private const val MS_PER_CROSSFADE_SECOND = 1_000
+
+/** How the two songs' volumes move during a crossfade, in the order settings list them. */
+enum class CrossfadeCurve {
+    EQUAL_POWER,
+    S_CURVE,
+    HOLD,
+    GENTLE,
+    ;
+
+    companion object {
+        fun fromString(name: String?): CrossfadeCurve = entries.find { it.name == name } ?: EQUAL_POWER
+    }
+}
+
+/**
+ * How a synced line moves as it is sung: letters that rise with the fill, held notes that swell and
+ * syllable runs that climb (Cadence); words that lift as they fill (Classic); or the fill alone (Calm).
+ * Stored by name.
+ */
+enum class LyricsAnimationStyle {
+    CADENCE,
+    CLASSIC,
+    CALM,
+}
+
+/** How strongly a long held note glows while it is sung. Normal is how it always glowed. Stored by name. */
+enum class LyricsGlow {
+    OFF,
+    SOFT,
+    NORMAL,
+    BRIGHT,
+}
+
+/** What the full-screen lyrics draw on. Stored by name. */
+enum class LyricsBackgroundStyle {
+    SOLID,
+    COLORFUL,
+    MOVING,
+    ;
+
+    companion object {
+        fun fromStored(stored: String?): LyricsBackgroundStyle = entries.firstOrNull { it.name == stored } ?: SOLID
+    }
 }
 
 const val LYRICS_ALIGN_LEFT = "left"

@@ -135,6 +135,14 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".ui.screens.lockscreen.LockScreenPlayerActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleInstance"
+            android:taskAffinity="${applicationId}.lockscreen"
+            android:theme="@style/Theme.GlideTube" />
+
         <!-- singleTask: a share or link from another app must reach this instance through
              onNewIntent, not start a second one inside the sharing app's task (#1121). -->
         <activity

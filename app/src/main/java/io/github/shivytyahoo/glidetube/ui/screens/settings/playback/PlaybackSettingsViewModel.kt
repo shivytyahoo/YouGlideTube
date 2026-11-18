@@ -1,7 +1,9 @@
 package io.github.shivytyahoo.glidetube.ui.screens.settings.playback
 
 import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.shivytyahoo.glidetube.data.local.CrossfadeCurve
 import io.github.shivytyahoo.glidetube.data.local.DEFAULT_BACKGROUND_PLAY_ENABLED
+import io.github.shivytyahoo.glidetube.data.local.DEFAULT_CROSSFADE_MS
 import io.github.shivytyahoo.glidetube.data.local.DEFAULT_SPEED_SWIPE_STEP
 import io.github.shivytyahoo.glidetube.data.local.DoubleTapSeekZone
 import io.github.shivytyahoo.glidetube.data.local.PlayerOverlayPreferences
@@ -100,11 +102,21 @@ class PlaybackSettingsViewModel
 
         val endlessRadio = preferences.musicEndlessRadioEnabled.asState(true)
         val musicVideoSwitch = preferences.musicVideoSwitch.asState(false)
+        val lockScreenPlayer = preferences.lockScreenPlayer.asState(false)
         val pauseMusicWhenMuted = preferences.pauseMusicWhenMuted.asState(false)
+        val crossfadeEnabled = preferences.musicCrossfadeEnabled.asState(false)
+        val crossfadeMs = preferences.musicCrossfadeMs.asState(DEFAULT_CROSSFADE_MS)
+        val crossfadeKeepAlbums = preferences.musicCrossfadeKeepAlbums.asState(true)
+        val crossfadeCurve = preferences.musicCrossfadeCurve.asState(CrossfadeCurve.EQUAL_POWER)
+        val crossfadeOnAutoAdvance = preferences.musicCrossfadeOnAutoAdvance.asState(true)
+        val crossfadeOnManualSkip = preferences.musicCrossfadeOnManualSkip.asState(true)
         val lyricsProviders =
             combine(preferences.lyricsProviderOrder, preferences.allLyricsProviderEnabledStates()) { order, enabled ->
                 LyricsProviderOrder.resolve(order).map { LyricsProviderState(it, enabled[it] ?: true) }
             }.asState(LyricsProviderOrder.DEFAULT.map { LyricsProviderState(it, true) })
+        val lyricsInMiniPlayer = preferences.lyricsInMiniPlayer.asState(false)
+        val lyricsSponsorBlockTiming = preferences.lyricsSponsorBlockTiming.asState(false)
+        val lyricsOnDemand = preferences.lyricsOnDemand.asState(false)
 
         fun setBackgroundPlay(value: Boolean) = write { preferences.setBackgroundPlayEnabled(value) }
 
@@ -234,7 +246,21 @@ class PlaybackSettingsViewModel
 
         fun setMusicVideoSwitch(value: Boolean) = write { preferences.setMusicVideoSwitch(value) }
 
+        fun setLockScreenPlayer(value: Boolean) = write { preferences.setLockScreenPlayer(value) }
+
         fun setPauseMusicWhenMuted(value: Boolean) = write { preferences.setPauseMusicWhenMuted(value) }
+
+        fun setCrossfadeCurve(curve: CrossfadeCurve) = write { preferences.setMusicCrossfadeCurve(curve) }
+
+        fun setCrossfadeOnAutoAdvance(enabled: Boolean) = write { preferences.setMusicCrossfadeOnAutoAdvance(enabled) }
+
+        fun setCrossfadeOnManualSkip(enabled: Boolean) = write { preferences.setMusicCrossfadeOnManualSkip(enabled) }
+
+        fun setCrossfadeEnabled(enabled: Boolean) = write { preferences.setMusicCrossfadeEnabled(enabled) }
+
+        fun setCrossfadeMs(ms: Long) = write { preferences.setMusicCrossfadeMs(ms.toInt()) }
+
+        fun setCrossfadeKeepAlbums(enabled: Boolean) = write { preferences.setMusicCrossfadeKeepAlbums(enabled) }
 
         fun setLyricsProviderEnabled(
             name: String,
@@ -242,6 +268,12 @@ class PlaybackSettingsViewModel
         ) = write { preferences.setLyricsProviderEnabled(name, enabled) }
 
         fun setLyricsProviderOrder(names: List<String>) = write { preferences.setLyricsProviderOrder(LyricsProviderOrder.serialize(names)) }
+
+        fun setLyricsInMiniPlayer(value: Boolean) = write { preferences.setLyricsInMiniPlayer(value) }
+
+        fun setLyricsSponsorBlockTiming(value: Boolean) = write { preferences.setLyricsSponsorBlockTiming(value) }
+
+        fun setLyricsOnDemand(value: Boolean) = write { preferences.setLyricsOnDemand(value) }
 
         companion object {
             const val ORIGINAL_AUDIO = "original"

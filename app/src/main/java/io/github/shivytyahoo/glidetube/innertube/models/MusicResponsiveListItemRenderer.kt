@@ -7,6 +7,7 @@ import io.github.shivytyahoo.glidetube.innertube.models.BrowseEndpoint.BrowseEnd
 import io.github.shivytyahoo.glidetube.innertube.models.BrowseEndpoint.BrowseEndpointContextSupportedConfigs.BrowseEndpointContextMusicConfig.Companion.MUSIC_PAGE_TYPE_AUDIOBOOK
 import io.github.shivytyahoo.glidetube.innertube.models.BrowseEndpoint.BrowseEndpointContextSupportedConfigs.BrowseEndpointContextMusicConfig.Companion.MUSIC_PAGE_TYPE_LIBRARY_ARTIST
 import io.github.shivytyahoo.glidetube.innertube.models.BrowseEndpoint.BrowseEndpointContextSupportedConfigs.BrowseEndpointContextMusicConfig.Companion.MUSIC_PAGE_TYPE_PLAYLIST
+import io.github.shivytyahoo.glidetube.innertube.models.BrowseEndpoint.BrowseEndpointContextSupportedConfigs.BrowseEndpointContextMusicConfig.Companion.MUSIC_PAGE_TYPE_USER_CHANNEL
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonNames
@@ -37,6 +38,15 @@ data class MusicResponsiveListItemRenderer(
     val isArtist: Boolean
         get() = navigationEndpoint?.browseEndpoint?.browseEndpointContextSupportedConfigs?.browseEndpointContextMusicConfig?.pageType == MUSIC_PAGE_TYPE_ARTIST
                 || navigationEndpoint?.browseEndpoint?.browseEndpointContextSupportedConfigs?.browseEndpointContextMusicConfig?.pageType == MUSIC_PAGE_TYPE_LIBRARY_ARTIST
+
+    val isUserChannel: Boolean
+        get() =
+            navigationEndpoint
+                ?.browseEndpoint
+                ?.browseEndpointContextSupportedConfigs
+                ?.browseEndpointContextMusicConfig
+                ?.pageType ==
+                MUSIC_PAGE_TYPE_USER_CHANNEL
 
     val musicVideoType: String?
         get() =

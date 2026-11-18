@@ -28,6 +28,10 @@ object SearchPage {
                 ?.splitBySeparator()
                 ?: return null
         return when {
+            renderer.isUserChannel -> {
+                profile(renderer)
+            }
+
             renderer.isSong -> {
                 SongItem(
                     id = renderer.playlistItemData?.videoId ?: return null,
@@ -206,4 +210,22 @@ object SearchPage {
             }
         }
     }
+
+    /** A YouTube channel that is not an artist, which YouTube Music lists as a profile. */
+    private fun profile(renderer: MusicResponsiveListItemRenderer): ArtistItem? =
+        ArtistItem(
+            id = renderer.navigationEndpoint?.browseEndpoint?.browseId ?: return null,
+            title =
+                renderer.flexColumns
+                    .firstOrNull()
+                    ?.musicResponsiveListItemFlexColumnRenderer
+                    ?.text
+                    ?.runs
+                    ?.firstOrNull()
+                    ?.text ?: return null,
+            thumbnail = renderer.thumbnail?.musicThumbnailRenderer?.getThumbnailUrl(),
+            shuffleEndpoint = null,
+            radioEndpoint = null,
+            isProfile = true,
+        )
 }

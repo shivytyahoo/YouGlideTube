@@ -16,6 +16,7 @@ internal object SettingsIndex {
             PlayerAppearanceIndex.all +
             LanguageRegionIndex.all +
             PlaybackIndex.all +
+            PlaybackCrossfadeIndex.all +
             BufferIndex.all +
             QualityIndex.all +
             ContentIndex.all +

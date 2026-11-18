@@ -21,7 +21,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -31,9 +30,6 @@ import androidx.compose.ui.unit.dp
 import io.github.shivytyahoo.glidetube.R
 import io.github.shivytyahoo.glidetube.player.RepeatMode
 import io.github.shivytyahoo.glidetube.ui.components.musicplayer.common.readableAccentOn
-
-private val SegmentFullRadius = 21.dp
-private val SegmentEdgeRadius = 8.dp
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -50,13 +46,6 @@ fun PlayerSecondaryActions(
     sleepTimerActive: Boolean = false,
     onSleepTimerClick: (() -> Unit)? = null,
 ) {
-    val trailingShape =
-        RoundedCornerShape(
-            topStart = SegmentEdgeRadius,
-            bottomStart = SegmentEdgeRadius,
-            topEnd = SegmentFullRadius,
-            bottomEnd = SegmentFullRadius,
-        )
     Row(
         modifier =
             modifier
@@ -71,13 +60,7 @@ fun PlayerSecondaryActions(
             checkedContentColor = MaterialTheme.colorScheme.onTertiaryContainer,
             icon = Icons.Outlined.Lyrics,
             contentDescription = stringResource(R.string.lyrics),
-            uncheckedShape =
-                RoundedCornerShape(
-                    topStart = SegmentFullRadius,
-                    bottomStart = SegmentFullRadius,
-                    topEnd = SegmentEdgeRadius,
-                    bottomEnd = SegmentEdgeRadius,
-                ),
+            uncheckedShape = PlayerSegmentLeadingShape,
             onClick = onLyricsClick,
         )
         PlayerToggleButton(
@@ -86,7 +69,7 @@ fun PlayerSecondaryActions(
             checkedContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
             icon = Icons.Rounded.Shuffle,
             contentDescription = stringResource(R.string.shuffle),
-            uncheckedShape = RoundedCornerShape(SegmentEdgeRadius),
+            uncheckedShape = PlayerSegmentInnerShape,
             onClick = onShuffleClick,
         )
         PlayerToggleButton(
@@ -99,7 +82,7 @@ fun PlayerSecondaryActions(
                     else -> Icons.Rounded.Repeat
                 },
             contentDescription = stringResource(R.string.repeat),
-            uncheckedShape = RoundedCornerShape(SegmentEdgeRadius),
+            uncheckedShape = PlayerSegmentInnerShape,
             onClick = onRepeatClick,
         )
         PlayerToggleButton(
@@ -108,7 +91,7 @@ fun PlayerSecondaryActions(
             checkedContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
             icon = Icons.Outlined.QueueMusic,
             contentDescription = stringResource(R.string.playlist_queue),
-            uncheckedShape = if (onSleepTimerClick == null) trailingShape else RoundedCornerShape(SegmentEdgeRadius),
+            uncheckedShape = if (onSleepTimerClick == null) PlayerSegmentTrailingShape else PlayerSegmentInnerShape,
             onClick = onQueueClick,
         )
         if (onSleepTimerClick != null) {
@@ -118,51 +101,10 @@ fun PlayerSecondaryActions(
                 checkedContentColor = MaterialTheme.colorScheme.onTertiaryContainer,
                 icon = if (sleepTimerActive) Icons.Filled.Bedtime else Icons.Outlined.Bedtime,
                 contentDescription = stringResource(R.string.sleep_timer),
-                uncheckedShape = trailingShape,
+                uncheckedShape = PlayerSegmentTrailingShape,
                 onClick = onSleepTimerClick,
             )
         }
-    }
-}
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun RowScope.PlayerToggleButton(
-    checked: Boolean,
-    checkedContainerColor: Color,
-    checkedContentColor: Color,
-    icon: ImageVector,
-    contentDescription: String?,
-    uncheckedShape: Shape,
-    onClick: () -> Unit,
-) {
-    ToggleButton(
-        checked = checked,
-        onCheckedChange = { onClick() },
-        modifier =
-            Modifier
-                .weight(1f)
-                .fillMaxHeight(),
-        colors =
-            ToggleButtonDefaults.toggleButtonColors(
-                containerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
-                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                checkedContainerColor = checkedContainerColor,
-                checkedContentColor = checkedContentColor,
-            ),
-        shapes =
-            ToggleButtonShapes(
-                shape = uncheckedShape,
-                pressedShape = RoundedCornerShape(12.dp),
-                checkedShape = RoundedCornerShape(SegmentFullRadius),
-            ),
-        contentPadding = PaddingValues(0.dp),
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = contentDescription,
-            modifier = Modifier.size(20.dp),
-        )
     }
 }
 

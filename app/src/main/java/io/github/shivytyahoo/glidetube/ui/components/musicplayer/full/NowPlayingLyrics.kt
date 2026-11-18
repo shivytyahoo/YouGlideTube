@@ -105,7 +105,12 @@ private fun MusicPlayerUiState.lyricsDisplay() =
         showTranslation = lyricsShowTranslation,
         showRomanization = lyricsShowRomanization,
         autoRomanize = lyricsAutoRomanize,
+        romanizationOnly = lyricsRomanizationOnly,
         keepScreenOn = lyricsKeepScreenOn,
+        blurOtherLines = lyricsBlurOtherLines,
+        background = lyricsBackground,
+        animationStyle = lyricsAnimationStyle,
+        glow = lyricsGlow,
     )
 
 private fun MusicPlayerViewModel.applyLyricsDisplay(
@@ -115,5 +120,10 @@ private fun MusicPlayerViewModel.applyLyricsDisplay(
     if (new.showTranslation != old.showTranslation) setLyricsShowTranslation(new.showTranslation)
     if (new.showRomanization != old.showRomanization) setLyricsShowRomanization(new.showRomanization)
     if (new.autoRomanize != old.autoRomanize) setLyricsAutoRomanize(new.autoRomanize)
+    if (new.romanizationOnly != old.romanizationOnly) setLyricsRomanizationOnly(new.romanizationOnly)
     if (new.keepScreenOn != old.keepScreenOn) setLyricsKeepScreenOn(new.keepScreenOn)
+    if (new.blurOtherLines != old.blurOtherLines) setLyricsBlurOtherLines(new.blurOtherLines)
+    if (new.background != old.background) setLyricsBackground(new.background)
+    if (new.animationStyle != old.animationStyle) setLyricsAnimationStyle(new.animationStyle)
+    if (new.glow != old.glow) setLyricsGlow(new.glow)
 }

@@ -124,6 +124,14 @@ fun GlideTvApp(
         GlobalPlayerState.setCurrentVideo(null)
     }
 
+    // A page asked for before the shell's NavHost has set its graph, as from a player a link opened.
+    var pendingRoute by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(pendingRoute) {
+        val route = pendingRoute ?: return@LaunchedEffect
+        navController.currentBackStackEntryFlow.first { it != null }
+        navController.navigate(route)
+        pendingRoute = null
+    }
     val mediaNavigator =
         remember(navController) {
             TvMediaNavigator(
@@ -133,6 +141,7 @@ fun GlideTvApp(
                     if (GlobalPlayerState.currentVideo.value != null) closePlayer()
                 },
                 playVideo = { playById(it) },
+                navigateWhenReady = { pendingRoute = it },
             )
         }
 

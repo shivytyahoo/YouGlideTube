@@ -3,6 +3,7 @@ package io.github.shivytyahoo.glidetube.ui.screens.settings.appearance.player
 import androidx.annotation.StringRes
 import io.github.shivytyahoo.glidetube.R
 import io.github.shivytyahoo.glidetube.data.local.GestureOverlayStyle
+import io.github.shivytyahoo.glidetube.data.local.MiniBarBackground
 import io.github.shivytyahoo.glidetube.data.local.MusicPlayerBackgroundStyle
 import io.github.shivytyahoo.glidetube.data.local.SeekbarPaddingMode
 import io.github.shivytyahoo.glidetube.data.local.ShortsPlayerUiMode
@@ -65,4 +66,15 @@ internal fun miniPlayerSizeLabel(size: MiniPlayerSize): Int =
         MiniPlayerSize.SMALL -> R.string.mini_player_small
         MiniPlayerSize.NORMAL -> R.string.mini_player_normal
         MiniPlayerSize.LARGE -> R.string.mini_player_large
+    }
+
+@StringRes
+internal fun miniBackgroundLabel(background: MiniBarBackground): Int =
+    when (background) {
+        MiniBarBackground.TINTED -> R.string.mini_background_tinted
+        MiniBarBackground.VIVID -> R.string.mini_background_vivid
+        MiniBarBackground.APP_THEME -> R.string.mini_background_app_theme
+        MiniBarBackground.COVER_COLOURS -> R.string.mini_background_cover_colours
+        MiniBarBackground.BLACK -> R.string.mini_background_black
+        MiniBarBackground.OUTLINED -> R.string.mini_background_outlined
     }

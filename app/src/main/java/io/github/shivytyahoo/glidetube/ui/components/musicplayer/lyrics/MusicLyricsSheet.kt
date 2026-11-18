@@ -43,6 +43,7 @@ import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import io.github.shivytyahoo.glidetube.R
+import io.github.shivytyahoo.glidetube.data.local.LyricsBackgroundStyle
 import io.github.shivytyahoo.glidetube.data.lyrics.LyricsCandidate
 import io.github.shivytyahoo.glidetube.data.lyrics.LyricsEntry
 import io.github.shivytyahoo.glidetube.data.lyrics.lrcText
@@ -100,6 +101,7 @@ internal fun MusicLyricsSheet(
     val backProgress = remember { Animatable(0f) }
     var panelComposed by remember { mutableStateOf(false) }
     var showActionsSheet by remember { mutableStateOf(false) }
+    var showShareSheet by remember { mutableStateOf(false) }
     var showSourcesSheet by remember { mutableStateOf(false) }
     var showEditDialog by remember { mutableStateOf(false) }
     var showSyncControls by remember { mutableStateOf(false) }
@@ -126,6 +128,7 @@ internal fun MusicLyricsSheet(
             panelComposed = true
         } else {
             showActionsSheet = false
+            showShareSheet = false
             showSourcesSheet = false
             showEditDialog = false
             showSyncControls = false
@@ -193,7 +196,12 @@ internal fun MusicLyricsSheet(
     val sheetAtRestHidden by remember { derivedStateOf { !sheetShown.isRunning && sheetShown.value == 0f } }
     if (!visible && !panelComposed && sheetAtRestHidden) return
 
-    val backdropColor = remember(backdropBaseColor) { lyricsBackdrop(backdropBaseColor) }
+    val usesCover = display.background != LyricsBackgroundStyle.SOLID
+    val cover = rememberLyricsCover(artworkUrl, enabled = usesCover && visible)
+    val backdropColor =
+        remember(backdropBaseColor, cover, usesCover) {
+            cover?.backdrop?.takeIf { usesCover } ?: lyricsBackdrop(backdropBaseColor)
+        }
 
     Box(
         modifier =
@@ -211,6 +219,13 @@ internal fun MusicLyricsSheet(
                     }
                 }.background(backdropColor),
     ) {
+        if (usesCover) {
+            LyricsCoverLayer(
+                cover = cover,
+                moving = display.background == LyricsBackgroundStyle.MOVING,
+                running = visible && isPlaying,
+            )
+        }
         Column(modifier = Modifier.fillMaxSize()) {
             Box(
                 modifier =
@@ -306,6 +321,11 @@ internal fun MusicLyricsSheet(
             alignPref = alignPref,
             syncOffsetMs = syncOffsetMs,
             display = display,
+            japaneseLyrics =
+                remember(lyrics, syncedLyrics) {
+                    isJapaneseLyrics(syncedLyrics.map { it.text }.ifEmpty { lyrics?.lines().orEmpty() })
+                },
+            hasTranslation = remember(syncedLyrics) { syncedLyrics.any { !it.translation.isNullOrBlank() } },
             onRefresh = onRefresh,
             onChooseSource =
                 onBrowseSources?.let { browse ->
@@ -330,17 +350,25 @@ internal fun MusicLyricsSheet(
             },
             onSaveFile = {
                 pendingSaveText = lrcText(syncedLyrics, lyrics)
-                val baseName =
-                    listOf(trackArtist, trackTitle)
-                        .filter { it.isNotBlank() }
-                        .joinToString(" - ")
-                        .replace(Regex("[\\\\/:*?\"<>|]"), "_")
-                saveLauncher.launch("$baseName.lrc")
+                saveLauncher.launch(lyricsFileName(trackTitle, trackArtist, "lrc"))
             },
+            onShare = { showShareSheet = true },
             onAlignChange = onAlignChange,
             onDisplayChange = onDisplayChange,
             onAdjustSync = { showSyncControls = true },
             onDismiss = { showActionsSheet = false },
+        )
+    }
+
+    if (showShareSheet) {
+        LyricsShareSheet(
+            title = trackTitle,
+            artist = trackArtist,
+            artworkUrl = artworkUrl,
+            lines = remember(lyrics, syncedLyrics) { buildLines(lyrics, syncedLyrics) },
+            positionProvider = positionProvider,
+            initialAlign = lyricsTextAlignFor(alignPref),
+            onDismiss = { showShareSheet = false },
         )
     }
 

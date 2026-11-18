@@ -477,11 +477,45 @@ internal object PlaybackIndex {
             section = R.string.settings_section_music,
             destination = page,
         )
+    val lockScreenPlayer =
+        SettingEntry(
+            key = "playback.lock_screen_player",
+            title = R.string.settings_lock_screen_player_title,
+            summary = R.string.settings_lock_screen_player_summary,
+            section = R.string.settings_section_music,
+            destination = page,
+            keywords = R.string.settings_keywords_lock_screen_player,
+        )
     val lyricsProviders =
         SettingEntry(
             key = "playback.lyrics_providers",
             title = R.string.lyrics_provider_title,
             summary = R.string.lyrics_provider_subtitle,
+            section = R.string.settings_section_music,
+            destination = page,
+        )
+    val lyricsInMiniPlayer =
+        SettingEntry(
+            key = "playback.lyrics_in_mini_player",
+            title = R.string.lyrics_in_mini_player,
+            summary = R.string.lyrics_in_mini_player_summary,
+            section = R.string.settings_section_music,
+            destination = page,
+        )
+    val lyricsSponsorBlockTiming =
+        SettingEntry(
+            key = "playback.lyrics_sponsorblock_timing",
+            title = R.string.lyrics_sponsorblock_timing,
+            summary = R.string.lyrics_sponsorblock_timing_summary,
+            section = R.string.settings_section_music,
+            destination = page,
+        )
+    val lyricsOnDemand =
+        SettingEntry(
+            key = "playback.lyrics_on_demand",
+            title = R.string.lyrics_on_demand,
+            summary = R.string.lyrics_on_demand_summary,
+            keywords = R.string.settings_keywords_lyrics_on_demand,
             section = R.string.settings_section_music,
             destination = page,
         )
@@ -546,6 +580,10 @@ internal object PlaybackIndex {
             endlessRadio,
             pauseMusicWhenMuted,
             musicVideoSwitch,
+            lockScreenPlayer,
+            lyricsInMiniPlayer,
+            lyricsSponsorBlockTiming,
+            lyricsOnDemand,
             lyricsProviders,
         )
 }

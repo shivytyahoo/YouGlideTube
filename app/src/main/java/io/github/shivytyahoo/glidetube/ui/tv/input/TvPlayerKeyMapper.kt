@@ -1,6 +1,7 @@
 package io.github.shivytyahoo.glidetube.ui.tv.input
 
 import android.view.KeyEvent
+import io.github.shivytyahoo.glidetube.ui.components.shared.MediaButton
 
 /** Playback intents produced by remote keys on the TV player. */
 enum class TvPlayerAction {
@@ -25,19 +26,24 @@ enum class TvPlayerAction {
  * D-pad navigation keys are never consumed by [map] so Compose focus keeps working.
  */
 object TvPlayerKeyMapper {
-    fun map(keyCode: Int): TvPlayerAction? = when (keyCode) {
-        KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE,
-        KeyEvent.KEYCODE_HEADSETHOOK -> TvPlayerAction.TOGGLE_PLAYBACK
-        KeyEvent.KEYCODE_MEDIA_PLAY -> TvPlayerAction.PLAY
-        KeyEvent.KEYCODE_MEDIA_PAUSE,
-        KeyEvent.KEYCODE_MEDIA_STOP -> TvPlayerAction.PAUSE
-        KeyEvent.KEYCODE_MEDIA_REWIND -> TvPlayerAction.SEEK_BACK
-        KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> TvPlayerAction.SEEK_FORWARD
-        KeyEvent.KEYCODE_MEDIA_NEXT -> TvPlayerAction.NEXT
-        KeyEvent.KEYCODE_MEDIA_PREVIOUS -> TvPlayerAction.PREVIOUS
-        KeyEvent.KEYCODE_CAPTIONS -> TvPlayerAction.TOGGLE_CAPTIONS
-        else -> null
-    }
+    fun map(keyCode: Int): TvPlayerAction? =
+        MediaButton.forKeyCode(keyCode)?.toTvAction()
+            ?: when (keyCode) {
+                KeyEvent.KEYCODE_CAPTIONS -> TvPlayerAction.TOGGLE_CAPTIONS
+                KeyEvent.KEYCODE_SPACE -> TvPlayerAction.TOGGLE_PLAYBACK
+                else -> null
+            }
+
+    private fun MediaButton.toTvAction(): TvPlayerAction =
+        when (this) {
+            MediaButton.TOGGLE -> TvPlayerAction.TOGGLE_PLAYBACK
+            MediaButton.PLAY -> TvPlayerAction.PLAY
+            MediaButton.PAUSE -> TvPlayerAction.PAUSE
+            MediaButton.SEEK_BACK -> TvPlayerAction.SEEK_BACK
+            MediaButton.SEEK_FORWARD -> TvPlayerAction.SEEK_FORWARD
+            MediaButton.NEXT -> TvPlayerAction.NEXT
+            MediaButton.PREVIOUS -> TvPlayerAction.PREVIOUS
+        }
 
     /**
      * D-pad handling while the controls overlay is hidden. Center follows the Android TV

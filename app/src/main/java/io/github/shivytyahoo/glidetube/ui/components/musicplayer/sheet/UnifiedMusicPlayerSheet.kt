@@ -5,7 +5,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -48,7 +48,11 @@ import io.github.shivytyahoo.glidetube.data.music.model.MusicTrack
 import io.github.shivytyahoo.glidetube.player.EnhancedMusicPlayerManager
 import io.github.shivytyahoo.glidetube.ui.components.musicplayer.common.rememberMusicPlayerAppearance
 import io.github.shivytyahoo.glidetube.ui.components.musicplayer.full.FullMusicPlayerContent
+import io.github.shivytyahoo.glidetube.ui.components.musicplayer.mini.MiniBarActionSheets
+import io.github.shivytyahoo.glidetube.ui.components.musicplayer.mini.MiniBarSurface
 import io.github.shivytyahoo.glidetube.ui.components.musicplayer.mini.MiniPlayerContent
+import io.github.shivytyahoo.glidetube.ui.components.musicplayer.mini.rememberMiniBarActions
+import io.github.shivytyahoo.glidetube.ui.components.musicplayer.mini.rememberMiniPlayerLook
 import io.github.shivytyahoo.glidetube.ui.components.musicplayer.motion.MusicSheetDragGestureHandler
 import io.github.shivytyahoo.glidetube.ui.components.musicplayer.motion.MusicSheetMotionController
 import io.github.shivytyahoo.glidetube.ui.components.musicplayer.motion.musicSheetVerticalDragGesture
@@ -112,6 +116,11 @@ internal fun UnifiedMusicPlayerSheet(
     val appearance = rememberMusicPlayerAppearance(displayTrack.highResThumbnailUrl)
     val playerScheme = appearance.playerScheme
     val controlScheme = appearance.controlScheme
+    val appScheme = MaterialTheme.colorScheme
+
+    val miniLook = rememberMiniPlayerLook()
+    // Close mirrors a swipe away: the sheet settles shut and the player stops.
+    val miniActions = rememberMiniBarActions(state, onClose = { state.dismiss(); onDismiss() })
 
     val motionController =
         remember(state) {
@@ -363,10 +372,11 @@ internal fun UnifiedMusicPlayerSheet(
                         ).musicSheetVerticalDragGesture(
                             enabled = true,
                             handler = dragHandler,
-                        ).clickable(
+                        ).combinedClickable(
                             enabled = state.isCollapsed,
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
+                            onLongClick = miniActions.longPress(miniLook.longPress),
                         ) {
                             state.expand()
                         },
@@ -406,11 +416,13 @@ internal fun UnifiedMusicPlayerSheet(
                                 }
                             }.zIndex(miniZIndex),
                 ) {
-                    MaterialTheme(colorScheme = controlScheme) {
+                    MiniBarSurface(miniLook.background, appearance.palette.base, controlScheme, appScheme) {
                         MiniPlayerContent(
                             track = displayTrack,
                             animationsEnabled = miniAnimationsEnabled,
                             showPrevious = !isCompactWidth,
+                            look = miniLook,
+                            actions = miniActions,
                         )
                     }
                 }
@@ -451,10 +463,13 @@ internal fun UnifiedMusicPlayerSheet(
                             hideArtwork = appearance.hideArtwork,
                             sleepTimerButton = appearance.sleepTimerButton,
                             controlScheme = controlScheme,
+                            panelRequest = state.panelRequest,
+                            onPanelRequestHandled = { state.panelRequest = null },
                         )
                     }
                 }
             }
         }
     }
+    MiniBarActionSheets(miniActions, displayTrack)
 }

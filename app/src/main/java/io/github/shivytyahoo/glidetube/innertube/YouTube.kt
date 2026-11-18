@@ -27,6 +27,7 @@ import io.github.shivytyahoo.glidetube.innertube.models.WatchEndpoint
 import io.github.shivytyahoo.glidetube.innertube.models.WatchEndpoint.WatchEndpointMusicSupportedConfigs.WatchEndpointMusicConfig.Companion.MUSIC_VIDEO_TYPE_ATV
 import io.github.shivytyahoo.glidetube.innertube.models.YouTubeClient
 import io.github.shivytyahoo.glidetube.innertube.models.YouTubeClient.Companion.WEB
+import io.github.shivytyahoo.glidetube.innertube.models.YouTubeClient.Companion.ANDROID_MUSIC
 import io.github.shivytyahoo.glidetube.innertube.models.YouTubeClient.Companion.WEB_REMIX
 import io.github.shivytyahoo.glidetube.innertube.models.YouTubeLocale
 import io.github.shivytyahoo.glidetube.innertube.models.body.Action
@@ -58,6 +59,8 @@ import io.github.shivytyahoo.glidetube.innertube.pages.BrowseResult
 import io.github.shivytyahoo.glidetube.innertube.pages.ChartsPage
 import io.github.shivytyahoo.glidetube.innertube.pages.ExplorePage
 import io.github.shivytyahoo.glidetube.innertube.pages.HistoryPage
+import io.github.shivytyahoo.glidetube.innertube.pages.TimedLyricLine
+import io.github.shivytyahoo.glidetube.innertube.pages.timedLyricLines
 import io.github.shivytyahoo.glidetube.innertube.pages.HomePage
 import io.github.shivytyahoo.glidetube.innertube.pages.ServerFeedPage
 import io.github.shivytyahoo.glidetube.innertube.pages.renderer.harvestFeedPage
@@ -3442,12 +3445,7 @@ object YouTube {
                     ?.tabbedRenderer
                     ?.watchNextTabbedResultsRenderer
                     ?.tabs
-            val lyricsBrowseEndpoint =
-                watchNextTabs?.firstNotNullOfOrNull { tab ->
-                    tab.tabRenderer.endpoint
-                        ?.browseEndpoint
-                        ?.takeIf { it.browseId.startsWith("MPLYt") }
-                }
+            val lyricsBrowseEndpoint = response.lyricsBrowseEndpoint()
             val relatedBrowseEndpoint =
                 watchNextTabs?.firstNotNullOfOrNull { tab ->
                     tab.tabRenderer.endpoint
@@ -3520,6 +3518,35 @@ object YouTube {
                 continuation = playlistPanelRenderer.continuations?.getContinuation(),
                 endpoint = endpoint,
             )
+        }
+
+    private fun NextResponse.lyricsBrowseEndpoint(): BrowseEndpoint? =
+        contents.singleColumnMusicWatchNextResultsRenderer
+            ?.tabbedRenderer
+            ?.watchNextTabbedResultsRenderer
+            ?.tabs
+            ?.firstNotNullOfOrNull { tab ->
+                tab.tabRenderer.endpoint
+                    ?.browseEndpoint
+                    ?.takeIf { it.browseId.startsWith("MPLYt") }
+            }
+
+    /** One `next` and nothing else: [next] follows the automix row, which is a second, slower request. */
+    suspend fun lyricsEndpoint(videoId: String): Result<BrowseEndpoint?> =
+        runCatching {
+            innerTube
+                .next(WEB_REMIX, videoId, null, null, null, null)
+                .body<NextResponse>()
+                .lyricsBrowseEndpoint()
+        }
+
+    /**
+     * A song's timed lyrics. The browse runs with the signed-in account attached
+     * (setLogin = true, like the app's other YouTube calls), never anonymously.
+     */
+    suspend fun timedLyrics(endpoint: BrowseEndpoint): Result<List<TimedLyricLine>> =
+        runCatching {
+            timedLyricLines(innerTube.browse(ANDROID_MUSIC, endpoint.browseId, endpoint.params, setLogin = true).body<JsonObject>())
         }
 
     suspend fun lyrics(endpoint: BrowseEndpoint): Result<String?> =

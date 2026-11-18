@@ -172,6 +172,110 @@ internal object PlayerAppearanceIndex {
             R.string.mini_bar_swipe_subtitle,
             R.string.settings_section_mini_player,
         )
+    val miniCoverShape =
+        entry(
+            "mini_cover_shape",
+            R.string.player_appearance_mini_cover_title,
+            R.string.player_appearance_mini_cover_subtitle,
+            R.string.settings_section_music_mini_player,
+        )
+    val miniCoverMotion =
+        entry(
+            "mini_cover_motion",
+            R.string.player_appearance_mini_cover_motion_title,
+            section = R.string.settings_section_music_mini_player,
+            revealVia = miniCoverShape.key,
+        )
+    val miniCoverShapes =
+        entry(
+            "mini_cover_shapes",
+            R.string.player_appearance_cover_shapes_title,
+            R.string.player_appearance_cover_shapes_subtitle,
+            R.string.settings_section_music_mini_player,
+            revealVia = miniCoverShape.key,
+        )
+    val miniCoverPausedShape =
+        entry(
+            "mini_cover_paused_shape",
+            R.string.player_appearance_cover_paused_title,
+            R.string.player_appearance_cover_paused_subtitle,
+            R.string.settings_section_music_mini_player,
+            revealVia = miniCoverShape.key,
+        )
+    val miniBarProgress =
+        entry(
+            "mini_bar_progress",
+            R.string.player_appearance_bar_progress_title,
+            R.string.player_appearance_bar_progress_subtitle,
+            R.string.settings_section_music_mini_player,
+        )
+    val miniCoverRing =
+        entry(
+            "mini_cover_ring",
+            R.string.player_appearance_cover_ring_title,
+            R.string.player_appearance_cover_ring_subtitle,
+            R.string.settings_section_music_mini_player,
+        )
+    val miniBackground =
+        entry(
+            "mini_background",
+            R.string.player_appearance_mini_background_title,
+            R.string.player_appearance_mini_background_subtitle,
+            R.string.settings_section_music_mini_player,
+        )
+    val miniButtons =
+        entry(
+            "mini_buttons",
+            R.string.player_appearance_mini_buttons_title,
+            R.string.player_appearance_mini_buttons_subtitle,
+            R.string.settings_section_music_mini_player,
+        )
+    val miniCoverTap =
+        entry("mini_cover_tap", R.string.player_appearance_mini_cover_tap_title, section = R.string.settings_section_music_mini_player)
+    val miniLongPress =
+        entry("mini_long_press", R.string.player_appearance_mini_long_press_title, section = R.string.settings_section_music_mini_player)
+    val lyricsAnimation =
+        entry(
+            "lyrics_animation",
+            R.string.lyrics_animation,
+            R.string.lyrics_animation_summary,
+            R.string.settings_section_lyrics,
+        )
+    val lyricsGlow =
+        entry(
+            "lyrics_glow",
+            R.string.lyrics_glow,
+            R.string.lyrics_glow_summary,
+            R.string.settings_section_lyrics,
+        )
+    val lyricsBlurOtherLines =
+        entry(
+            "lyrics_blur_other_lines",
+            R.string.lyrics_blur_other_lines,
+            R.string.lyrics_blur_other_lines_summary,
+            R.string.settings_section_lyrics,
+        )
+    val lyricsBackground =
+        entry(
+            "lyrics_background",
+            R.string.lyrics_background,
+            null,
+            R.string.settings_section_lyrics,
+        )
+    val lyricsAlignment =
+        entry(
+            "lyrics_alignment",
+            R.string.lyrics_alignment,
+            null,
+            R.string.settings_section_lyrics,
+        )
+    val lyricsOnLockScreen =
+        entry(
+            "lyrics_on_lock_screen",
+            R.string.lyrics_on_lock_screen,
+            R.string.lyrics_on_lock_screen_summary,
+            R.string.settings_section_lyrics,
+        )
 
     val all =
         listOf(
@@ -202,5 +306,21 @@ internal object PlayerAppearanceIndex {
             miniPlayerNextPrev,
             miniBarSwipeLeft,
             miniBarSwipeRight,
+            miniCoverShape,
+            miniCoverMotion,
+            miniCoverShapes,
+            miniCoverPausedShape,
+            miniBarProgress,
+            miniCoverRing,
+            miniBackground,
+            miniButtons,
+            miniCoverTap,
+            miniLongPress,
+            lyricsAnimation,
+            lyricsGlow,
+            lyricsBlurOtherLines,
+            lyricsBackground,
+            lyricsAlignment,
+            lyricsOnLockScreen,
         )
 }

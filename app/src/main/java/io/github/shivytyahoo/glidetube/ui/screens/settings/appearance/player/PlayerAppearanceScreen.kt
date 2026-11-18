@@ -83,6 +83,8 @@ internal fun PlayerAppearanceScreen(
     val queueSwipeLeft by viewModel.queueSwipeLeft.collectAsStateWithLifecycle()
     val queueSwipeRight by viewModel.queueSwipeRight.collectAsStateWithLifecycle()
     var sheet by rememberSaveable { mutableStateOf<PreviewSheet?>(null) }
+    val miniSettings = rememberMusicMiniSettings(viewModel)
+    val lyricsLookOptions = rememberLyricsLookOptions()
 
     val portraitPadding =
         resolveSeekbarHorizontalPaddingDp(
@@ -194,6 +196,7 @@ internal fun PlayerAppearanceScreen(
             nav(PlayerAppearanceIndex.queueSwipeLeft, value = queueSwipeLeftLabel, onClick = { sheet = PreviewSheet.QUEUE_SWIPE_LEFT })
             nav(PlayerAppearanceIndex.queueSwipeRight, value = queueSwipeRightLabel, onClick = { sheet = PreviewSheet.QUEUE_SWIPE_RIGHT })
         }
+        lyricsLookGroup(viewModel, lyricsLookOptions)
         group(key = "player_appearance.video", header = R.string.settings_section_video_player) {
             switch(PlayerAppearanceIndex.adaptiveSize, adaptiveSize, viewModel::setAdaptivePlayerSize)
             switch(PlayerAppearanceIndex.ambientMode, ambientMode, viewModel::setAmbientMode)
@@ -223,6 +226,7 @@ internal fun PlayerAppearanceScreen(
                 onClick = { sheet = PreviewSheet.SWIPE_RIGHT },
             )
         }
+        musicMiniGroup(miniSettings, viewModel)
     }
 
     when (sheet) {
@@ -296,6 +300,8 @@ internal fun PlayerAppearanceScreen(
             Unit
         }
     }
+
+    MusicMiniSheets(miniSettings, viewModel)
 }
 
 private fun SettingsGroupScope.seekbarSlider(

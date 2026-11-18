@@ -9,6 +9,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.padding
@@ -18,7 +19,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -45,14 +45,20 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import io.github.shivytyahoo.glidetube.R
+import io.github.shivytyahoo.glidetube.ui.components.PlayingWaveform
 import io.github.shivytyahoo.glidetube.ui.components.layout.navigation.GlideTab
 import io.github.shivytyahoo.glidetube.ui.components.layout.navigation.icon
+import io.github.shivytyahoo.glidetube.ui.components.music.common.LocalMusicNowPlayingAnimates
 import io.github.shivytyahoo.glidetube.ui.tv.navigation.TV_SETTINGS_ROUTE
 
 /**
@@ -60,8 +66,8 @@ import io.github.shivytyahoo.glidetube.ui.tv.navigation.TV_SETTINGS_ROUTE
  * with labels while it holds focus and lies over the content, which is laid out against the collapsed
  * width, so expanding never moves the page.
  *
- * Focus enters on the selected destination when it comes from the Left (a D-pad press, or the shell's
- * Back). Any other entry is Compose handing out initial focus after the focused item went away, which
+ * Focus enters on the selected destination when it comes from the screen edge the rail sits on (a
+ * D-pad press, or the shell's Back); that edge is the right one in a right-to-left language. Any other entry is Compose handing out initial focus after the focused item went away, which
  * would otherwise land here as the first item on screen, so it goes to [onOtherEntry] when that takes it.
  */
 @Composable
@@ -83,6 +89,7 @@ fun TvNavRail(
     }
     val expanded = state.targetValue == WideNavigationRailValue.Expanded
     val selectedRequester = remember { FocusRequester() }
+    val towardRail = railFocusDirection(LocalLayoutDirection.current)
     val colors = MaterialTheme.colorScheme
 
     WideNavigationRail(
@@ -95,36 +102,36 @@ fun TvNavRail(
                 }.focusRequester(focusRequester)
                 .focusProperties {
                     onEnter = {
-                        val redirected = requestedFocusDirection != FocusDirection.Left && onOtherEntry()
+                        val redirected = requestedFocusDirection != towardRail && onOtherEntry()
                         if (!redirected) selectedRequester.requestFocus()
                     }
-                    onExit = { if (requestedFocusDirection == FocusDirection.Left) cancelFocusChange() }
+                    onExit = { if (requestedFocusDirection == towardRail) cancelFocusChange() }
                 }.focusGroup(),
         state = state,
         colors = WideNavigationRailDefaults.colors(containerColor = if (expanded) colors.surfaceContainer else colors.background),
         header = { TvRailLogo() },
         arrangement = LastItemAtBottom,
     ) {
-        tabs.forEach { tab ->
-            val selected = tab.route == selectedRoute
-            TvRailItem(
-                selected = selected,
-                icon = tab.icon(selected),
-                label = stringResource(tab.labelRes),
-                expanded = expanded,
-                onClick = { onSelect(tab.route) },
-                modifier = if (selected) Modifier.focusRequester(selectedRequester) else Modifier,
-            )
-        }
-        // Music keeps playing under the browse screens; this is the one stop away from its full player.
-        nowPlayingTitle?.let { title ->
-            TvRailItem(
-                selected = false,
-                icon = Icons.Rounded.GraphicEq,
-                label = title,
-                expanded = expanded,
-                onClick = onOpenNowPlaying,
-            )
+        // The tabs share one child: the collapsed rail gives each child at least its 64 dp item height, which
+        // with Now playing added pushed Settings off the bottom of the screen.
+        Column {
+            // Music keeps playing under the browse screens; its entry sits right under Music (after the last
+            // tab when Music is hidden) and is the one stop away from the full player.
+            val nowPlayingAfter = tabs.lastOrNull { it == GlideTab.Music } ?: tabs.lastOrNull()
+            tabs.forEach { tab ->
+                val selected = tab.route == selectedRoute
+                TvRailItem(
+                    selected = selected,
+                    icon = tab.icon(selected),
+                    label = stringResource(tab.labelRes),
+                    expanded = expanded,
+                    onClick = { onSelect(tab.route) },
+                    modifier = if (selected) Modifier.focusRequester(selectedRequester) else Modifier,
+                )
+                if (tab == nowPlayingAfter && nowPlayingTitle != null) {
+                    TvRailNowPlayingItem(title = nowPlayingTitle, expanded = expanded, onClick = onOpenNowPlaying)
+                }
+            }
         }
         val settingsSelected = selectedRoute == TV_SETTINGS_ROUTE
         TvRailItem(
@@ -153,6 +160,92 @@ private fun TvRailItem(
     modifier: Modifier = Modifier,
 ) {
     val colors = WideNavigationRailItemDefaults.colors()
+    TvRailItemLayout(
+        selected = selected,
+        expanded = expanded,
+        onClick = onClick,
+        modifier = modifier,
+        icon = { Icon(imageVector = icon, contentDescription = label) },
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge,
+            color = if (selected) colors.selectedTextColor else colors.unselectedTextColor,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+/**
+ * The rail's entry for the music that is playing: the music lists' playing bars in the accent colour
+ * (they move only while it plays and nothing covers the screens), and "Now playing" over the song.
+ */
+@Composable
+private fun TvRailNowPlayingItem(
+    title: String,
+    expanded: Boolean,
+    onClick: () -> Unit,
+) {
+    TvRailSessionItem(
+        heading = stringResource(R.string.tv_rail_now_playing),
+        title = title,
+        description = stringResource(R.string.tv_rail_now_playing_description, title),
+        expanded = expanded,
+        onClick = onClick,
+    ) {
+        PlayingWaveform(color = MaterialTheme.colorScheme.primary, animate = LocalMusicNowPlayingAnimates.current)
+    }
+}
+
+/** A rail entry for something playing: [icon] in the icons' box, then [heading] in the accent colour over [title]. */
+@Composable
+private fun TvRailSessionItem(
+    heading: String,
+    title: String,
+    description: String,
+    expanded: Boolean,
+    onClick: () -> Unit,
+    icon: @Composable () -> Unit,
+) {
+    TvRailItemLayout(
+        selected = false,
+        expanded = expanded,
+        onClick = onClick,
+        modifier = Modifier.semantics(mergeDescendants = true) { contentDescription = description },
+        icon = {
+            Box(modifier = Modifier.size(NowPlayingIconSize), contentAlignment = Alignment.Center) { icon() }
+        },
+    ) {
+        Column {
+            Text(
+                text = heading,
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+@Composable
+private fun TvRailItemLayout(
+    selected: Boolean,
+    expanded: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier,
+    icon: @Composable () -> Unit,
+    label: @Composable () -> Unit,
+) {
+    val colors = WideNavigationRailItemDefaults.colors()
     val motion = MaterialTheme.motionScheme
     Surface(
         selected = selected,
@@ -166,23 +259,18 @@ private fun TvRailItem(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(imageVector = icon, contentDescription = label)
+            icon()
             AnimatedVisibility(
                 visible = expanded,
                 enter = fadeIn(motion.defaultEffectsSpec()) + expandHorizontally(motion.defaultSpatialSpec()),
                 exit = fadeOut(motion.fastEffectsSpec()) + shrinkHorizontally(motion.fastSpatialSpec()),
             ) {
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = if (selected) colors.selectedTextColor else colors.unselectedTextColor,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                Box(
                     modifier =
                         Modifier
                             .widthIn(max = RailLabelMaxWidth)
                             .padding(start = 12.dp, end = 8.dp),
-                )
+                ) { label() }
             }
         }
     }
@@ -200,6 +288,9 @@ private fun TvRailLogo() {
         )
     }
 }
+
+/** The bars sit in the same box as the other items' icons, so the labels line up. */
+private val NowPlayingIconSize = 24.dp
 
 /** Keeps a long song title from widening the open rail past M3's wide-rail width. */
 private val RailLabelMaxWidth = 200.dp
@@ -222,3 +313,7 @@ private object LastItemAtBottom : Arrangement.Vertical {
         }
     }
 }
+
+/** The D-pad direction that points from the content toward the rail, which sits at the start edge. */
+fun railFocusDirection(layoutDirection: LayoutDirection): FocusDirection =
+    if (layoutDirection == LayoutDirection.Rtl) FocusDirection.Right else FocusDirection.Left

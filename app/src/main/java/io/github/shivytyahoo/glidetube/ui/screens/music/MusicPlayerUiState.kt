@@ -1,6 +1,9 @@
 package io.github.shivytyahoo.glidetube.ui.screens.music
 
 import io.github.shivytyahoo.glidetube.data.local.LYRICS_ALIGN_CENTER
+import io.github.shivytyahoo.glidetube.data.local.LyricsAnimationStyle
+import io.github.shivytyahoo.glidetube.data.local.LyricsBackgroundStyle
+import io.github.shivytyahoo.glidetube.data.local.LyricsGlow
 import io.github.shivytyahoo.glidetube.data.lyrics.LyricsCandidate
 import io.github.shivytyahoo.glidetube.data.lyrics.LyricsEntry
 import io.github.shivytyahoo.glidetube.data.music.model.MusicTrack
@@ -34,7 +37,12 @@ data class MusicPlayerUiState(
     val lyricsShowTranslation: Boolean = true,
     val lyricsShowRomanization: Boolean = true,
     val lyricsAutoRomanize: Boolean = false,
+    val lyricsRomanizationOnly: Boolean = false,
     val lyricsKeepScreenOn: Boolean = false,
+    val lyricsBlurOtherLines: Boolean = true,
+    val lyricsAnimationStyle: LyricsAnimationStyle = LyricsAnimationStyle.CADENCE,
+    val lyricsGlow: LyricsGlow = LyricsGlow.NORMAL,
+    val lyricsBackground: LyricsBackgroundStyle = LyricsBackgroundStyle.SOLID,
     val lyricsCandidates: List<LyricsCandidate> = emptyList(),
     val isBrowsingLyrics: Boolean = false,
 )

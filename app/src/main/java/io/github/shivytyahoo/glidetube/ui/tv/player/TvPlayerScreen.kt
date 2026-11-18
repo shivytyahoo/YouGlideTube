@@ -111,7 +111,7 @@ fun TvPlayerScreen(
     PositionTrackingEffect(
         isPlaying = playerState.isPlaying,
         screenState = screenState,
-        showsPreciseProgress = overlayState.mode == TvOverlayMode.TRANSPORT,
+        showsPreciseProgress = overlayState.mode == TvOverlayMode.TRANSPORT || overlayState.mode == TvOverlayMode.SEEK,
     )
     KeepScreenOnEffect(
         isPlaying = playerState.isPlaying || playerState.isBuffering,
@@ -146,7 +146,8 @@ fun TvPlayerScreen(
     }
 
     fun revealTransport(target: TvPlayerFocusTarget) {
-        if (overlayController.state.value.mode == TvOverlayMode.HIDDEN) {
+        val mode = overlayController.state.value.mode
+        if (mode == TvOverlayMode.HIDDEN || mode == TvOverlayMode.SEEK) {
             pendingFocusTarget = target
             overlayController.showTransport()
         }
@@ -214,7 +215,8 @@ fun TvPlayerScreen(
                         currentPositionMs = manager.getCurrentPosition().coerceAtLeast(0L),
                         durationMs = manager.getDuration().coerceAtLeast(0L),
                     )
-                revealTransport(TvPlayerFocusTarget.SEEK_BAR)
+                // A live stream has no seek bar to show alone, so it keeps the full controls.
+                if (manager.playerState.value.isLive) revealTransport(TvPlayerFocusTarget.SEEK_BAR) else overlayController.showSeek()
             }
 
             TvPlayerAction.COMMIT_SCRUB -> {
@@ -314,7 +316,8 @@ fun TvPlayerScreen(
         )
 
         TvPlayerControls(
-            visible = overlayState.mode == TvOverlayMode.TRANSPORT,
+            visible = overlayState.mode == TvOverlayMode.TRANSPORT || overlayState.mode == TvOverlayMode.SEEK,
+            seekOnly = overlayState.mode == TvOverlayMode.SEEK,
             video = video,
             isPlaying = playerState.isPlaying,
             isBuffering = playerState.isBuffering,
@@ -356,7 +359,6 @@ fun TvPlayerScreen(
                     isLiked = uiState.likeState == "LIKED",
                     isDisliked = uiState.likeState == "DISLIKED",
                 ),
-            onOpenChannel = onOpenChannel,
             seekBarFocusRequester = seekBarFocusRequester,
             playPauseFocusRequester = playPauseFocusRequester,
             onSeekBarFocusChanged = { seekBarFocused = it },
@@ -370,6 +372,7 @@ fun TvPlayerScreen(
                     firstItemFocusRequester = upNextFocusRequester,
                 )
             },
+            onChannelClick = { onOpenChannel(video.channelId) },
         )
 
         SponsorBlockSkipButton(
@@ -407,8 +410,9 @@ fun TvPlayerScreen(
         // A video that is playing never waits: isPlaying is true only in
         // STATE_READY, so a spinner over it is always a stale flag, not a
         // stall. A genuine stall has isPlaying=false and still shows it.
+        // The seek bar alone shows it too, while a seek rebuffers.
         TvPlayerStatus(
-            loading = overlayState.mode == TvOverlayMode.HIDDEN && !playerState.isPlaying && (uiState.isLoading || playerState.isBuffering),
+            loading = (overlayState.mode == TvOverlayMode.HIDDEN || overlayState.mode == TvOverlayMode.SEEK) && !playerState.isPlaying && (uiState.isLoading || playerState.isBuffering),
             error = uiState.error?.let { error -> uiState.errorHint?.let { hint -> "$error\n$hint" } ?: error },
             onRetry = viewModel::retryLoadVideo,
             modifier = Modifier.align(Alignment.Center),

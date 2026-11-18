@@ -49,6 +49,8 @@ import io.github.shivytyahoo.glidetube.ui.components.musicplayer.queue.QueueShee
 import io.github.shivytyahoo.glidetube.ui.components.musicplayer.queue.queuePullUpGesture
 import io.github.shivytyahoo.glidetube.ui.components.musicplayer.queue.rememberQueuePullUpState
 import io.github.shivytyahoo.glidetube.ui.components.musicplayer.sheet.AudioSettingsSheet
+import io.github.shivytyahoo.glidetube.ui.components.musicplayer.sheet.PlayerPanel
+import io.github.shivytyahoo.glidetube.ui.components.musicplayer.sheet.PlayerPanelRequestEffect
 import io.github.shivytyahoo.glidetube.ui.components.shared.MediaPalette
 import io.github.shivytyahoo.glidetube.ui.components.shared.MediaPlaybackControls
 import io.github.shivytyahoo.glidetube.ui.components.shared.MediaSleepTimerSheet
@@ -73,6 +75,9 @@ internal fun FullMusicPlayerContent(
     sleepTimerButton: Boolean,
     // The transport, seek bar, like and download and the action row draw with this scheme.
     controlScheme: ColorScheme = MaterialTheme.colorScheme,
+    // A panel the mini player asked to open once the player is up, or null.
+    panelRequest: PlayerPanel? = null,
+    onPanelRequestHandled: () -> Unit = {},
     viewModel: MusicPlayerViewModel = sharedMusicPlayerViewModel(),
     videoSwitch: MusicVideoSwitchViewModel = hiltViewModel(),
 ) {
@@ -157,10 +162,15 @@ internal fun FullMusicPlayerContent(
         val isManagerPlaying = EnhancedMusicPlayerManager.isPlaying()
 
         if (managerTrack?.videoId == track.videoId && (isManagerPlaying || managerTrack != null)) {
-            viewModel.ensureLyricsLoaded(track)
+            viewModel.warmLyrics(track)
         } else {
             viewModel.loadAndPlayTrack(track)
         }
+    }
+
+    DisposableEffect(isPlayerSheetExpanded) {
+        viewModel.setPlayerOpen(isPlayerSheetExpanded)
+        onDispose { viewModel.setPlayerOpen(false) }
     }
 
     if (isPlayerSheetExpanded) {
@@ -233,6 +243,15 @@ internal fun FullMusicPlayerContent(
             )
         LaunchedEffect(isPlayerSheetExpanded) {
             if (!isPlayerSheetExpanded) showLyricsSheet = false
+        }
+        PlayerPanelRequestEffect(panelRequest, isPlayerSheetExpanded, onPanelRequestHandled) { panel ->
+            if (isWide) {
+                selectSidePaneTab(if (panel == PlayerPanel.QUEUE) PlayerSidePaneTab.UP_NEXT else PlayerSidePaneTab.LYRICS)
+            } else if (panel == PlayerPanel.QUEUE) {
+                queueState.open()
+            } else {
+                openLyricsSheet()
+            }
         }
         val queueCoversArtwork by remember(queueState) { derivedStateOf { queueState.fraction() > QUEUE_COVERS_ARTWORK } }
         val animatedArtwork =

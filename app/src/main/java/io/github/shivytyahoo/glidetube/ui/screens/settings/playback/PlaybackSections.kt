@@ -18,6 +18,7 @@ import io.github.shivytyahoo.glidetube.ui.components.settings.toggleGroup
 import io.github.shivytyahoo.glidetube.ui.components.shared.GlideSwitchRow
 import io.github.shivytyahoo.glidetube.ui.components.shared.GlideToggleOption
 import io.github.shivytyahoo.glidetube.ui.screens.settings.index.DestinationIndex
+import io.github.shivytyahoo.glidetube.ui.screens.settings.index.PlaybackCrossfadeIndex
 import io.github.shivytyahoo.glidetube.ui.screens.settings.index.PlaybackIndex
 
 private const val UNLIMITED_TITLE_LINES = 0
@@ -134,7 +135,27 @@ internal fun SettingsListScope.playbackSections(
     group(key = "playback.music", header = R.string.settings_section_music) {
         switch(PlaybackIndex.endlessRadio, viewModel.endlessRadio, viewModel::setEndlessRadio)
         switch(PlaybackIndex.pauseMusicWhenMuted, viewModel.pauseMusicWhenMuted, viewModel::setPauseMusicWhenMuted)
+        switch(PlaybackCrossfadeIndex.crossfade, viewModel.crossfadeEnabled, viewModel::setCrossfadeEnabled)
+        if (state.crossfadeEnabled) {
+            choice(PlaybackCrossfadeIndex.crossfadeDuration, onClick = { openDialog(PlaybackDialog.CROSSFADE_DURATION) }) {
+                val ms by viewModel.crossfadeMs.collectAsStateWithLifecycle()
+                crossfadeDurationLabel(ms.toLong())
+            }
+            switch(PlaybackCrossfadeIndex.crossfadeOnAutoAdvance, viewModel.crossfadeOnAutoAdvance, viewModel::setCrossfadeOnAutoAdvance)
+            switch(PlaybackCrossfadeIndex.crossfadeOnManualSkip, viewModel.crossfadeOnManualSkip, viewModel::setCrossfadeOnManualSkip)
+            switch(PlaybackCrossfadeIndex.crossfadeKeepAlbums, viewModel.crossfadeKeepAlbums, viewModel::setCrossfadeKeepAlbums)
+            choice(PlaybackCrossfadeIndex.crossfadeCurve, onClick = { openDialog(PlaybackDialog.CROSSFADE_CURVE) }) {
+                val curve by viewModel.crossfadeCurve.collectAsStateWithLifecycle()
+                crossfadeCurveLabel(curve)
+            }
+        }
         switch(PlaybackIndex.musicVideoSwitch, viewModel.musicVideoSwitch, viewModel::setMusicVideoSwitch)
+        entryRow(PlaybackIndex.lockScreenPlayer) { shape ->
+            LockScreenPlayerSwitch(viewModel.lockScreenPlayer, viewModel::setLockScreenPlayer, shape)
+        }
+        switch(PlaybackIndex.lyricsInMiniPlayer, viewModel.lyricsInMiniPlayer, viewModel::setLyricsInMiniPlayer)
+        switch(PlaybackIndex.lyricsSponsorBlockTiming, viewModel.lyricsSponsorBlockTiming, viewModel::setLyricsSponsorBlockTiming)
+        switch(PlaybackIndex.lyricsOnDemand, viewModel.lyricsOnDemand, viewModel::setLyricsOnDemand)
         choice(PlaybackIndex.lyricsProviders, onClick = { openDialog(PlaybackDialog.LYRICS) }) {
             val providers by viewModel.lyricsProviders.collectAsStateWithLifecycle()
             pluralStringResource(

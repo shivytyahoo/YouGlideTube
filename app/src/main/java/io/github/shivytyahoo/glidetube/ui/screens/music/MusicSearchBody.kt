@@ -52,6 +52,7 @@ internal fun MusicSearchBody(
     onTrackClick: (MusicTrack, List<MusicTrack>, String?) -> Unit,
     onAlbumClick: (String) -> Unit,
     onArtistClick: (String) -> Unit,
+    onChannelClick: (String) -> Unit = onArtistClick,
     onPlaylistClick: (String) -> Unit,
     onMoodClick: (MoodAndGenres.Item) -> Unit,
     onMoodsSeeAll: () -> Unit,
@@ -87,7 +88,7 @@ internal fun MusicSearchBody(
             }
 
             is ArtistItem -> {
-                onArtistClick(item.id)
+                if (item.isProfile) onChannelClick(item.id) else onArtistClick(item.id)
             }
 
             is AlbumItem -> {

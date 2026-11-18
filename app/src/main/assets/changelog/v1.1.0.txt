@@ -1,0 +1,7 @@
+VERSION: 1.1.0
+DATE: 2026-11-18
+• Music crossfade: songs fade into each other for up to 12 seconds, with fade curves to choose from; album tracks stay gapless
+• Customizable mini player: pick up to three buttons, a cover shape and motion, a progress style, and a background
+• Lyrics upgrade: new Cadence animation, YouTube timed lyrics first, more lyric sources, faster lookups, and shareable lyric cards
+• TV improvements: seeking shows only the progress bar, Up Next sits on its own panel, Now Playing appears in the rail, and remote keys work better
+• Lock screen lyrics: the sung line shows on the lock screen and the system media card while music plays, with a full lock-screen player when the screen turns off

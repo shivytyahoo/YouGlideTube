@@ -11,14 +11,14 @@
 <p align="center"><b>Buttery smooth. Truly yours.</b></p>
 
 <p align="center">
-  <a href="https://github.com/shivytyahoo/YouGlideTube/releases/tag/v1.0.9"><img src="https://img.shields.io/badge/version-1.0.9-blue?style=flat-square" alt="Version 1.0.9"></a>
+  <a href="https://github.com/shivytyahoo/YouGlideTube/releases/tag/v1.1.0"><img src="https://img.shields.io/badge/version-1.1.0-blue?style=flat-square" alt="Version 1.1.0"></a>
   <a href="https://github.com/shivytyahoo/YouGlideTube/releases"><img src="https://img.shields.io/github/v/release/shivytyahoo/YouGlideTube?style=flat-square" alt="Latest release"></a>
   <img src="https://img.shields.io/badge/platform-Android%208.0%2B-3DDC84?style=flat-square" alt="Android 8.0+">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0-blue?style=flat-square" alt="GPL-3.0"></a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/shivytyahoo/YouGlideTube/releases/tag/v1.0.9"><b>⬇️ Download YouGlideTube 1.0.9</b></a><br>
+  <a href="https://github.com/shivytyahoo/YouGlideTube/releases/tag/v1.1.0"><b>⬇️ Download YouGlideTube 1.1.0</b></a><br>
   <sub><code>YouGlideTube.apk</code> · one universal APK for Android phones, tablets and Android TV · Android 8.0 (API 26) or newer</sub>
 </p>
 
@@ -35,7 +35,7 @@ See [LICENSE](LICENSE) for the full text.
 | | |
 |---|---|
 | **App** | `shivyt.android.glidetube` |
-| **Latest release** | [1.0.9](https://github.com/shivytyahoo/YouGlideTube/releases/tag/v1.0.9) |
+| **Latest release** | [1.1.0](https://github.com/shivytyahoo/YouGlideTube/releases/tag/v1.1.0) |
 | **Requires** | Android 8.0 (API 26) or newer |
 | **TV** | Android TV layout included — same app, big-screen interface |
 | **License** | GPL-3.0 |
@@ -68,6 +68,14 @@ The result is an app that feels considered rather than assembled: quiet
 where it should be quiet, colourful exactly where your videos are, and
 fast everywhere. It is the kind of interface you enjoy opening, not just
 tolerating.
+
+## ⚡ What's new in 1.1.0
+
+- Music crossfade: songs fade into each other for up to 12 seconds, with fade curves to choose from; album tracks stay gapless
+- Customizable mini player: pick up to three buttons, a cover shape and motion, a progress style, and a background
+- Lyrics upgrade: new Cadence animation, YouTube timed lyrics first, more lyric sources, faster lookups, and shareable lyric cards
+- TV improvements: seeking shows only the progress bar, Up Next sits on its own panel, Now Playing appears in the rail, and remote keys work better
+- Lock screen lyrics: the sung line shows on the lock screen and the system media card while music plays, with a full lock-screen player when the screen turns off
 
 ## ⚡ What's new in 1.0.7
 

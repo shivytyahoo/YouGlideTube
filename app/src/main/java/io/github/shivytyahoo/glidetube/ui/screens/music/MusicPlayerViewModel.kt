@@ -14,8 +14,12 @@ import io.github.shivytyahoo.glidetube.data.local.PlayerPreferences
 import io.github.shivytyahoo.glidetube.data.local.SessionHistory
 import io.github.shivytyahoo.glidetube.data.localmedia.LocalLyricsReader
 import io.github.shivytyahoo.glidetube.data.localmedia.LocalMediaIds
+import io.github.shivytyahoo.glidetube.data.local.LyricsAnimationStyle
+import io.github.shivytyahoo.glidetube.data.local.LyricsBackgroundStyle
+import io.github.shivytyahoo.glidetube.data.local.LyricsGlow
 import io.github.shivytyahoo.glidetube.data.lyrics.LyricsCandidate
 import io.github.shivytyahoo.glidetube.data.lyrics.LyricsHelper
+import io.github.shivytyahoo.glidetube.data.lyrics.MusicVideoLyricsTiming
 import io.github.shivytyahoo.glidetube.data.music.DownloadManager
 import io.github.shivytyahoo.glidetube.data.music.MusicSessionLibrary
 import io.github.shivytyahoo.glidetube.data.music.YouTubeMusicService
@@ -55,6 +59,7 @@ class MusicPlayerViewModel
         private val scrobbler: Scrobbler,
         private val lyricsHelper: LyricsHelper,
         localLyrics: LocalLyricsReader,
+        videoLyricsTiming: MusicVideoLyricsTiming,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(MusicPlayerUiState())
         val uiState: StateFlow<MusicPlayerUiState> = _uiState.asStateFlow()
@@ -87,6 +92,7 @@ class MusicPlayerViewModel
                 playerPreferences,
                 localLyrics,
                 downloadManager::getDownloadedTrackPath,
+                videoLyricsTiming,
             )
         private val trackActions =
             MusicPlayerTrackActions(
@@ -102,6 +108,7 @@ class MusicPlayerViewModel
             )
 
         init {
+            lyrics.publishShownLyrics()
             EnhancedMusicPlayerManager.initialize(context, downloadManager::isDownloaded)
             initializeObservers()
             viewModelScope.launch {
@@ -165,13 +172,13 @@ class MusicPlayerViewModel
                     track?.let {
                         if (!isLocalMediaId(it.videoId)) {
                             checkIfFavorite(it.videoId)
-                            fetchLyrics(it.videoId, it.artist, it.title, it.duration, it.album)
+                            lyrics.onSongChanged(it)
                             fetchRelatedContent(it.videoId)
                         } else {
                             favoriteJob?.cancel()
                             _uiState.update { state -> state.copy(isLiked = false) }
                             EnhancedMusicPlayerManager.setLiked(false)
-                            fetchLyrics(it.videoId, it.artist, it.title, it.duration, it.album)
+                            lyrics.onSongChanged(it)
                         }
                     }
                 }
@@ -603,6 +610,12 @@ class MusicPlayerViewModel
         fun addToQueue(tracks: List<MusicTrack>) = trackActions.addToQueue(tracks)
 
 
+        /** A new song in the kept-warm full player: loads ahead only when lyrics are not on demand. */
+        fun warmLyrics(track: MusicTrack) = lyrics.warm(track)
+
+        /** Whether the full player is open; on-demand lyrics wait for it before looking anything up. */
+        fun setPlayerOpen(open: Boolean) = lyrics.setPlayerOpen(open)
+
         fun fetchLyrics(
             videoId: String,
             artist: String,
@@ -635,7 +648,17 @@ class MusicPlayerViewModel
 
         fun setLyricsAutoRomanize(enabled: Boolean) = lyrics.setAutoRomanize(enabled)
 
+        fun setLyricsRomanizationOnly(enabled: Boolean) = lyrics.setRomanizationOnly(enabled)
+
         fun setLyricsKeepScreenOn(enabled: Boolean) = lyrics.setKeepScreenOn(enabled)
+
+        fun setLyricsBackground(style: LyricsBackgroundStyle) = lyrics.setBackground(style)
+
+        fun setLyricsBlurOtherLines(enabled: Boolean) = lyrics.setBlurOtherLines(enabled)
+
+        fun setLyricsAnimationStyle(style: LyricsAnimationStyle) = lyrics.setAnimationStyle(style)
+
+        fun setLyricsGlow(glow: LyricsGlow) = lyrics.setGlow(glow)
 
         override fun onCleared() {
             super.onCleared()

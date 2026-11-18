@@ -1,10 +1,24 @@
 package io.github.shivytyahoo.glidetube.ui.screens.settings.appearance.player
 
 import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.shivytyahoo.glidetube.data.local.CoverShape
 import io.github.shivytyahoo.glidetube.data.local.DEFAULT_FULLSCREEN_SEEKBAR_PADDING_DP
 import io.github.shivytyahoo.glidetube.data.local.DEFAULT_PORTRAIT_SEEKBAR_PADDING_DP
+import io.github.shivytyahoo.glidetube.data.local.DefaultCoverShapes
+import io.github.shivytyahoo.glidetube.data.local.DefaultMiniBarButtons
 import io.github.shivytyahoo.glidetube.data.local.GestureOverlayStyle
+import io.github.shivytyahoo.glidetube.data.local.LYRICS_ALIGN_CENTER
+import io.github.shivytyahoo.glidetube.data.local.LyricsAnimationStyle
+import io.github.shivytyahoo.glidetube.data.local.LyricsBackgroundStyle
+import io.github.shivytyahoo.glidetube.data.local.LyricsGlow
+import io.github.shivytyahoo.glidetube.data.local.MiniBarBackground
+import io.github.shivytyahoo.glidetube.data.local.MiniBarButton
+import io.github.shivytyahoo.glidetube.data.local.MiniBarProgress
 import io.github.shivytyahoo.glidetube.data.local.MiniBarSwipeAction
+import io.github.shivytyahoo.glidetube.data.local.MiniCoverMotion
+import io.github.shivytyahoo.glidetube.data.local.MiniCoverShape
+import io.github.shivytyahoo.glidetube.data.local.MiniCoverTap
+import io.github.shivytyahoo.glidetube.data.local.MiniLongPress
 import io.github.shivytyahoo.glidetube.data.local.MusicPlainControlColors
 import io.github.shivytyahoo.glidetube.data.local.MusicPlayerBackgroundStyle
 import io.github.shivytyahoo.glidetube.data.local.PlayerOverlayPreferences
@@ -33,6 +47,12 @@ class PlayerAppearanceViewModel
         val scrubPreview = preferences.scrubPreviewStyle.asState(overlayDefaults.scrubPreviewStyle)
         val frameStepButtons = preferences.frameStepButtonsEnabled.asState(overlayDefaults.frameStepButtonsEnabled)
         val musicBackground = preferences.musicPlayerBackgroundStyle.asState(MusicPlayerBackgroundStyle.BLUR_GRADIENT)
+        val lyricsAnimationStyle = preferences.lyricsAnimationStyle.asState(LyricsAnimationStyle.CADENCE)
+        val lyricsGlow = preferences.lyricsGlow.asState(LyricsGlow.NORMAL)
+        val lyricsBlurOtherLines = preferences.lyricsBlurOtherLines.asState(true)
+        val lyricsBackground = preferences.lyricsBackground.asState(LyricsBackgroundStyle.SOLID)
+        val lyricsTextAlign = preferences.lyricsTextAlign.asState(LYRICS_ALIGN_CENTER)
+        val lyricsOnLockScreen = preferences.lyricsOnLockScreen.asState(false)
         val hideMusicArtwork = preferences.hideMusicPlayerArtwork.asState(false)
         val followLightTheme = preferences.musicPlayerFollowLightTheme.asState(false)
         val artworkControlColors = preferences.musicArtworkControlColors.asState(true)
@@ -52,6 +72,16 @@ class PlayerAppearanceViewModel
         val miniBarSwipeRight = preferences.miniBarSwipeRightAction.asState(MiniBarSwipeAction.CLOSE)
         val queueSwipeLeft = preferences.queueSwipeLeftAction.asState(QueueSwipeAction.PLAY_NEXT)
         val queueSwipeRight = preferences.queueSwipeRightAction.asState(QueueSwipeAction.REMOVE)
+        val miniCoverShape = preferences.miniCoverShape.asState(MiniCoverShape.CIRCLE)
+        val miniCoverMotion = preferences.miniCoverMotion.asState(MiniCoverMotion.ON_PLAY)
+        val miniCoverShapes = preferences.miniCoverShapes.asState(DefaultCoverShapes)
+        val miniCoverPausedShape = preferences.miniCoverPausedShape.asState(CoverShape.CIRCLE)
+        val miniBarProgress = preferences.miniBarProgress.asState(MiniBarProgress.NONE)
+        val miniCoverRing = preferences.miniCoverRing.asState(true)
+        val miniBarButtons = preferences.miniBarButtons.asState(DefaultMiniBarButtons)
+        val miniCoverTap = preferences.miniCoverTap.asState(MiniCoverTap.OPEN)
+        val miniLongPress = preferences.miniLongPress.asState(MiniLongPress.NOTHING)
+        val miniBarBackground = preferences.miniBarBackground.asState(MiniBarBackground.TINTED)
 
         fun setSliderStyle(value: SliderStyle) = write { preferences.setSliderStyle(value) }
 
@@ -68,6 +98,18 @@ class PlayerAppearanceViewModel
         fun setFrameStepButtons(value: Boolean) = write { preferences.setFrameStepButtonsEnabled(value) }
 
         fun setMusicBackground(value: MusicPlayerBackgroundStyle) = write { preferences.setMusicPlayerBackgroundStyle(value) }
+
+        fun setLyricsAnimationStyle(value: LyricsAnimationStyle) = write { preferences.setLyricsAnimationStyle(value) }
+
+        fun setLyricsGlow(value: LyricsGlow) = write { preferences.setLyricsGlow(value) }
+
+        fun setLyricsBlurOtherLines(value: Boolean) = write { preferences.setLyricsBlurOtherLines(value) }
+
+        fun setLyricsBackground(value: LyricsBackgroundStyle) = write { preferences.setLyricsBackground(value) }
+
+        fun setLyricsTextAlign(value: String) = write { preferences.setLyricsTextAlign(value) }
+
+        fun setLyricsOnLockScreen(value: Boolean) = write { preferences.setLyricsOnLockScreen(value) }
 
         fun setHideMusicArtwork(value: Boolean) = write { preferences.setHideMusicPlayerArtwork(value) }
 
@@ -106,6 +148,32 @@ class PlayerAppearanceViewModel
         fun setQueueSwipeLeft(value: QueueSwipeAction) = write { preferences.setQueueSwipeLeftAction(value) }
 
         fun setQueueSwipeRight(value: QueueSwipeAction) = write { preferences.setQueueSwipeRightAction(value) }
+
+        fun setMiniCoverShape(value: MiniCoverShape) = write { preferences.setMiniCoverShape(value) }
+
+        fun setMiniCoverMotion(value: MiniCoverMotion) = write { preferences.setMiniCoverMotion(value) }
+
+        /** Adds or removes [shape]; the last one left can't be removed. */
+        fun toggleMiniCoverShape(shape: CoverShape) =
+            write {
+                val current = miniCoverShapes.value
+                val next = if (shape in current) current - shape else current + shape
+                if (next.isNotEmpty()) preferences.setMiniCoverShapes(next)
+            }
+
+        fun setMiniCoverPausedShape(shape: CoverShape?) = write { preferences.setMiniCoverPausedShape(shape) }
+
+        fun setMiniBarProgress(value: MiniBarProgress) = write { preferences.setMiniBarProgress(value) }
+
+        fun setMiniCoverRing(value: Boolean) = write { preferences.setMiniCoverRing(value) }
+
+        fun setMiniBarButtons(value: List<MiniBarButton>) = write { preferences.setMiniBarButtons(value) }
+
+        fun setMiniCoverTap(value: MiniCoverTap) = write { preferences.setMiniCoverTap(value) }
+
+        fun setMiniLongPress(value: MiniLongPress) = write { preferences.setMiniLongPress(value) }
+
+        fun setMiniBarBackground(value: MiniBarBackground) = write { preferences.setMiniBarBackground(value) }
     }
 
 /** The three mini player sizes the setting offers, stored as the player's scale factor. */
