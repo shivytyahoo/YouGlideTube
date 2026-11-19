@@ -378,7 +378,7 @@ YouGlideTube stands on the shoulders of open source. None of this exists
 without the projects and people below, and this project is grateful to
 every one of them.
 
-- **Flow 3.0.0** — special thanks to the original Flow developer for the
+- **[Flow](https://github.com/Flow-Tube/Flow)** — special thanks to the original Flow developer for the
   open-source foundation and the work that helped make YouGlideTube possible.
 - **[NewPipe](https://github.com/TeamNewPipe/NewPipe)** — the pioneering
   open-source YouTube client. The independent-client ecosystem owes NewPipe and its contributors a
