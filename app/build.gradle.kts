@@ -83,7 +83,6 @@ android {
         includeInBundle = false
     }
 
-
     buildFeatures {
         buildConfig = true
         compose = true
@@ -115,12 +114,12 @@ android {
         debug {
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
-                isDebuggable = true
+            isDebuggable = true
             isMinifyEnabled = false
             isShrinkResources = false
         }
         release {
-                isDebuggable = false
+            isDebuggable = false
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
