@@ -22,6 +22,10 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
+        with:
+          # Spotless ratchet needs the ratchet commit in history; a shallow
+          # clone does not contain it, so fetch the full history.
+            fetch-depth: 0
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
