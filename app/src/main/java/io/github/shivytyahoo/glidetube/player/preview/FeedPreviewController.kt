@@ -9,9 +9,12 @@ import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.MergingMediaSource
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
+import io.github.shivytyahoo.glidetube.data.local.PlayerPreferences
+import io.github.shivytyahoo.glidetube.data.local.VideoQuality
 import io.github.shivytyahoo.glidetube.player.cache.SharedPlayerCacheProvider
 import io.github.shivytyahoo.glidetube.player.datasource.YouTubeHttpDataSource
 import io.github.shivytyahoo.glidetube.player.stream.InnerTubeVideoStreamExtractor
+import io.github.shivytyahoo.glidetube.utils.NetworkState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -19,6 +22,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -26,9 +30,10 @@ import kotlinx.coroutines.withContext
  * One player for feed previews, shared by every card: only the most-visible card gets a
  * surface at a time, and the player is re-pointed at whatever that card is.
  *
- * The preview plays a stream near 480p, not the stream the full player would start on and
- * not the lowest one: a preview is a moving thumbnail on a full-width card, so 144p reads
- * as broken, while 720p+ would burn data for a glimpse. Live videos are never previewed.
+ * The preview plays a stream near the user's chosen preview quality (Auto: 720p on Wi-Fi,
+ * 480p on mobile data), not the stream the full player would start on and not the lowest
+ * one: a preview is a moving thumbnail on a full-width card, so 144p reads as broken,
+ * while 720p+ would burn data for a glimpse. Live videos are never previewed.
  * Previews start muted; the speaker button on the previewing card unmutes that preview only,
  * and the next preview starts muted again.
  *
@@ -76,13 +81,39 @@ object FeedPreviewController {
             }
         }
 
-    fun play(context: Context, videoId: String) {
+    /**
+     * The height the preview stream is picked around. The preview is a single fixed
+     * progressive stream, so it cannot adapt mid-play — Auto therefore resolves to a
+     * conservative height up front (720p on Wi-Fi, 480p on mobile data) instead of
+     * gambling on a high stream that could stall. A fixed choice is used as-is.
+     * Shorts shown in the feed use their own quality pair, not the full-screen
+     * Shorts player's setting.
+     */
+    private suspend fun previewTargetHeight(context: Context, isShort: Boolean): Int {
+        val preferences = PlayerPreferences(context.applicationContext)
+        val onWifi = NetworkState.isOnWifi(context.applicationContext)
+        val quality =
+            when {
+                isShort && onWifi -> preferences.shortsPreviewQualityWifi.first()
+                isShort -> preferences.shortsPreviewQualityCellular.first()
+                onWifi -> preferences.previewQualityWifi.first()
+                else -> preferences.previewQualityCellular.first()
+            }
+        return when {
+            quality != VideoQuality.AUTO -> quality.height
+            onWifi -> 720
+            else -> 480
+        }
+    }
+
+    fun play(context: Context, videoId: String, isShort: Boolean = false) {
         if (_previewVideoId.value == videoId) return
         playJob?.cancel()
         _previewReady.value = false
         val generation = ++playGeneration
         playJob =
             scope.launch {
+                val targetHeight = previewTargetHeight(context, isShort)
                 val extracted =
                     runCatching { InnerTubeVideoStreamExtractor.extract(videoId) }.getOrNull()
                 if (generation != playGeneration) return@launch
@@ -90,8 +121,8 @@ object FeedPreviewController {
                 val candidates = extracted.videoFormats.filter { it.url != null }
                 val format =
                     candidates
-                        .filter { (it.height ?: 0) in 360..720 }
-                        .minByOrNull { kotlin.math.abs((it.height ?: 0) - 480) }
+                        .filter { (it.height ?: 0) in minOf(360, targetHeight)..maxOf(720, targetHeight) }
+                        .minByOrNull { kotlin.math.abs((it.height ?: 0) - targetHeight) }
                         ?: candidates.filter { (it.height ?: 0) >= 360 }.minByOrNull { it.height ?: Int.MAX_VALUE }
                         ?: candidates.minByOrNull { it.height ?: Int.MAX_VALUE }
                 val url = format?.url ?: return@launch

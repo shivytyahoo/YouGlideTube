@@ -37,6 +37,10 @@ private val TabsBottomPadding = 8.dp
 private enum class QualityPicker {
     VIDEO_WIFI,
     VIDEO_MOBILE,
+    PREVIEW_WIFI,
+    PREVIEW_MOBILE,
+    PREVIEW_SHORTS_WIFI,
+    PREVIEW_SHORTS_MOBILE,
     SHORTS_WIFI,
     SHORTS_MOBILE,
     CODEC,
@@ -55,6 +59,10 @@ internal fun QualitySettingsScreen(
 ) {
     val videoWifi by viewModel.videoWifi.collectAsStateWithLifecycle()
     val videoMobile by viewModel.videoMobile.collectAsStateWithLifecycle()
+    val previewWifi by viewModel.previewWifi.collectAsStateWithLifecycle()
+    val previewMobile by viewModel.previewMobile.collectAsStateWithLifecycle()
+    val shortsPreviewWifi by viewModel.shortsPreviewWifi.collectAsStateWithLifecycle()
+    val shortsPreviewMobile by viewModel.shortsPreviewMobile.collectAsStateWithLifecycle()
     val shortsWifi by viewModel.shortsWifi.collectAsStateWithLifecycle()
     val shortsMobile by viewModel.shortsMobile.collectAsStateWithLifecycle()
     val music by viewModel.music.collectAsStateWithLifecycle()
@@ -73,6 +81,10 @@ internal fun QualitySettingsScreen(
         )
     val videoWifiLabel = stringResource(videoQualityLabel(videoWifi))
     val videoMobileLabel = stringResource(videoQualityLabel(videoMobile))
+    val previewWifiLabel = stringResource(videoQualityLabel(previewWifi))
+    val previewMobileLabel = stringResource(videoQualityLabel(previewMobile))
+    val shortsPreviewWifiLabel = stringResource(videoQualityLabel(shortsPreviewWifi))
+    val shortsPreviewMobileLabel = stringResource(videoQualityLabel(shortsPreviewMobile))
     val shortsWifiLabel = stringResource(videoQualityLabel(shortsWifi))
     val shortsMobileLabel = stringResource(videoQualityLabel(shortsMobile))
     val codecLabel = codecLabel(codec)
@@ -137,6 +149,30 @@ internal fun QualitySettingsScreen(
                             QualityPicker.VIDEO_MOBILE
                     })
                 }
+                group(key = "quality.video.preview", header = R.string.settings_section_feed_previews) {
+                    nav(
+                        QualityIndex.previewWifi,
+                        value = previewWifiLabel,
+                        showChevron = false,
+                        onClick = { picker = QualityPicker.PREVIEW_WIFI },
+                    )
+                    nav(QualityIndex.previewMobile, value = previewMobileLabel, showChevron = false, onClick = {
+                        picker =
+                            QualityPicker.PREVIEW_MOBILE
+                    })
+                }
+                group(key = "quality.video.preview.shorts", header = R.string.settings_section_feed_previews_shorts) {
+                    nav(
+                        QualityIndex.shortsPreviewWifi,
+                        value = shortsPreviewWifiLabel,
+                        showChevron = false,
+                        onClick = { picker = QualityPicker.PREVIEW_SHORTS_WIFI },
+                    )
+                    nav(QualityIndex.shortsPreviewMobile, value = shortsPreviewMobileLabel, showChevron = false, onClick = {
+                        picker =
+                            QualityPicker.PREVIEW_SHORTS_MOBILE
+                    })
+                }
                 group(key = "quality.video.codec", header = R.string.settings_section_codec) {
                     nav(QualityIndex.codec, value = codecLabel, showChevron = false, onClick = { picker = QualityPicker.CODEC })
                     if (codec != VideoCodec.AUTO) {
@@ -171,6 +207,10 @@ internal fun QualitySettingsScreen(
                 QualityPickerState(
                     videoWifi,
                     videoMobile,
+                    previewWifi,
+                    previewMobile,
+                    shortsPreviewWifi,
+                    shortsPreviewMobile,
                     shortsWifi,
                     shortsMobile,
                     codec,
@@ -187,6 +227,10 @@ internal fun QualitySettingsScreen(
 private data class QualityPickerState(
     val videoWifi: VideoQuality,
     val videoMobile: VideoQuality,
+    val previewWifi: VideoQuality,
+    val previewMobile: VideoQuality,
+    val shortsPreviewWifi: VideoQuality,
+    val shortsPreviewMobile: VideoQuality,
     val shortsWifi: VideoQuality,
     val shortsMobile: VideoQuality,
     val codec: VideoCodec,
@@ -241,12 +285,28 @@ private fun QualityPickerDialog(
             resolution(R.string.settings_quality_mobile, VideoQualities, state.videoMobile, viewModel::setVideoMobile)
         }
 
+        QualityPicker.PREVIEW_WIFI -> {
+            resolution(R.string.settings_quality_wifi, VideoQualities, state.previewWifi, viewModel::setPreviewWifi)
+        }
+
+        QualityPicker.PREVIEW_MOBILE -> {
+            resolution(R.string.settings_quality_mobile, VideoQualities, state.previewMobile, viewModel::setPreviewMobile)
+        }
+
+        QualityPicker.PREVIEW_SHORTS_WIFI -> {
+            resolution(R.string.settings_quality_wifi, ShortsQualities, state.shortsPreviewWifi, viewModel::setShortsPreviewWifi)
+        }
+
+        QualityPicker.PREVIEW_SHORTS_MOBILE -> {
+            resolution(R.string.settings_quality_mobile, ShortsQualities, state.shortsPreviewMobile, viewModel::setShortsPreviewMobile)
+        }
+
         QualityPicker.SHORTS_WIFI -> {
-            resolution(R.string.settings_quality_wifi, VideoQualities, state.shortsWifi, viewModel::setShortsWifi)
+            resolution(R.string.settings_quality_wifi, ShortsQualities, state.shortsWifi, viewModel::setShortsWifi)
         }
 
         QualityPicker.SHORTS_MOBILE -> {
-            resolution(R.string.settings_quality_mobile, VideoQualities, state.shortsMobile, viewModel::setShortsMobile)
+            resolution(R.string.settings_quality_mobile, ShortsQualities, state.shortsMobile, viewModel::setShortsMobile)
         }
 
         QualityPicker.THUMBNAILS_WIFI -> {

@@ -24,6 +24,26 @@ internal val VideoQualities =
         VideoQuality.Q_144P,
     )
 
+/**
+ * Resolutions offered for Shorts (feed previews and full-screen playback), best first.
+ * Up to 4K: a 4K stream exists for some Shorts (live-checked on real Shorts), and the
+ * player falls back to the highest available format when the chosen height is missing,
+ * so picking 4K on a 1080p Short simply plays 1080p. 8K is NOT offered: no 8K stream
+ * exists for any Short, so it would be a fake choice.
+ */
+internal val ShortsQualities =
+    listOf(
+        VideoQuality.AUTO,
+        VideoQuality.Q_2160P,
+        VideoQuality.Q_1440P,
+        VideoQuality.Q_1080P,
+        VideoQuality.Q_720P,
+        VideoQuality.Q_480P,
+        VideoQuality.Q_360P,
+        VideoQuality.Q_240P,
+        VideoQuality.Q_144P,
+    )
+
 internal val MusicQualities = MusicAudioQuality.entries.toList()
 
 internal val ThumbnailQualities = ThumbnailQuality.entries.toList()

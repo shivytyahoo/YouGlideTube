@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.1 — 2026-11-19
+
+- Feed preview quality: pick the preview quality for videos and Shorts, separately on Wi-Fi and mobile data — Auto up to 8K for videos and up to 4K for Shorts — so previews use less data and don't stall
+
 ## 1.1.0 — 2026-11-18
 
 - Music crossfade: songs fade into each other for up to 12 seconds, with fade curves to choose from; album tracks stay gapless

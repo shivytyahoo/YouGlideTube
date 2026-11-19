@@ -11,14 +11,14 @@
 <p align="center"><b>Buttery smooth. Truly yours.</b></p>
 
 <p align="center">
-  <a href="https://github.com/shivytyahoo/YouGlideTube/releases/tag/v1.1.0"><img src="https://img.shields.io/badge/version-1.1.0-blue?style=flat-square" alt="Version 1.1.0"></a>
+  <a href="https://github.com/shivytyahoo/YouGlideTube/releases/tag/v1.1.1"><img src="https://img.shields.io/badge/version-1.1.1-blue?style=flat-square" alt="Version 1.1.1"></a>
   <a href="https://github.com/shivytyahoo/YouGlideTube/releases"><img src="https://img.shields.io/github/v/release/shivytyahoo/YouGlideTube?style=flat-square" alt="Latest release"></a>
   <img src="https://img.shields.io/badge/platform-Android%208.0%2B-3DDC84?style=flat-square" alt="Android 8.0+">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0-blue?style=flat-square" alt="GPL-3.0"></a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/shivytyahoo/YouGlideTube/releases/tag/v1.1.0"><b>⬇️ Download YouGlideTube 1.1.0</b></a><br>
+  <a href="https://github.com/shivytyahoo/YouGlideTube/releases/tag/v1.1.1"><b>⬇️ Download YouGlideTube 1.1.1</b></a><br>
   <sub><code>YouGlideTube.apk</code> · one universal APK for Android phones, tablets and Android TV · Android 8.0 (API 26) or newer</sub>
 </p>
 
@@ -35,7 +35,7 @@ See [LICENSE](LICENSE) for the full text.
 | | |
 |---|---|
 | **App** | `shivyt.android.glidetube` |
-| **Latest release** | [1.1.0](https://github.com/shivytyahoo/YouGlideTube/releases/tag/v1.1.0) |
+| **Latest release** | [1.1.1](https://github.com/shivytyahoo/YouGlideTube/releases/tag/v1.1.1) |
 | **Requires** | Android 8.0 (API 26) or newer |
 | **TV** | Android TV layout included — same app, big-screen interface |
 | **License** | GPL-3.0 |
@@ -68,6 +68,10 @@ The result is an app that feels considered rather than assembled: quiet
 where it should be quiet, colourful exactly where your videos are, and
 fast everywhere. It is the kind of interface you enjoy opening, not just
 tolerating.
+
+## ⚡ What's new in 1.1.1
+
+- Feed preview quality: pick the preview quality for videos and Shorts, separately on Wi-Fi and mobile data — Auto up to 8K for videos and up to 4K for Shorts — so previews use less data and don't stall
 
 ## ⚡ What's new in 1.1.0
 

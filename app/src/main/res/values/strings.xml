@@ -3725,6 +3725,9 @@
     <string name="settings_quality_wifi">On Wi-Fi</string>
     <string name="settings_quality_mobile">On mobile data</string>
     <string name="settings_section_resolution">Resolution</string>
+    <string name="settings_section_feed_previews">Feed previews</string>
+    <string name="settings_section_feed_previews_shorts">Feed previews (Shorts)</string>
+    <string name="settings_keywords_preview">preview, feed preview, home feed, data usage</string>
     <string name="settings_section_codec">Codec</string>
     <string name="settings_music_quality_auto_summary">High on Wi-Fi, medium on mobile data</string>
     <string name="settings_keywords_quality">resolution, 1080p, 4k, hd, data usage</string>

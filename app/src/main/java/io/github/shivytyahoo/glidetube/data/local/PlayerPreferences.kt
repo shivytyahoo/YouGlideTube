@@ -164,6 +164,14 @@ class PlayerPreferences(
         // Shorts quality preferences
         val SHORTS_QUALITY_WIFI = stringPreferencesKey("shorts_quality_wifi")
         val SHORTS_QUALITY_CELLULAR = stringPreferencesKey("shorts_quality_cellular")
+
+        // Feed preview quality preferences
+        val PREVIEW_QUALITY_WIFI = stringPreferencesKey("preview_quality_wifi")
+        val PREVIEW_QUALITY_CELLULAR = stringPreferencesKey("preview_quality_cellular")
+
+        // Feed preview quality preferences for Shorts shown in the feed
+        val SHORTS_PREVIEW_QUALITY_WIFI = stringPreferencesKey("shorts_preview_quality_wifi")
+        val SHORTS_PREVIEW_QUALITY_CELLULAR = stringPreferencesKey("shorts_preview_quality_cellular")
         val THUMBNAIL_QUALITY_WIFI = stringPreferencesKey("thumbnail_quality_wifi")
         val THUMBNAIL_QUALITY_CELLULAR = stringPreferencesKey("thumbnail_quality_cellular")
 
@@ -1508,6 +1516,57 @@ class PlayerPreferences(
     suspend fun setShortsQualityCellular(quality: VideoQuality) {
         context.playerPreferencesDataStore.edit { preferences ->
             preferences[Keys.SHORTS_QUALITY_CELLULAR] = quality.label
+        }
+    }
+
+    // Feed preview quality preferences (default to Auto: 720p on Wi-Fi, 480p on mobile data)
+    val previewQualityWifi: Flow<VideoQuality> =
+        context.playerPreferencesDataStore.data
+            .map { preferences ->
+                VideoQuality.fromString(preferences[Keys.PREVIEW_QUALITY_WIFI] ?: "Auto")
+            }
+
+    val previewQualityCellular: Flow<VideoQuality> =
+        context.playerPreferencesDataStore.data
+            .map { preferences ->
+                VideoQuality.fromString(preferences[Keys.PREVIEW_QUALITY_CELLULAR] ?: "Auto")
+            }
+
+    suspend fun setPreviewQualityWifi(quality: VideoQuality) {
+        context.playerPreferencesDataStore.edit { preferences ->
+            preferences[Keys.PREVIEW_QUALITY_WIFI] = quality.label
+        }
+    }
+
+    suspend fun setPreviewQualityCellular(quality: VideoQuality) {
+        context.playerPreferencesDataStore.edit { preferences ->
+            preferences[Keys.PREVIEW_QUALITY_CELLULAR] = quality.label
+        }
+    }
+
+    // Feed preview quality preferences for Shorts shown in the feed (default to Auto,
+    // like the video preview pair; the full-screen Shorts player keeps its own setting)
+    val shortsPreviewQualityWifi: Flow<VideoQuality> =
+        context.playerPreferencesDataStore.data
+            .map { preferences ->
+                VideoQuality.fromString(preferences[Keys.SHORTS_PREVIEW_QUALITY_WIFI] ?: "Auto")
+            }
+
+    val shortsPreviewQualityCellular: Flow<VideoQuality> =
+        context.playerPreferencesDataStore.data
+            .map { preferences ->
+                VideoQuality.fromString(preferences[Keys.SHORTS_PREVIEW_QUALITY_CELLULAR] ?: "Auto")
+            }
+
+    suspend fun setShortsPreviewQualityWifi(quality: VideoQuality) {
+        context.playerPreferencesDataStore.edit { preferences ->
+            preferences[Keys.SHORTS_PREVIEW_QUALITY_WIFI] = quality.label
+        }
+    }
+
+    suspend fun setShortsPreviewQualityCellular(quality: VideoQuality) {
+        context.playerPreferencesDataStore.edit { preferences ->
+            preferences[Keys.SHORTS_PREVIEW_QUALITY_CELLULAR] = quality.label
         }
     }
 

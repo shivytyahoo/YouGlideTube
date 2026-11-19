@@ -153,8 +153,12 @@ internal fun HomeFeedGrid(
                         firstFullyVisible.video.takeIf { !it.isLive && !it.isUpcoming }?.id ?: fallback
                     else -> fallback
                 }
-            val target = if (isDpad && focusedVideoId != null) focusedVideoId else viewportTarget
-            if (target != null) FeedPreviewController.play(context, target) else FeedPreviewController.stop()
+            // The D-pad target is always a long video; the viewport target is a Short
+            // exactly when the first fully visible row is the Shorts shelf.
+            val dpadTarget = if (isDpad) focusedVideoId else null
+            val target = dpadTarget ?: viewportTarget
+            val targetIsShort = dpadTarget == null && firstFullyVisible is HomeFeedRow.Shorts
+            if (target != null) FeedPreviewController.play(context, target, targetIsShort) else FeedPreviewController.stop()
         }
     }
 

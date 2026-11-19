@@ -28,6 +28,38 @@ internal object QualityIndex {
     val videoWifi = entry("video.wifi", R.string.settings_quality_wifi, SettingsTabs.QUALITY_VIDEO, R.string.settings_quality_tab_video)
     val videoMobile =
         entry("video.mobile", R.string.settings_quality_mobile, SettingsTabs.QUALITY_VIDEO, R.string.settings_quality_tab_video)
+    val previewWifi =
+        entry(
+            "preview.wifi",
+            R.string.settings_quality_wifi,
+            SettingsTabs.QUALITY_VIDEO,
+            R.string.settings_section_feed_previews,
+            keywords = R.string.settings_keywords_preview,
+        )
+    val previewMobile =
+        entry(
+            "preview.mobile",
+            R.string.settings_quality_mobile,
+            SettingsTabs.QUALITY_VIDEO,
+            R.string.settings_section_feed_previews,
+            keywords = R.string.settings_keywords_preview,
+        )
+    val shortsPreviewWifi =
+        entry(
+            "preview.shorts.wifi",
+            R.string.settings_quality_wifi,
+            SettingsTabs.QUALITY_VIDEO,
+            R.string.settings_section_feed_previews_shorts,
+            keywords = R.string.settings_keywords_preview,
+        )
+    val shortsPreviewMobile =
+        entry(
+            "preview.shorts.mobile",
+            R.string.settings_quality_mobile,
+            SettingsTabs.QUALITY_VIDEO,
+            R.string.settings_section_feed_previews_shorts,
+            keywords = R.string.settings_keywords_preview,
+        )
     val codec =
         entry(
             "video.codec",
@@ -66,5 +98,5 @@ internal object QualityIndex {
         )
     val music = entry("music", R.string.music_quality_header, SettingsTabs.QUALITY_MUSIC, R.string.settings_quality_tab_music)
 
-    val all = listOf(videoWifi, videoMobile, codec, fallbackCodec, thumbnailsWifi, thumbnailsMobile, shortsWifi, shortsMobile, music)
+    val all = listOf(videoWifi, videoMobile, previewWifi, previewMobile, shortsPreviewWifi, shortsPreviewMobile, codec, fallbackCodec, thumbnailsWifi, thumbnailsMobile, shortsWifi, shortsMobile, music)
 }
