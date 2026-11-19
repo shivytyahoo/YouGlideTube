@@ -21,8 +21,11 @@ plugins {
 }
 
 spotless {
-    // Adopt formatting incrementally from the main commit that introduced linting.
-    ratchetFrom("5e8a041363c39751bf2a1f53db8d748c43823c1f")
+    // Adopt formatting incrementally: only files touched after this commit
+    // are checked. Reset to the current main HEAD on 2026-11-19, because the
+    // previous ratchet commit was the source-import commit, which made the
+    // whole codebase (323 files) ratchet-eligible and broke every build.
+    ratchetFrom("b5de7b9093e50a2c0e9095c1c3a95c26dc783f0a")
     lineEndings = LineEnding.UNIX
 
     val ktlintConfig =
