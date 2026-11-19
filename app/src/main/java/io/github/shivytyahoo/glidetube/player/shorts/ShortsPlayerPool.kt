@@ -686,7 +686,7 @@ class ShortsPlayerPool private constructor() {
      */
     suspend fun warmAhead(
         videoUrl: String,
-        maxBytes: Long = 3_000_000L,
+        maxBytes: Long = 8_000_000L,
     ) {
         val dataSource =
             (cachedDataSourceFactory as? CacheDataSource.Factory)?.createDataSource() ?: return

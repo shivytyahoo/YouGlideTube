@@ -17,6 +17,14 @@ internal object BufferIndex {
         SettingEntry(key = "buffer.start", title = R.string.settings_buffer_start, destination = page, revealVia = CUSTOM_PROFILE_ROW)
     val rebuffer =
         SettingEntry(key = "buffer.rebuffer", title = R.string.settings_buffer_rebuffer, destination = page, revealVia = CUSTOM_PROFILE_ROW)
+    val diskReadAhead =
+        SettingEntry(
+            key = "buffer.disk_read_ahead",
+            title = R.string.disk_read_ahead_title,
+            summary = R.string.disk_read_ahead_summary,
+            keywords = R.string.settings_keywords_read_ahead,
+            destination = page,
+        )
 
-    val all = listOf(profile, minBuffer, maxBuffer, startBuffer, rebuffer)
+    val all = listOf(profile, minBuffer, maxBuffer, startBuffer, rebuffer, diskReadAhead)
 }

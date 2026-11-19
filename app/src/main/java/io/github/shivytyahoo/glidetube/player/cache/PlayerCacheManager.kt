@@ -181,6 +181,14 @@ class PlayerCacheManager(
     fun getDashDataSourceFactory(): DataSource.Factory? = sharedDashDataSourceFactory
 
     /**
+     * A data source that writes into the video cache without reading from it first, for the
+     * read-ahead writer: a plain cache data source would serve the already-cached head of a
+     * stream and never reach the unwritten ranges behind it.
+     */
+    fun createWritingDataSource(): CacheDataSource? =
+        (sharedDashDataSourceFactory as? CacheDataSource.Factory)?.createDataSourceForDownloading()
+
+    /**
      * Live DASH manifests are timeline data, so keep them off the persistent media cache.
      */
     fun getLiveDashDataSourceFactory(): DataSource.Factory? = sharedLiveDashDataSourceFactory

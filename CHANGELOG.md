@@ -3,6 +3,8 @@
 ## 1.1.1 — 2026-11-19
 
 - Feed preview quality: pick the preview quality for videos and Shorts, separately on Wi-Fi and mobile data — Auto up to 8K for videos and up to 4K for Shorts — so previews use less data and don't stall
+- Read ahead on disk: the video is written up to 10 minutes ahead into the cache while you watch, so playback keeps going even when the connection drops — turn it off in Settings → Playback → Buffer settings
+- Shorts warm-ahead increased: more of the next Shorts is preloaded, so swiping to the next Short starts instantly
 
 ## 1.1.0 — 2026-11-18
 

@@ -12,6 +12,7 @@ import io.github.shivytyahoo.glidetube.ui.components.settings.SettingsGroupScope
 import io.github.shivytyahoo.glidetube.ui.components.settings.SettingsPage
 import io.github.shivytyahoo.glidetube.ui.components.settings.option
 import io.github.shivytyahoo.glidetube.ui.components.settings.slider
+import io.github.shivytyahoo.glidetube.ui.components.settings.switch
 import io.github.shivytyahoo.glidetube.ui.screens.settings.index.BufferIndex
 import java.util.Locale
 import kotlin.math.roundToInt
@@ -63,6 +64,9 @@ internal fun BufferSettingsScreen(
                 millisSlider(BufferIndex.startBuffer, startBuffer, 500..5_000, 500, viewModel::setStartBuffer)
                 millisSlider(BufferIndex.rebuffer, rebuffer, 1_000..10_000, 500, viewModel::setRebuffer)
             }
+        }
+        group(key = BufferIndex.diskReadAhead.key, footer = R.string.disk_read_ahead_footer) {
+            switch(BufferIndex.diskReadAhead, viewModel.diskReadAheadEnabled, viewModel::setDiskReadAheadEnabled)
         }
     }
 }

@@ -68,7 +68,8 @@ internal fun ShortsPagerPlaybackEffects(
     val preloadShortId = shorts.getOrNull(settledPage + 2)?.id
     val preloadShortId3 = shorts.getOrNull(settledPage + 3)?.id
     val preloadShortId4 = shorts.getOrNull(settledPage + 4)?.id
-    LaunchedEffect(settledPage, settledShortId, previousShortId, nextShortId, preloadShortId, preloadShortId3, preloadShortId4, targetHeight) {
+    val preloadShortId5 = shorts.getOrNull(settledPage + 5)?.id
+    LaunchedEffect(settledPage, settledShortId, previousShortId, nextShortId, preloadShortId, preloadShortId3, preloadShortId4, preloadShortId5, targetHeight) {
         val height = targetHeight ?: return@LaunchedEffect
         val currentId = settledShortId ?: return@LaunchedEffect
         val settled = settledPage
@@ -84,7 +85,7 @@ internal fun ShortsPagerPlaybackEffects(
         shorts.getOrNull(settled - 1)?.let { previous ->
             launch { prepareReel(playerPool, viewModel, settled - 1, previous, height, preferredLang, shouldPlay = false) }
         }
-        // Two to four ahead: resolved, and the progressive ones' first bytes warmed into the
+        // Two to five ahead: resolved, and the progressive ones' first bytes warmed into the
         // shared cache — never handed to a player (the 3 slots already hold current, next and
         // previous). Sequential and last, so warming never competes with the visible short; the
         // effect's cancellation on the next settle stops the queue mid-flight. Battery saver:
@@ -92,7 +93,7 @@ internal fun ShortsPagerPlaybackEffects(
         // pool's own slots and stay, so swiping never stalls.
         if (!batterySaver) {
             launch {
-                for (offset in 2..4) {
+                for (offset in 2..5) {
                     val ahead = shorts.getOrNull(settled + offset) ?: continue
                     val streams = runCatching { viewModel.getPlaybackStreams(ahead.id, height, preferredLang) }.getOrNull() ?: continue
                     if (streams.videoDashManifest == null) {

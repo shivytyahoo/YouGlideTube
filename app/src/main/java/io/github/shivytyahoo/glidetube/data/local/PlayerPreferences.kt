@@ -454,6 +454,9 @@ class PlayerPreferences(
         // Full battery saver: animations, glass, previews and prefetch off
         val BATTERY_SAVER_ENABLED = booleanPreferencesKey("battery_saver_enabled")
 
+        // Read-ahead: write the playing video ahead into the disk cache (default on)
+        val DISK_READ_AHEAD_ENABLED = booleanPreferencesKey("disk_read_ahead_enabled")
+
         // Last measured bandwidth estimate in bps, seeded into the player's meter on start
         val BANDWIDTH_ESTIMATE_BPS = longPreferencesKey("bandwidth_estimate_bps")
 
@@ -3209,6 +3212,17 @@ class PlayerPreferences(
     suspend fun setBatterySaverEnabled(enabled: Boolean) {
         context.playerPreferencesDataStore.edit { preferences ->
             preferences[Keys.BATTERY_SAVER_ENABLED] = enabled
+        }
+    }
+
+    // Read-ahead: write the playing video ahead into the disk cache (default on)
+    val diskReadAheadEnabled: Flow<Boolean> =
+        context.playerPreferencesDataStore.data
+            .map { preferences -> preferences[Keys.DISK_READ_AHEAD_ENABLED] ?: true }
+
+    suspend fun setDiskReadAheadEnabled(enabled: Boolean) {
+        context.playerPreferencesDataStore.edit { preferences ->
+            preferences[Keys.DISK_READ_AHEAD_ENABLED] = enabled
         }
     }
 
