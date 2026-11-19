@@ -50,7 +50,10 @@ fun translatedLocaleTags(): List<String> =
 
 android {
     namespace = "io.github.shivytyahoo.glidetube"
-    compileSdk = 36
+    // compileSdk 37: dependencies (Compose 1.13 alpha, core-ktx 1.19.1, haze 2.0.1, ...)
+    // require compiling against Android API 37+. targetSdk stays 36, so runtime
+    // behavior does not change.
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "shivyt.android.glidetube"
