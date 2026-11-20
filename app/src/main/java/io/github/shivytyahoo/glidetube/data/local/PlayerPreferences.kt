@@ -1427,19 +1427,19 @@ class PlayerPreferences(
     }
 
     // Quality preferences
-    // Video defaults are Auto: a fixed height pins every video to that height with adaptive
-    // off, so mobile data played everything at 480p and never climbed. Auto leaves the pick
-    // to the live bandwidth meter and the ABR.
+    // Video defaults are fixed heights: 720p on Wi-Fi, 480p on mobile data. A fixed height
+    // pins every video to that height with adaptive off, so a video never climbs above the
+    // default; Auto is still offered in settings for anyone who wants the ABR to decide.
     val defaultQualityWifi: Flow<VideoQuality> =
         context.playerPreferencesDataStore.data
             .map { preferences ->
-                VideoQuality.fromString(preferences[Keys.DEFAULT_QUALITY_WIFI] ?: "Auto")
+                VideoQuality.fromString(preferences[Keys.DEFAULT_QUALITY_WIFI] ?: "720p")
             }
 
     val defaultQualityCellular: Flow<VideoQuality> =
         context.playerPreferencesDataStore.data
             .map { preferences ->
-                VideoQuality.fromString(preferences[Keys.DEFAULT_QUALITY_CELLULAR] ?: "Auto")
+                VideoQuality.fromString(preferences[Keys.DEFAULT_QUALITY_CELLULAR] ?: "480p")
             }
 
     suspend fun setDefaultQualityWifi(quality: VideoQuality) {
@@ -1522,17 +1522,17 @@ class PlayerPreferences(
         }
     }
 
-    // Feed preview quality preferences (default to Auto: 720p on Wi-Fi, 480p on mobile data)
+    // Feed preview quality preferences (default to 360p on both Wi-Fi and mobile data)
     val previewQualityWifi: Flow<VideoQuality> =
         context.playerPreferencesDataStore.data
             .map { preferences ->
-                VideoQuality.fromString(preferences[Keys.PREVIEW_QUALITY_WIFI] ?: "Auto")
+                VideoQuality.fromString(preferences[Keys.PREVIEW_QUALITY_WIFI] ?: "360p")
             }
 
     val previewQualityCellular: Flow<VideoQuality> =
         context.playerPreferencesDataStore.data
             .map { preferences ->
-                VideoQuality.fromString(preferences[Keys.PREVIEW_QUALITY_CELLULAR] ?: "Auto")
+                VideoQuality.fromString(preferences[Keys.PREVIEW_QUALITY_CELLULAR] ?: "360p")
             }
 
     suspend fun setPreviewQualityWifi(quality: VideoQuality) {
@@ -1547,18 +1547,18 @@ class PlayerPreferences(
         }
     }
 
-    // Feed preview quality preferences for Shorts shown in the feed (default to Auto,
+    // Feed preview quality preferences for Shorts shown in the feed (default to 360p,
     // like the video preview pair; the full-screen Shorts player keeps its own setting)
     val shortsPreviewQualityWifi: Flow<VideoQuality> =
         context.playerPreferencesDataStore.data
             .map { preferences ->
-                VideoQuality.fromString(preferences[Keys.SHORTS_PREVIEW_QUALITY_WIFI] ?: "Auto")
+                VideoQuality.fromString(preferences[Keys.SHORTS_PREVIEW_QUALITY_WIFI] ?: "360p")
             }
 
     val shortsPreviewQualityCellular: Flow<VideoQuality> =
         context.playerPreferencesDataStore.data
             .map { preferences ->
-                VideoQuality.fromString(preferences[Keys.SHORTS_PREVIEW_QUALITY_CELLULAR] ?: "Auto")
+                VideoQuality.fromString(preferences[Keys.SHORTS_PREVIEW_QUALITY_CELLULAR] ?: "360p")
             }
 
     suspend fun setShortsPreviewQualityWifi(quality: VideoQuality) {
