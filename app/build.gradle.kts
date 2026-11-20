@@ -182,22 +182,19 @@ android {
         unitTests {
             isReturnDefaultValues = true
             isIncludeAndroidResources = true
-            all {
-                systemProperty("robolectric.dependency.dir", robolectricJarsDir.absolutePath)
-            }
         }
     }
-}
-
-val robolectricInstrumentedJar by configurations.creating {
-    isCanBeConsumed = false
-    isCanBeResolved = true
 }
 
 // Pre-download the instrumented android-all jar Robolectric 4.16.1 needs for SDK 34 in NATIVE
 // graphics mode (DefaultSdkProvider pins PREINSTRUMENTED_VERSION = 7). Gradle's own
 // resolution is cached and retried, unlike Robolectric's runtime MavenArtifactFetcher.
-val downloadRobolectricJars by tasks.registering(Copy::class) {
+val robolectricInstrumentedJar = configurations.create("robolectricInstrumentedJar") {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+}
+
+val downloadRobolectricJars = tasks.register<Copy>("downloadRobolectricJars") {
     from(robolectricInstrumentedJar)
     into(robolectricJarsDir)
 }
@@ -208,6 +205,11 @@ tasks.named("testDebugUnitTest") {
 
 tasks.withType<Test>().configureEach {
     maxParallelForks = (Runtime.getRuntime().availableProcessors() / 2).coerceAtLeast(1)
+    // Robolectric loads its pre-instrumented android-all jar from this directory
+    // when set, instead of downloading it at test runtime through its own Maven
+    // fetcher (which flaked on transient Maven 404s in CI — build #25 lost 6
+    // classes at class setup).
+    systemProperty("robolectric.dependency.dir", robolectricJarsDir.absolutePath)
 }
 
 // Merge the app startup profile into the single universal release build.
