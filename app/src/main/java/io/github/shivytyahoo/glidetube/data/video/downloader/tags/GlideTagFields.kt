@@ -10,7 +10,10 @@ import kotlinx.serialization.json.Json
  * [NAMESPACE] and name `<field>`. Lyrics are left out; they travel in the `©lyr` atom.
  */
 object GlideTagFields {
-    const val NAMESPACE = "io.github.shivytyahoo.youglidetube"
+    const val NAMESPACE = "io.github.shivytyahoo.glidetube"
+
+    /** Namespace used by files tagged before the 1.1.1 fix; still accepted when decoding. */
+    const val LEGACY_NAMESPACE = "io.github.shivytyahoo.youglidetube"
     const val DESCRIPTION_MAX_CHARS = 2_000
 
     const val SCHEMA = "schema"
@@ -38,7 +41,14 @@ object GlideTagFields {
 
     fun mdtaKey(field: String): String = "$NAMESPACE.$field"
 
-    fun fieldFromMdtaKey(key: String): String? = key.removePrefix("$NAMESPACE.").takeIf { it != key && it.isNotEmpty() }
+    fun fieldFromMdtaKey(key: String): String? {
+        // Accept the legacy no-dot namespace so files tagged before the 1.1.1 fix still decode.
+        for (namespace in listOf(NAMESPACE, LEGACY_NAMESPACE)) {
+            val field = key.removePrefix("$namespace.").takeIf { it != key && it.isNotEmpty() }
+            if (field != null) return field
+        }
+        return null
+    }
 
     fun encode(tags: DownloadTags): Map<String, String> =
         buildMap {

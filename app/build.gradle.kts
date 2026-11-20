@@ -48,6 +48,11 @@ fun translatedLocaleTags(): List<String> =
         }.map { if (it == "in" || it.startsWith("in-")) "id" + it.removePrefix("in") else it }
         .sorted()
 
+// Robolectric fetches its instrumented android-all jar at test runtime through its own
+// MavenArtifactFetcher, which flakes on transient Maven 404s (build #25: 6 classes died at
+// setup). Pre-download the jar through Gradle instead and point Robolectric at the directory.
+val robolectricJarsDir = rootDir.resolve("robolectric-jars")
+
 android {
     namespace = "io.github.shivytyahoo.glidetube"
     // compileSdk 37: dependencies (Compose 1.13 alpha, core-ktx 1.19.1, haze 2.0.1, ...)
@@ -177,8 +182,28 @@ android {
         unitTests {
             isReturnDefaultValues = true
             isIncludeAndroidResources = true
+            all {
+                systemProperty("robolectric.dependency.dir", robolectricJarsDir.absolutePath)
+            }
         }
     }
+}
+
+val robolectricInstrumentedJar by configurations.creating {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+}
+
+// Pre-download the instrumented android-all jar Robolectric 4.16.1 needs for SDK 34 in NATIVE
+// graphics mode (DefaultSdkProvider pins PREINSTRUMENTED_VERSION = 7). Gradle's own
+// resolution is cached and retried, unlike Robolectric's runtime MavenArtifactFetcher.
+val downloadRobolectricJars by tasks.registering(Copy::class) {
+    from(robolectricInstrumentedJar)
+    into(robolectricJarsDir)
+}
+
+tasks.named("testDebugUnitTest") {
+    dependsOn(downloadRobolectricJars)
 }
 
 tasks.withType<Test>().configureEach {
@@ -343,6 +368,8 @@ dependencies {
 
     // Compose UI tests in the JVM (Robolectric) so CI's unit-test task covers them
     testImplementation(libs.robolectric)
+    // Instrumented android-all jar for NATIVE-mode Robolectric tests (see downloadRobolectricJars).
+    robolectricInstrumentedJar("org.robolectric:android-all-instrumented:14-robolectric-10818077-i7")
     testImplementation(libs.androidx.test.core)
     testImplementation(libs.androidx.test.ext.junit)
     testImplementation(platform(libs.androidx.compose.bom))

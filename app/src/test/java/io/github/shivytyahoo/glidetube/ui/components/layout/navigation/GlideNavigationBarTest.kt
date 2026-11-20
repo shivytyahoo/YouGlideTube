@@ -22,7 +22,7 @@ import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 
 @RunWith(AndroidJUnit4::class)
-@Config(sdk = [34], application = Application::class, qualifiers = "w411dp-h891dp")
+@Config(sdk = [34], application = Application::class, qualifiers = "w800dp-h891dp")
 class GlideNavigationBarTest {
     @get:Rule
     val rule = createComposeRule()

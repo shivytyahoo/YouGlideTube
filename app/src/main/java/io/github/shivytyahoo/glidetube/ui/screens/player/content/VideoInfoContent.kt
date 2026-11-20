@@ -15,7 +15,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.shivytyahoo.glidetube.R
 import io.github.shivytyahoo.glidetube.data.localmedia.LocalMediaIds
@@ -45,7 +44,7 @@ internal fun VideoInfoContent(
     video: Video,
     uiState: VideoPlayerUiState,
     viewModel: VideoPlayerViewModel,
-    saveVideoViewModel: SaveVideoViewModel = hiltViewModel(),
+    saveVideoViewModel: SaveVideoViewModel,
     screenState: PlayerScreenState,
     commentsUiState: PlayerCommentsUiState,
     commentsEnabled: Boolean = true,

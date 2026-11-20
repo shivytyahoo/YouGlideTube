@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.util.UnstableApi
 import io.github.shivytyahoo.glidetube.data.local.PlayerPreferences
@@ -27,6 +28,7 @@ import io.github.shivytyahoo.glidetube.data.model.Video
 import io.github.shivytyahoo.glidetube.player.EnhancedPlayerManager
 import io.github.shivytyahoo.glidetube.player.GlobalPlayerState
 import io.github.shivytyahoo.glidetube.ui.components.rememberFeedGridLayout
+import io.github.shivytyahoo.glidetube.ui.components.shared.SaveVideoViewModel
 import io.github.shivytyahoo.glidetube.ui.components.videoplayer.sheet.PlaylistQueueDock
 import io.github.shivytyahoo.glidetube.ui.components.videoplayer.sheet.PlaylistQueueDockDefaults
 import io.github.shivytyahoo.glidetube.ui.components.videoplayer.sheet.PlaylistQueuePaneCard
@@ -77,6 +79,9 @@ internal fun EnhancedVideoPlayerScreen(
     prefs: VideoPlayerPreferencesState,
     onVideoClick: (Video) -> Unit,
     onChannelClick: (String) -> Unit,
+    // Injected (defaulting to Hilt) so tests can pass a mock: hiltViewModel() cannot resolve
+    // under Robolectric's plain Application, which is not a GeneratedComponentManager.
+    saveVideoViewModel: SaveVideoViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
     val windowSizeClass = LocalWindowSizeClass.current
@@ -176,6 +181,7 @@ internal fun EnhancedVideoPlayerScreen(
                                 video = video,
                                 uiState = uiState,
                                 viewModel = viewModel,
+                                saveVideoViewModel = saveVideoViewModel,
                                 screenState = screenState,
                                 commentsUiState = commentsUiState,
                                 commentsEnabled = commentsEnabled,
@@ -238,6 +244,7 @@ internal fun EnhancedVideoPlayerScreen(
                                 video = video,
                                 uiState = uiState,
                                 viewModel = viewModel,
+                                saveVideoViewModel = saveVideoViewModel,
                                 screenState = screenState,
                                 commentsUiState = commentsUiState,
                                 commentsEnabled = commentsEnabled,

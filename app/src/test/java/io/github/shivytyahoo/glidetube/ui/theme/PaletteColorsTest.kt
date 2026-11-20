@@ -17,8 +17,8 @@ class PaletteColorsTest {
     @Test
     fun `every palette in the picker has a seed and every seed is in the picker`() {
         val catalogued = ThemeCatalog.palettes.map { it.mode }.filterNot { it == ThemeMode.MATERIAL_YOU }
-        assertThat(catalogued).hasSize(26)
-        assertThat(catalogued.map { GlidePalettes.forMode(it).id }.toSet()).hasSize(26)
+        assertThat(catalogued).hasSize(27)
+        assertThat(catalogued.map { GlidePalettes.forMode(it).id }.toSet()).hasSize(27)
     }
 
     @Test

@@ -19,11 +19,13 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.common.truth.Truth.assertThat
 import io.github.shivytyahoo.glidetube.R
 import io.github.shivytyahoo.glidetube.data.video.DownloadStreamPolicy
+import io.github.shivytyahoo.glidetube.innertube.models.response.PlayerResponse
 import io.github.shivytyahoo.glidetube.ui.screens.player.fakeAudioFormats
 import io.github.shivytyahoo.glidetube.ui.screens.player.fakeVideo
 import io.github.shivytyahoo.glidetube.ui.screens.player.fakeVideoFormats
 import io.mockk.every
 import io.mockk.mockkObject
+import io.mockk.slot
 import io.mockk.unmockkAll
 import org.junit.After
 import org.junit.Ignore
@@ -105,9 +107,10 @@ class DownloadDialogsTest {
     fun fullDialogPairsEveryCodecWithTheAacTheSharedHelperPicks() {
         mockkObject(DownloadLauncher)
         val audioItags = mutableListOf<Int>()
+        val audioSlot = slot<PlayerResponse.StreamingData.Format>()
         every {
-            DownloadLauncher.startVideoDownload(any(), any(), any(), capture(audioFormats), any())
-        } answers { audioItags += audioFormats.last().itag }
+            DownloadLauncher.startVideoDownload(any(), any(), any(), capture(audioSlot), any(), any(), any(), any(), any())
+        } answers { audioItags += audioSlot.captured.itag }
 
         setDialogs()
         rule.onNode(hasText("H264 1080p") and hasClickAction()).performClick()
@@ -119,8 +122,6 @@ class DownloadDialogsTest {
         assertThat(aac?.mimeType).startsWith("audio/mp4")
         assertThat(audioItags).containsExactly(aac?.itag, aac?.itag)
     }
-
-    private val audioFormats = mutableListOf<io.github.shivytyahoo.glidetube.innertube.models.response.PlayerResponse.StreamingData.Format>()
 
     @Test
     @Ignore(

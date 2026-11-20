@@ -9,13 +9,13 @@ class TvTabsTest {
     private val allOn = NavigationVisibility(home = true, shorts = true, music = true, search = true, categories = true)
 
     @Test
-    fun `follows the user's order and leaves Shorts and Explore off`() {
+    fun `follows the user's order and leaves Explore off`() {
         val order = listOf(GlideTab.Library, GlideTab.Shorts, GlideTab.Music, GlideTab.Explore, GlideTab.Home).map(GlideTab::id)
 
         val tabs = tvNavigation(order, defaultTabId = GlideTab.Home.id, visibility = allOn).tabs
 
-        assertThat(tabs.take(3)).containsExactly(GlideTab.Library, GlideTab.Music, GlideTab.Home).inOrder()
-        assertThat(tabs).containsNoneOf(GlideTab.Shorts, GlideTab.Explore)
+        assertThat(tabs.take(3)).containsExactly(GlideTab.Library, GlideTab.Shorts, GlideTab.Music).inOrder()
+        assertThat(tabs).containsNoneOf(GlideTab.Explore)
     }
 
     @Test
@@ -37,7 +37,11 @@ class TvTabsTest {
         assertThat(tvNavigation(emptyList(), GlideTab.Library.id, allOn).startTab).isEqualTo(GlideTab.Library)
 
         val fromShorts = tvNavigation(emptyList(), GlideTab.Shorts.id, allOn)
-        assertThat(fromShorts.startTab).isEqualTo(fromShorts.tabs.first())
+        assertThat(fromShorts.startTab).isEqualTo(GlideTab.Shorts)
+
+        // Explore is genuinely off on TV (categories forced off), so it falls back to the first tab.
+        val fromExplore = tvNavigation(emptyList(), GlideTab.Explore.id, allOn)
+        assertThat(fromExplore.startTab).isEqualTo(fromExplore.tabs.first())
     }
 
     @Test

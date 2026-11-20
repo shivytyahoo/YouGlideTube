@@ -62,7 +62,9 @@ class EmbeddedTags(
                     }
 
                     is InternalFrame -> {
-                        if (entry.domain == GlideTagFields.NAMESPACE) fields.putIfAbsent(entry.description, entry.text)
+                        if (entry.domain == GlideTagFields.NAMESPACE || entry.domain == GlideTagFields.LEGACY_NAMESPACE) {
+                            fields.putIfAbsent(entry.description, entry.text)
+                        }
                     }
 
                     is TextInformationFrame -> {

@@ -13,6 +13,7 @@ import io.github.shivytyahoo.glidetube.player.state.AudioTrackOption
 import io.github.shivytyahoo.glidetube.player.state.EnhancedPlayerState
 import io.github.shivytyahoo.glidetube.player.state.QualityOption
 import io.github.shivytyahoo.glidetube.player.state.SubtitleOption
+import io.github.shivytyahoo.glidetube.ui.components.shared.SaveVideoViewModel
 import io.github.shivytyahoo.glidetube.ui.components.shared.quickactions.QuickActionsViewModel
 import io.github.shivytyahoo.glidetube.ui.screens.player.state.VideoPlayerUiState
 import io.mockk.every
@@ -156,6 +157,16 @@ internal fun relaxedVideoPlayerViewModel(
     every { viewModel.downloadedVideoIds } returns MutableStateFlow(emptySet())
     return viewModel
 }
+
+/**
+ * A relaxed [SaveVideoViewModel] for screens that take it as a parameter: its flows are real
+ * state flows, so composables can subscribe without touching the Hilt graph. `loadMembership()`
+ * is a relaxed no-op.
+ */
+internal fun relaxedSaveVideoViewModel(): SaveVideoViewModel =
+    mockk<SaveVideoViewModel>(relaxed = true).also {
+        every { it.savedIds } returns MutableStateFlow(emptySet())
+    }
 
 /**
  * Stands in for the Hilt-injected activity so `hiltViewModel()` for the quick actions resolves to a

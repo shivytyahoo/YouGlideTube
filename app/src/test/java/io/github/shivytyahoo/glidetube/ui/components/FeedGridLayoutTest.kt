@@ -126,9 +126,9 @@ class FeedGridLayoutTest {
     }
 
     @Test
-    fun `only a single compact column bleeds its cards to the edge`() {
-        assertThat(feedGridLayoutFor(360.dp).cardsBleed).isTrue()
-        assertThat(feedGridLayoutFor(360.dp, HomeFeedColumns.ONE).cardsBleed).isTrue()
+    fun `no column bleeds its cards to the edge`() {
+        assertThat(feedGridLayoutFor(360.dp).cardsBleed).isFalse()
+        assertThat(feedGridLayoutFor(360.dp, HomeFeedColumns.ONE).cardsBleed).isFalse()
         assertThat(feedGridLayoutFor(360.dp, HomeFeedColumns.TWO).cardsBleed).isFalse()
         assertThat(feedGridLayoutFor(360.dp, HomeFeedColumns.THREE).cardsBleed).isFalse()
         assertThat(feedGridLayoutFor(745.dp).cardsBleed).isFalse()

@@ -17,6 +17,7 @@ class ReleaseNotesTest {
 
         ## New features
 
+        - Thanks @PastaHimself
         - Play Shorts as one queue #823
         * A **bold** claim
 

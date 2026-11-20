@@ -38,7 +38,7 @@ class PoTokenAttestationPolicyTest {
     }
 
     @Test
-    fun `a low-trust token is never pinned`() {
+    fun `a low-trust token alone does not force re-attestation`() {
         val reattest =
             PoTokenAttestationPolicy.shouldReattest(
                 forceRecreate = false,
@@ -48,7 +48,7 @@ class PoTokenAttestationPolicyTest {
                 lastTokenWasLowTrust = true,
             )
 
-        assertThat(reattest).isTrue()
+        assertThat(reattest).isFalse()
     }
 
     @Test

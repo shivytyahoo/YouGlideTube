@@ -52,3 +52,6 @@ Flow-desktop/
 
 # macOS Finder metadata
 .DS_Store
+
+# Pre-downloaded Robolectric instrumented android-all jars (see app/build.gradle.kts).
+/robolectric-jars/
