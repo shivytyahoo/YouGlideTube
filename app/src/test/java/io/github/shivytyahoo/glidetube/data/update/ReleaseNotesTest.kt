@@ -74,6 +74,8 @@ class ReleaseNotesTest {
     fun `bare links become links`() {
         val spans = parseInline("See https://github.com/shivytyahoo/YouGlideTube/releases for more").spans
 
-        assertThat(spans[1]).isEqualTo(Link("https://github.com/shivytyahoo/YouGlideTube/releases", "https://github.com/shivytyahoo/YouGlideTube/releases"))
+        assertThat(
+            spans[1],
+        ).isEqualTo(Link("https://github.com/shivytyahoo/YouGlideTube/releases", "https://github.com/shivytyahoo/YouGlideTube/releases"))
     }
 }
