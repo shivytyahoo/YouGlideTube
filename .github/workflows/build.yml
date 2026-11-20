@@ -56,6 +56,18 @@ jobs:
           chmod +x ./gradlew
           ./gradlew -Dorg.gradle.jvmargs="-Xmx8g -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8 -Djava.net.preferIPv4Stack=true" spotlessCheck testDebugUnitTest compileDebugAndroidTestKotlin lintRelease assembleRelease --stacktrace
 
+      # The log only prints a test failure's one-liner; the full stack trace lives in the
+      # test report XMLs. Upload them when the build fails so a failure can be diagnosed
+      # from the run instead of guessed at.
+      - name: Upload test reports on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            app/build/reports/tests/testDebugUnitTest
+            app/build/test-results/testDebugUnitTest
+          if-no-files-found: warn
       - name: Verify release signing certificate
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
