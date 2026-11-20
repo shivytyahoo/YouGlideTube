@@ -152,7 +152,11 @@ internal fun relaxedVideoPlayerViewModel(
     every { viewModel.hasMoreComments } returns MutableStateFlow(false)
     every { viewModel.isLoadingMoreComments } returns MutableStateFlow(false)
     every { viewModel.commentSortOptions } returns MutableStateFlow(emptyList())
-    every { viewModel.commentTotalText } returns MutableStateFlow(null)
+    every { viewModel.commentTotalText } returns MutableStateFlow<String?>(null)
+    // Unstubbed, the relaxed mock returns a mock StateFlow whose value is a mock Object,
+    // and rememberPlayerCommentsUiState casts it to String (build #34: ClassCastException
+    // at PlayerCommentsUiState.kt:43). A real typed flow keeps the mock out of that path.
+    every { viewModel.createCommentParams } returns MutableStateFlow<String?>(null)
     every { viewModel.descriptionState } returns MutableStateFlow(null)
     every { viewModel.downloadedVideoIds } returns MutableStateFlow(emptySet())
     return viewModel
