@@ -15,7 +15,7 @@ class TvTabsTest {
         val tabs = tvNavigation(order, defaultTabId = GlideTab.Home.id, visibility = allOn).tabs
 
         assertThat(tabs.take(3)).containsExactly(GlideTab.Library, GlideTab.Shorts, GlideTab.Music).inOrder()
-        assertThat(tabs).containsNoneOf(GlideTab.Explore)
+        assertThat(tabs).doesNotContain(GlideTab.Explore)
     }
 
     @Test
