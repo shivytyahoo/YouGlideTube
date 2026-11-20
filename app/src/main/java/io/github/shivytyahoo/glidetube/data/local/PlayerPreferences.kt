@@ -1134,7 +1134,6 @@ class PlayerPreferences(
         }
     }
 
-
     /** Collaborations of followed channels that someone else uploaded, in Subscriptions (#840). */
     val subscriptionCollaborationsEnabled: Flow<Boolean> =
         context.playerPreferencesDataStore.data
@@ -1231,7 +1230,6 @@ class PlayerPreferences(
             preferences[Keys.SEARCH_NAV_TAB_ENABLED] = enabled
         }
     }
-
 
     // Continue Watching shelf enabled preference
     val continueWatchingEnabled: Flow<Boolean> =
@@ -2600,8 +2598,6 @@ class PlayerPreferences(
         }
     }
 
-
-
     val subscriptionRefreshOnStartup: Flow<Boolean> =
         context.playerPreferencesDataStore.data
             .map { preferences -> preferences[Keys.SUBS_REFRESH_ON_STARTUP] ?: false }
@@ -2619,8 +2615,6 @@ class PlayerPreferences(
     val subscriptionLastRefreshedCount: Flow<Int> =
         context.playerPreferencesDataStore.data
             .map { preferences -> preferences[Keys.SUBS_LAST_REFRESHED_COUNT] ?: 0 }
-
-
 
     val subscriptionShowCheckedVideoCount: Flow<Boolean> =
         context.playerPreferencesDataStore.data
@@ -3365,10 +3359,12 @@ class PlayerPreferences(
                     BufferDurations(profile.minBuffer, profile.maxBuffer, profile.playbackBuffer, profile.rebufferBuffer)
                 } else {
                     BufferDurations(
-                        minMs = preferences[Keys.MIN_BUFFER_MS]
-                            ?: if (isTvDevice) TV_MIN_BUFFER_MS else BufferProfile.STABLE.minBuffer,
-                        maxMs = preferences[Keys.MAX_BUFFER_MS]
-                            ?: if (isTvDevice) TV_MAX_BUFFER_MS else BufferProfile.STABLE.maxBuffer,
+                        minMs =
+                            preferences[Keys.MIN_BUFFER_MS]
+                                ?: if (isTvDevice) TV_MIN_BUFFER_MS else BufferProfile.STABLE.minBuffer,
+                        maxMs =
+                            preferences[Keys.MAX_BUFFER_MS]
+                                ?: if (isTvDevice) TV_MAX_BUFFER_MS else BufferProfile.STABLE.maxBuffer,
                         playbackMs = preferences[Keys.BUFFER_FOR_PLAYBACK_MS] ?: BufferProfile.STABLE.playbackBuffer,
                         rebufferMs = preferences[Keys.BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS] ?: BufferProfile.STABLE.rebufferBuffer,
                     )
