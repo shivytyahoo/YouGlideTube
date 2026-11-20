@@ -189,15 +189,17 @@ android {
 // Pre-download the instrumented android-all jar Robolectric 4.16.1 needs for SDK 34 in NATIVE
 // graphics mode (DefaultSdkProvider pins PREINSTRUMENTED_VERSION = 7). Gradle's own
 // resolution is cached and retried, unlike Robolectric's runtime MavenArtifactFetcher.
-val robolectricInstrumentedJar = configurations.create("robolectricInstrumentedJar") {
-    isCanBeConsumed = false
-    isCanBeResolved = true
-}
+val robolectricInstrumentedJar =
+    configurations.create("robolectricInstrumentedJar") {
+        isCanBeConsumed = false
+        isCanBeResolved = true
+    }
 
-val downloadRobolectricJars = tasks.register<Copy>("downloadRobolectricJars") {
-    from(robolectricInstrumentedJar)
-    into(robolectricJarsDir)
-}
+val downloadRobolectricJars =
+    tasks.register<Copy>("downloadRobolectricJars") {
+        from(robolectricInstrumentedJar)
+        into(robolectricJarsDir)
+    }
 
 tasks.withType<Test>().configureEach {
     maxParallelForks = (Runtime.getRuntime().availableProcessors() / 2).coerceAtLeast(1)
