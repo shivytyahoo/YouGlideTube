@@ -140,8 +140,10 @@ class CommentTimestampTest {
     @Test
     fun `an unparsed age sorts as infinitely old`() {
         // Pins current behaviour: "just now" and abbreviated English units ("3 mins ago") are
-        // recognised by the shared relative-date parser, so only genuinely unparsable strings
-        // (e.g. localised text in a non-matching locale) rank as the oldest possible age.
+        // recognised by the shared relative-date parser. A genuinely unparsable string (e.g.
+        // localised text in a non-matching locale) sinks to the bottom in both directions:
+        // newest maps it to Long.MIN_VALUE, oldest to Long.MAX_VALUE, so it is last either way
+        // rather than heading the oldest list.
         val comments =
             listOf(
                 comment("justNow", publishedTime = "just now"),
@@ -154,7 +156,7 @@ class CommentTimestampTest {
             .containsExactly("justNow", "abbrev", "parsed", "german")
             .inOrder()
         assertThat(ids(sortCommentsByFilter(comments, CommentSortFilter.OLDEST)))
-            .containsExactly("german", "parsed", "abbrev", "justNow")
+            .containsExactly("parsed", "abbrev", "justNow", "german")
             .inOrder()
     }
 

@@ -61,9 +61,11 @@ class LinkDestinationTest {
 
     @Test
     fun `the account's own lists open the library copies`() {
-        assertEquals(page("playlist/liked_videos"), destinationOf("https://www.youtube.com/playlist?list=LL"))
-        assertEquals(page("playlist/watch_later"), destinationOf("https://www.youtube.com/playlist?list=WL"))
-        assertEquals(page("musicPlaylist/liked_music"), destinationOf("https://music.youtube.com/playlist?list=LM"))
+        // The routes carry the well-known ids themselves (AccountPlaylistIds: LL, WL, LM);
+        // no "liked_videos" / "watch_later" / "liked_music" slug form exists in production.
+        assertEquals(page("playlist/LL"), destinationOf("https://www.youtube.com/playlist?list=LL"))
+        assertEquals(page("playlist/WL"), destinationOf("https://www.youtube.com/playlist?list=WL"))
+        assertEquals(page("musicPlaylist/LM"), destinationOf("https://music.youtube.com/playlist?list=LM"))
     }
 
     @Test
