@@ -4291,7 +4291,6 @@ class PlayerPreferences(
         }
         return stillActive
     }
-
 }
 
 /** Action to take when a SponsorBlock segment is encountered. */
