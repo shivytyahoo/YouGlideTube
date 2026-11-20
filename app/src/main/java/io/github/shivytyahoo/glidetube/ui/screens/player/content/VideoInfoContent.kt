@@ -242,5 +242,4 @@ internal fun VideoInfoContent(
             onClick = { screenState.open(PlayerSheet.Comments()) },
         )
     }
-
 }

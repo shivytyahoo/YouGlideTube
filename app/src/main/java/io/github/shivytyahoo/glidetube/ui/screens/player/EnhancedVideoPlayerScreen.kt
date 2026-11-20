@@ -33,9 +33,6 @@ import io.github.shivytyahoo.glidetube.ui.components.videoplayer.sheet.PlaylistQ
 import io.github.shivytyahoo.glidetube.ui.components.videoplayer.sheet.PlaylistQueueDockDefaults
 import io.github.shivytyahoo.glidetube.ui.components.videoplayer.sheet.PlaylistQueuePaneCard
 import io.github.shivytyahoo.glidetube.ui.screens.player.content.PlayerDetailSideColumn
-import io.github.shivytyahoo.glidetube.ui.theme.FestivalBackground
-import io.github.shivytyahoo.glidetube.ui.theme.FestivalBackgroundLayer
-import io.github.shivytyahoo.glidetube.ui.theme.MorpheCirclesBackground
 import io.github.shivytyahoo.glidetube.ui.screens.player.content.VideoInfoContent
 import io.github.shivytyahoo.glidetube.ui.screens.player.content.relatedListUsesGrid
 import io.github.shivytyahoo.glidetube.ui.screens.player.content.relatedVideosContent
@@ -50,6 +47,9 @@ import io.github.shivytyahoo.glidetube.ui.screens.player.state.nextQueueVideo
 import io.github.shivytyahoo.glidetube.ui.screens.player.state.playerLayoutModeFor
 import io.github.shivytyahoo.glidetube.ui.screens.player.state.queueDockPlacement
 import io.github.shivytyahoo.glidetube.ui.screens.player.state.rememberPlayerCommentsUiState
+import io.github.shivytyahoo.glidetube.ui.theme.FestivalBackground
+import io.github.shivytyahoo.glidetube.ui.theme.FestivalBackgroundLayer
+import io.github.shivytyahoo.glidetube.ui.theme.MorpheCirclesBackground
 import io.github.shivytyahoo.glidetube.ui.utils.LocalWindowIsLandscape
 import io.github.shivytyahoo.glidetube.ui.utils.LocalWindowSizeClass
 import kotlin.math.roundToInt
