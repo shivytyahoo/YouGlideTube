@@ -199,16 +199,17 @@ val downloadRobolectricJars = tasks.register<Copy>("downloadRobolectricJars") {
     into(robolectricJarsDir)
 }
 
-tasks.named("testDebugUnitTest") {
-    dependsOn(downloadRobolectricJars)
-}
-
 tasks.withType<Test>().configureEach {
     maxParallelForks = (Runtime.getRuntime().availableProcessors() / 2).coerceAtLeast(1)
     // Robolectric loads its pre-instrumented android-all jar from this directory
     // when set, instead of downloading it at test runtime through its own Maven
     // fetcher (which flaked on transient Maven 404s in CI — build #25 lost 6
-    // classes at class setup).
+    // classes at class setup). Every unit-test task depends on the download so the
+    // jar is on disk before Robolectric looks for it. (Do NOT use
+    // tasks.named("testDebugUnitTest") here: AGP creates that task after the
+    // build script is evaluated, so the lookup throws UnknownTaskException —
+    // that is what killed build #27.)
+    dependsOn(downloadRobolectricJars)
     systemProperty("robolectric.dependency.dir", robolectricJarsDir.absolutePath)
 }
 
