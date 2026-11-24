@@ -1,6 +1,7 @@
 package io.github.shivytyahoo.glidetube.player.stream
 
 import android.net.Uri
+import android.os.SystemClock
 import android.util.Log
 import androidx.media3.common.util.UnstableApi
 import io.github.shivytyahoo.glidetube.innertube.YouTube
@@ -21,6 +22,7 @@ import io.github.shivytyahoo.glidetube.utils.potoken.PoTokenResult
 import io.github.shivytyahoo.glidetube.utils.potoken.WebPoTokenSession
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.TimeoutCancellationException
@@ -28,6 +30,8 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -47,6 +51,21 @@ object InnerTubeVideoStreamExtractor {
     // the pre-fix behavior: the URLs still start instantly, and if GVS cuts them ~60s in the
     // existing 403 -> reload path re-extracts with the (by then cached) token and recovers.
     private const val STREAM_POT_ATTACH_GRACE_MS = 2500L
+
+    // Unconsumed deferred WEB tracking entries are best-effort blobs, not playback state;
+    // past this the oldest are dropped rather than letting the map grow with the session.
+    private const val DEFERRED_TRACKING_MAX_ENTRIES = 16
+
+    /**
+     * [VideoExtractionResult.webTrackFail] value meaning the WEB tracking fetch is still
+     * running deferred — the result shipped without it; see [takeDeferredWebTracking].
+     */
+    const val WEB_TRACKING_DEFERRED = "deferred"
+
+    // A cached extraction stays usable this long: far inside a freshly minted URL's
+    // life, so a cached entry cannot be the thing a URL_EXPIRED denial fires on.
+    private const val EXTRACTION_CACHE_TTL_MS = 5 * 60 * 1000L
+    private const val EXTRACTION_CACHE_MAX_ENTRIES = 20
     private val N_PARAM_REGEX = Regex("""(?:^|[?&])n=([^&]+)""")
     private val POT_PARAM_REGEX = Regex("""[?&]pot=""")
 
@@ -57,10 +76,75 @@ object InnerTubeVideoStreamExtractor {
             CoroutineScope(SupervisorJob() + Dispatchers.IO),
         )
 
+    // Short-lived memory-only cache of extraction results, so a re-tap or a
+    // back-and-reopen reuses the URLs the preview or an earlier tap already minted
+    // instead of walking the client ladder again. Keyed by the full [ExtractionKey],
+    // so a direct-only extraction never shares with a full one. Access-ordered with
+    // eldest eviction, so a long session cannot grow it without limit.
+    private data class CachedExtraction(
+        val result: VideoExtractionResult,
+        val cachedAtMs: Long,
+        val identityGeneration: Int,
+        val cookieHash: Int?,
+    )
+
+    private val extractionCache =
+        object : LinkedHashMap<ExtractionKey, CachedExtraction>(16, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<ExtractionKey, CachedExtraction>): Boolean =
+                size > EXTRACTION_CACHE_MAX_ENTRIES
+        }
+
+    /**
+     * The fresh cached result for [key], or null when there is none, it is stale, or the
+     * session it was minted under is gone. A result is session-bound two ways: the visitor
+     * identity it was attested under ([WebPoTokenSession.identityGeneration], bumped on
+     * every rotation) and the signed-in account ([YouTube.cookie], changed on sign-in,
+     * sign-out and account switch — only its hash is kept, never the cookie itself). A
+     * result from a client GVS is currently refusing is dropped too: the gate is recorded
+     * synchronously on the refusal while the visitor re-roll it triggers runs async, so
+     * without this a denial reload would be handed the same dead URLs it just failed on.
+     */
+    private fun cachedExtraction(key: ExtractionKey): VideoExtractionResult? {
+        synchronized(extractionCache) {
+            val cached = extractionCache[key] ?: return null
+            val stale =
+                SystemClock.elapsedRealtime() - cached.cachedAtMs > EXTRACTION_CACHE_TTL_MS ||
+                    cached.identityGeneration != WebPoTokenSession.identityGeneration ||
+                    cached.cookieHash != YouTube.cookie?.hashCode() ||
+                    ClientGateTracker.isGated(cached.result.usedClient.clientName)
+            if (stale) extractionCache.remove(key)
+            return if (stale) null else cached.result
+        }
+    }
+
+    private fun storeExtraction(key: ExtractionKey, result: VideoExtractionResult) {
+        synchronized(extractionCache) {
+            extractionCache[key] =
+                CachedExtraction(
+                    result = result,
+                    cachedAtMs = SystemClock.elapsedRealtime(),
+                    identityGeneration = WebPoTokenSession.identityGeneration,
+                    cookieHash = YouTube.cookie?.hashCode(),
+                )
+        }
+    }
+
+    // Fire-and-forget WEB tracking fetches (see [deferWebTracking]): a supervisor scope on IO
+    // so one failed fetch can neither cancel the others nor touch playback, and the work
+    // outlives the extraction's coroutineScope, which ends when the result ships.
+    private val deferredTrackingScope =
+        CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    // WEB tracking fetched after the result shipped, keyed by video. Consumed once via
+    // [takeDeferredWebTracking]; see [deferWebTracking] for the identity guard.
+    private val deferredWebTracking =
+        java.util.concurrent.ConcurrentHashMap<String, PlayerResponse.PlaybackTracking>()
+
     private data class ExtractionKey(
         val videoId: String,
         val forceSabr: Boolean,
         val audioOnly: Boolean,
+        val skipSabrUpgrade: Boolean,
     )
 
     // The token-free direct client. VISIONOS alone: it serves direct adaptive URLs with no PO Token
@@ -123,9 +207,10 @@ object InnerTubeVideoStreamExtractor {
          * must present a blob minted for the client they claim: a
          * VISIONOS-minted ei/plid presented with WEB params + WEB auth
          * answered 204 on device yet never landed in the account history
-         * (0.3.47–0.3.53). Null when the winner already is WEB, or when
-         * the WEB tracking fetch failed — callers then fall back to the
-         * winning response's own tracking URLs.
+         * (0.3.47–0.3.53). Null when the winner already is WEB, when the WEB
+         * tracking fetch failed, or while the fetch is still deferred
+         * (webTrackFail "deferred" — see [takeDeferredWebTracking]) — callers
+         * then fall back to the winning response's own tracking URLs.
          */
         val webTracking: PlayerResponse.PlaybackTracking? = null,
         /** Why the WEB tracking fetch produced nothing, for the statsDiag line. */
@@ -135,6 +220,11 @@ object InnerTubeVideoStreamExtractor {
     /**
      * @param audioOnly the caller plays only [VideoExtractionResult.audioFormats], so a capped
      *   video ladder is not worth the SABR quality upgrade's wait.
+     * @param skipSabrUpgrade when true, the direct ladder is returned as resolved and the
+     *   guarded SABR upgrade is not attempted inline — the caller ships the playable direct
+     *   result immediately and runs the upgrade in the background via [upgradeToSabr] instead,
+     *   so the upgrade's token mint never delays first frame. Part of the key, so a
+     *   direct-only extraction never shares a coalesced result with a full one.
      */
     @OptIn(UnstableApi::class)
     // allowLowTrust: a cold token is fine for a Short (over before GVS enforcement bites ~60s
@@ -144,18 +234,41 @@ object InnerTubeVideoStreamExtractor {
         forceSabr: Boolean = false,
         audioOnly: Boolean = false,
         allowLowTrust: Boolean = false,
+        skipSabrUpgrade: Boolean = false,
     ): VideoExtractionResult? {
-        val key = ExtractionKey(videoId, forceSabr, audioOnly)
-        return extractionCoalescer.run(key) {
-            selectStreams(videoId, forceSabr, audioOnly, allowLowTrust)
-        }
+        val key = ExtractionKey(videoId, forceSabr, audioOnly, skipSabrUpgrade)
+        // Only the plain calls are cached. A forced-SABR result is a recovery path that
+        // must always re-run the ladder, an audio-only result answers a different
+        // question, and a low-trust Shorts result was minted under a trust exception the
+        // full player must not inherit — those callers re-extract as before.
+        val cacheable = !forceSabr && !audioOnly && !allowLowTrust
+        if (cacheable) cachedExtraction(key)?.let { return it }
+        val result =
+            extractionCoalescer.run(key) {
+                selectStreams(videoId, forceSabr, audioOnly, allowLowTrust, skipSabrUpgrade)
+            }
+        if (cacheable && result != null) storeExtraction(key, result)
+        return result
     }
+
+    /**
+     * Runs only the guarded SABR upgrade over an already-resolved direct result: the direct
+     * result is returned unchanged when it is live, already SABR-backed, or not
+     * quality-incomplete, when the upgrade times out, or when it does not beat the direct
+     * ceiling. The returned result is never SABR-only — a SABR session without playable direct
+     * formats is dropped inside the upgrade, exactly as the inline path does.
+     */
+    suspend fun upgradeToSabr(
+        videoId: String,
+        direct: VideoExtractionResult,
+    ): VideoExtractionResult = maybeUpgradeToSabr(videoId, direct, mutableListOf())
 
     private suspend fun selectStreams(
         videoId: String,
         forceSabr: Boolean,
         audioOnly: Boolean,
         allowLowTrust: Boolean = false,
+        skipSabrUpgrade: Boolean = false,
     ): VideoExtractionResult? =
         withContext(Dispatchers.IO) {
             Log.w(TAG, "Extraction start for $videoId (forceSabr=$forceSabr)")
@@ -178,7 +291,7 @@ object InnerTubeVideoStreamExtractor {
 
             var failureReasons = mutableListOf<String>()
             val walledGeneration = WebPoTokenSession.identityGeneration
-            walkLadder(videoId, audioOnly, failureReasons, allowLowTrust)?.let { return@withContext it }
+            walkLadder(videoId, audioOnly, failureReasons, allowLowTrust, skipSabrUpgrade)?.let { return@withContext it }
 
             // A wall at /player issues no stream URLs, so no 403 ever reaches the re-roll that GVS
             // refusals trigger, and a retry would ask again with the same walled visitor (#1354).
@@ -188,7 +301,7 @@ object InnerTubeVideoStreamExtractor {
                 PlayerDiagnostics.logWarning(TAG, "every client bot-walled $videoId, retrying once with a fresh visitor")
                 dropGatesOnIdentityChange()
                 failureReasons = mutableListOf()
-                walkLadder(videoId, audioOnly, failureReasons, allowLowTrust)?.let { return@withContext it }
+                walkLadder(videoId, audioOnly, failureReasons, allowLowTrust, skipSabrUpgrade)?.let { return@withContext it }
             }
             val freshVisitorWalled = reroll == PlayerWallReroll.REROLLED || reroll == PlayerWallReroll.FRESH_VISITOR_WALLED
 
@@ -211,8 +324,12 @@ object InnerTubeVideoStreamExtractor {
         audioOnly: Boolean,
         failureReasons: MutableList<String>,
         allowLowTrust: Boolean = false,
+        skipSabrUpgrade: Boolean = false,
     ): VideoExtractionResult? {
         val liveDetected = booleanArrayOf(false)
+        // The first gated client step 1 raced (ANDROID_VR_1_65_10 while ungated); step 3
+        // must not fetch it a second time. Null when no race ran.
+        var racedGatedClient: YouTubeClient? = null
 
         // 1) Fast path: token-free clients with direct URLs. Skipped while GVS is enforcing
         // attestation on them — without that memory the ladder walks into the same refusal on
@@ -234,15 +351,26 @@ object InnerTubeVideoStreamExtractor {
         } else {
             // A cold start pays DNS and TLS inside the first request, which can outlast the
             // per-client timeout; one retry on the warm connection beats falling to the web path.
-            tryDirectClients(
-                videoId,
-                fastClients,
-                failureReasons,
-                liveDetected = liveDetected,
-                retryTimeoutOnce = true,
-                allowLowTrust = allowLowTrust,
-            )?.let { direct ->
-                val result = if (audioOnly) direct else maybeUpgradeToSabr(videoId, direct, failureReasons)
+            // The first gated client races the fast path instead of waiting behind the SABR
+            // and Tizen steps: whichever answers playable first wins, the loser is cancelled,
+            // and step 3 below retries only the gated clients this race did not already try.
+            val raceGatedFirst = GATED_FALLBACK_CLIENTS.ungated().firstOrNull()
+            racedGatedClient = raceGatedFirst
+            val direct =
+                if (raceGatedFirst != null) {
+                    raceFirstTwoDirectClients(videoId, fastClients, raceGatedFirst, failureReasons, liveDetected, allowLowTrust)
+                } else {
+                    tryDirectClients(
+                        videoId,
+                        fastClients,
+                        failureReasons,
+                        liveDetected = liveDetected,
+                        retryTimeoutOnce = true,
+                        allowLowTrust = allowLowTrust,
+                    )
+                }
+            direct?.let {
+                val result = if (audioOnly || skipSabrUpgrade) it else maybeUpgradeToSabr(videoId, it, failureReasons)
                 Log.w(TAG, "Extraction OK for $videoId via ${result.usedClient.clientName} (mode=${resultMode(result)})")
                 PlayerDiagnostics.logWarning(TAG, "extract OK $videoId via ${result.usedClient.clientName} mode=${resultMode(result)}")
                 return result
@@ -278,8 +406,17 @@ object InnerTubeVideoStreamExtractor {
 
         // 3) Gated direct clients. Playable, but GVS stops serving them ~60s in, so they rank
         // below anything attested and are only reached when the paths above are unavailable.
-        tryDirectClients(videoId, GATED_FALLBACK_CLIENTS.ungated(), failureReasons, liveDetected = liveDetected, allowLowTrust = allowLowTrust)?.let { direct ->
-            val result = if (audioOnly) direct else maybeUpgradeToSabr(videoId, direct, failureReasons)
+        // Step 1 already raced the first ungated one; retrying it here would be a second
+        // fetch for the same cause.
+        val remainingGated = GATED_FALLBACK_CLIENTS.ungated().filterNot { it == racedGatedClient }
+        tryDirectClients(
+            videoId,
+            remainingGated,
+            failureReasons,
+            liveDetected = liveDetected,
+            allowLowTrust = allowLowTrust,
+        )?.let { direct ->
+            val result = if (audioOnly || skipSabrUpgrade) direct else maybeUpgradeToSabr(videoId, direct, failureReasons)
             Log.w(TAG, "Extraction OK for $videoId via ${result.usedClient.clientName} (mode=${resultMode(result)}/gated)")
             PlayerDiagnostics.logWarning(
                 TAG,
@@ -317,6 +454,77 @@ object InnerTubeVideoStreamExtractor {
         }
 
         return null
+    }
+
+    /**
+     * Races the fast path against the first gated direct client (VISIONOS vs
+     * ANDROID_VR_1_65_10 — the ladder's first two direct clients) instead of trying them
+     * one after another. Both run under their existing per-client timeouts, the first
+     * playable result wins, and the loser is cancelled outright — a bare coroutineScope
+     * would wait for it, so the race would cost max(fast, gated) instead of min. When the
+     * first finisher fails, the other is waited out up to its own timeout — a fast
+     * failure must not end the race. Neither client is WEB-attested (VISIONOS is
+     * IOSGUARD, ANDROID_VR is DROIDGUARD), so neither starts a PoToken mint and the
+     * branches share nothing but [liveDetected] (a write-once flag) and their own
+     * failure lists, merged below in ladder order because the caller's list is not
+     * thread-safe.
+     */
+    private suspend fun raceFirstTwoDirectClients(
+        videoId: String,
+        fastClients: List<YouTubeClient>,
+        gatedFirst: YouTubeClient,
+        failureReasons: MutableList<String>,
+        liveDetected: BooleanArray?,
+        allowLowTrust: Boolean,
+    ): VideoExtractionResult? {
+        // Per-branch failure lists: the caller's list is not thread-safe, so each racer
+        // records into its own. Merged only after the scope below has returned, when
+        // both branches — including a cancelled loser — have fully finished.
+        val fastFailures = mutableListOf<String>()
+        val gatedFailures = mutableListOf<String>()
+        val winner = coroutineScope {
+            val fast =
+                async {
+                    tryDirectClients(
+                        videoId,
+                        fastClients,
+                        fastFailures,
+                        liveDetected = liveDetected,
+                        retryTimeoutOnce = true,
+                        allowLowTrust = allowLowTrust,
+                    )
+                }
+            val gated =
+                async {
+                    tryDirectClients(
+                        videoId,
+                        listOf(gatedFirst),
+                        gatedFailures,
+                        liveDetected = liveDetected,
+                        allowLowTrust = allowLowTrust,
+                    )
+                }
+            var winner: VideoExtractionResult? = null
+            select<Unit> {
+                fast.onAwait { winner = it }
+                gated.onAwait { winner = it }
+            }
+            if (winner != null) {
+                // coroutineScope does not return until every child completes, so without
+                // this the race would cost max(fast, gated) instead of min: cancel the
+                // loser outright. The scope's exit still waits for the cancelled child
+                // to actually stop, so its cancellation propagates before we return.
+                if (!fast.isCompleted) fast.cancel()
+                if (!gated.isCompleted) gated.cancel()
+            } else {
+                // The first finisher failed; wait out the other one's existing timeout.
+                winner = if (fast.isCompleted) gated.await() else fast.await()
+            }
+            winner
+        }
+        failureReasons += fastFailures
+        failureReasons += gatedFailures
+        winner
     }
 
     /** Videos YouTube reported as removed or unplayable on every client; a queue skips them. */
@@ -430,6 +638,73 @@ object InnerTubeVideoStreamExtractor {
                 }
             }
         }
+
+    /**
+     * WEB tracking, off the critical path: the playable result ships with
+     * [VideoExtractionResult.webTracking] null and webTrackFail "deferred", and the WEB
+     * /player fetch runs fire-and-forget on [deferredTrackingScope] afterwards. Returns
+     * the webTrackFail value the result should carry: "winner-is-web" when the winner
+     * already is WEB, so nothing is fetched; [WEB_TRACKING_DEFERRED] otherwise. [fetchWebTracking]
+     * keeps its own error handling — a failed fetch returns its reason and never throws
+     * except on cancellation — so this can never break playback. The fetch is guarded
+     * on [WebPoTokenSession.identityGeneration], the same hook
+     * [dropGatesOnIdentityChange] uses: if the visitor identity rotated between
+     * deferring and fetching (wall re-roll, attestation-stuck rotation, manual session
+     * reset), the fetch is dropped instead of minting and presenting a blob for a
+     * visitor the playback no longer belongs to. Sign-out / account switch does NOT
+     * bump that generation (AccountSessionManager never touches the visitor session),
+     * so a switch mid-fetch can still present a guest-minted blob with new account
+     * auth — measured (0.3.59) to answer 204 without recording, i.e. a lost beacon,
+     * never a wrong-account recording.
+     */
+    private fun deferWebTracking(
+        videoId: String,
+        winner: YouTubeClient,
+        poToken: String?,
+    ): String {
+        if (winner.clientName == YouTubeClient.WEB.clientName) return "winner-is-web"
+        val generation = WebPoTokenSession.identityGeneration
+        deferredTrackingScope.launch {
+            if (WebPoTokenSession.identityGeneration != generation) {
+                Log.w(TAG, "Dropping deferred WEB tracking for $videoId — visitor identity rotated")
+                return@launch
+            }
+            val (tracking, fail) = fetchWebTracking(videoId, winner, poToken)
+            if (WebPoTokenSession.identityGeneration != generation) {
+                Log.w(TAG, "Dropping deferred WEB tracking for $videoId — visitor identity rotated mid-fetch")
+                return@launch
+            }
+            if (tracking != null) {
+                if (deferredWebTracking.size >= DEFERRED_TRACKING_MAX_ENTRIES) deferredWebTracking.clear()
+                deferredWebTracking[videoId] = tracking
+                PlayerDiagnostics.logWarning(TAG, "deferred WEB tracking ready for $videoId")
+            } else {
+                PlayerDiagnostics.logWarning(TAG, "deferred WEB tracking unavailable for $videoId: $fail")
+            }
+        }
+        return WEB_TRACKING_DEFERRED
+    }
+
+    /**
+     * Takes WEB tracking the deferred fetch produced for [videoId], or null when it has
+     * not arrived (yet). Consume-once: the entry is removed, so a later video never
+     * reuses a stale blob. The history beacon reads this when the result's own
+     * [VideoExtractionResult.webTracking] is null with webTrackFail "deferred" — until
+     * that call site is wired, the beacon falls back to the winning response's own
+     * tracking URLs, as it does for any failed WEB fetch today.
+     */
+    fun takeDeferredWebTracking(videoId: String): PlayerResponse.PlaybackTracking? =
+        deferredWebTracking.remove(videoId)
+
+    /** The mint's player token, only if the mint already finished — this never waits for it. */
+    private fun Deferred<PoTokenResult?>?.readyPlayerToken(): String? {
+        if (this == null || !isCompleted) return null
+        return try {
+            getCompleted()?.playerRequestPoToken?.takeIf { it.isNotBlank() }
+        } catch (_: Exception) {
+            null
+        }
+    }
 
     /**
      * Best-effort WEB-minted tracking URLs for the history beacons. The
@@ -613,9 +888,9 @@ object InnerTubeVideoStreamExtractor {
                         // mint, so cancel it rather than letting coroutineScope wait it out.
                         val liveResult = playerResponse.toLiveResultOrNull(client)
                         if (liveResult != null) {
-                            val (webTracking, webFail) = fetchWebTracking(videoId, client, awaitMint()?.playerRequestPoToken)
+                            val webFail = deferWebTracking(videoId, client, mint.readyPlayerToken())
                             mint?.cancel()
-                            return@coroutineScope liveResult.copy(webTracking = webTracking, webTrackFail = webFail)
+                            return@coroutineScope liveResult.copy(webTracking = null, webTrackFail = webFail)
                         }
 
                         if (playerResponse.videoDetails?.isLive == true) {
@@ -695,7 +970,7 @@ object InnerTubeVideoStreamExtractor {
                         )
                     }
 
-                    val (webTracking, webFail) = fetchWebTracking(videoId, client, awaitMint()?.playerRequestPoToken)
+                    val webFail = deferWebTracking(videoId, client, mint.readyPlayerToken())
                     mint?.cancel()
 
                     return@coroutineScope VideoExtractionResult(
@@ -704,7 +979,7 @@ object InnerTubeVideoStreamExtractor {
                         playerResponse = playerResponse,
                         usedClient = client,
                         sabrInfo = null,
-                        webTracking = webTracking,
+                        webTracking = null,
                         webTrackFail = webFail,
                     )
                 } catch (e: CancellationException) {

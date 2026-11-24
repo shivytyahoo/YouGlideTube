@@ -16,6 +16,7 @@ import io.github.shivytyahoo.glidetube.data.repository.YouTubeRepository
 import io.github.shivytyahoo.glidetube.data.video.OfflineSubtitleStore
 import io.github.shivytyahoo.glidetube.data.video.VideoDownloadManager
 import io.github.shivytyahoo.glidetube.innertube.YouTube
+import io.github.shivytyahoo.glidetube.innertube.models.response.PlayerResponse
 import io.github.shivytyahoo.glidetube.player.EnhancedPlayerManager
 import io.github.shivytyahoo.glidetube.player.GlobalPlayerState
 import io.github.shivytyahoo.glidetube.player.error.VideoErrorMapper
@@ -32,6 +33,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
@@ -222,7 +224,16 @@ internal class PlaybackSessionApplier(
         // 204). A WEB-minted blob with WEB params + WEB auth is the official
         // client's own shape. Falls back to the winning response's URLs when
         // no WEB tracking was fetched.
-        val webTracking = result.webTracking
+        // The result shipped before the WEB tracking fetch finished: wait a bounded
+        // time for it — the beacon fires after playback starts, so this delays only
+        // the history ping, never first frame — then fall back to the winning
+        // response's own tracking URLs exactly as a failed fetch does.
+        val deferred =
+            result.webTracking == null &&
+                result.webTrackFail == InnerTubeVideoStreamExtractor.WEB_TRACKING_DEFERRED
+        val webTracking = if (deferred) awaitDeferredWebTracking(videoId, loadToken) else result.webTracking
+        // The bounded wait can outlive the load; never beacon for a superseded one.
+        if (deferred && !isLoadCurrent(loadToken)) return
         val trackingUrl = webTracking?.videostatsPlaybackUrl?.baseUrl
             ?: result.playerResponse.playbackTracking?.videostatsPlaybackUrl?.baseUrl
         if (trackingUrl == null) {
@@ -280,6 +291,28 @@ internal class PlaybackSessionApplier(
             )
         }
     }
+
+    /**
+     * Waits a bounded time for the extractor's deferred WEB tracking fetch (see
+     * [InnerTubeVideoStreamExtractor.takeDeferredWebTracking]): the fetch is usually one
+     * WEB /player call on the warm session, so [DEFERRED_TRACKING_WAIT_MS] covers it; a
+     * cold first video can take longer, and then the caller falls back to the winning
+     * response's own tracking URLs. Polls with [delay], which suspends instead of
+     * holding a thread, so this never blocks playback. Null when nothing arrived in
+     * time or the load went stale.
+     */
+    private suspend fun awaitDeferredWebTracking(
+        videoId: String,
+        loadToken: Long,
+    ): PlayerResponse.PlaybackTracking? =
+        withTimeoutOrNull(DEFERRED_TRACKING_WAIT_MS) {
+            var tracking = InnerTubeVideoStreamExtractor.takeDeferredWebTracking(videoId)
+            while (tracking == null && isLoadCurrent(loadToken)) {
+                delay(DEFERRED_TRACKING_POLL_MS)
+                tracking = InnerTubeVideoStreamExtractor.takeDeferredWebTracking(videoId)
+            }
+            tracking
+        }
 
     private suspend fun applyVodFromInnerTube(
         load: LoadContext,
@@ -661,5 +694,13 @@ internal class PlaybackSessionApplier(
 
     private companion object {
         const val TAG = "PlaybackSessionApplier"
+
+        // How long the history beacon waits for the extractor's deferred WEB tracking
+        // fetch before falling back to the winning response's own tracking URLs: the
+        // fetch is usually one WEB /player call on the warm session, so this covers
+        // it; a cold first video can take longer, and then the fallback applies.
+        // Polls at [DEFERRED_TRACKING_POLL_MS]. Delays only the beacon, never playback.
+        const val DEFERRED_TRACKING_WAIT_MS = 5_000L
+        const val DEFERRED_TRACKING_POLL_MS = 250L
     }
 }

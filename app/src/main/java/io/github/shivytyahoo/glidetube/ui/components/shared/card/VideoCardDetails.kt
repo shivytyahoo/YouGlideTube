@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import io.github.shivytyahoo.glidetube.R
 import io.github.shivytyahoo.glidetube.data.model.Video
 import io.github.shivytyahoo.glidetube.data.model.VideoCollaborator
+import io.github.shivytyahoo.glidetube.player.stream.PlaybackPrefetcher
 import io.github.shivytyahoo.glidetube.ui.components.layout.navigation.LocalMediaNavigator
 import io.github.shivytyahoo.glidetube.ui.components.shared.LocalDpadNavigation
 import io.github.shivytyahoo.glidetube.ui.components.shared.FocusLiftDefaults
@@ -105,7 +106,9 @@ internal fun CardReasonLabel(reason: String) {
 /**
  * The whole card opens the video, and a long press opens its quick actions. TalkBack announces the
  * long press by name, since the gesture alone is undiscoverable. On a D-pad the card lifts on focus
- * and the Menu key opens the quick actions too.
+ * and the Menu key opens the quick actions too. Either gesture also warms stream extraction for
+ * the video: the quick actions can lead straight into playback, and a tap from there then starts
+ * from the in-flight extraction — or its cached result — instead of a cold ladder.
  */
 @Composable
 internal fun Modifier.videoCardClickable(
@@ -127,13 +130,19 @@ internal fun Modifier.videoCardClickable(
                 Modifier
             },
         )
-        .onMenuKey { state.sheets.showQuickActions = true }
+        .onMenuKey {
+            PlaybackPrefetcher.prefetch(state.video.id)
+            state.sheets.showQuickActions = true
+        }
         .combinedClickable(
             interactionSource = interactionSource,
             indication = ripple(focusRingShape = MaterialTheme.shapes.large),
             onClickLabel = null,
             onLongClickLabel = stringResource(R.string.more_options),
-            onLongClick = { state.sheets.showQuickActions = true },
+            onLongClick = {
+                PlaybackPrefetcher.prefetch(state.video.id)
+                state.sheets.showQuickActions = true
+            },
             onClick = onClick,
         )
 }

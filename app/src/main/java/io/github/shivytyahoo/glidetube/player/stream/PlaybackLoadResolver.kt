@@ -11,6 +11,7 @@ import io.github.shivytyahoo.glidetube.data.video.DownloadedVideo
 import io.github.shivytyahoo.glidetube.data.video.VideoDownloadManager
 import io.github.shivytyahoo.glidetube.di.IoDispatcher
 import io.github.shivytyahoo.glidetube.di.NetworkIoDispatcher
+import io.github.shivytyahoo.glidetube.player.sabr.SabrRoutingPolicy
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -20,6 +21,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withTimeoutOrNull
@@ -87,7 +89,18 @@ class PlaybackLoadResolver
                 }
 
                 val innerTubeDeferred =
-                    scope.async(networkDispatcher) { extractInnerTube(videoId, forceSabr = request.escalateToSabr) }
+                    scope.async(networkDispatcher) {
+                        extractInnerTube(
+                            videoId,
+                            forceSabr = request.escalateToSabr,
+                            // The SABR upgrade for a quality-incomplete direct ladder must not
+                            // hold first frame: extract direct-only here and run the upgrade in
+                            // the background once the direct result has shipped (see
+                            // maybeStartBackgroundSabrUpgrade). A forced-SABR reload has no
+                            // direct result to ship, so it keeps the inline path.
+                            skipSabrUpgrade = !request.escalateToSabr,
+                        )
+                    }
 
                 // Startup-critical disk reads, resolved in parallel with stream extraction so the
                 // playback-preparation path below never blocks on DataStore/DB.
@@ -102,6 +115,7 @@ class PlaybackLoadResolver
                 val playbackLoadTimeoutMs = if (request.escalateToSabr) SABR_LOAD_TIMEOUT_MS else LOAD_TIMEOUT_MS
                 withTimeout(playbackLoadTimeoutMs) {
                     resolveStreams(
+                        scope = scope,
                         request = request,
                         preferences = preferences,
                         innerTubeDeferred = innerTubeDeferred,
@@ -128,6 +142,7 @@ class PlaybackLoadResolver
         }
 
         private suspend fun resolveStreams(
+            scope: CoroutineScope,
             request: PlaybackResolutionRequest,
             preferences: StreamPreferences,
             innerTubeDeferred: Deferred<InnerTubeVideoStreamExtractor.VideoExtractionResult?>,
@@ -190,6 +205,14 @@ class PlaybackLoadResolver
                         resumePositionOverrideMs = request.resumePositionOverrideMs,
                     ),
                 )
+                // First frame is already on its way: the <720p SABR upgrade runs in the
+                // background now and only its outcome is recorded. A late win is never swapped
+                // into playback — Media3 owns the prepared source and there is no safe
+                // mid-playback ladder swap. The forced-SABR reload already ran its upgrade
+                // inline, so it never starts a second one here.
+                if (!request.escalateToSabr) {
+                    maybeStartBackgroundSabrUpgrade(scope, videoId, innerTubeResult, isCurrent)
+                }
             } else {
                 Log.e(TAG, "InnerTube resolved nothing playable for $videoId and no offline copy found.")
                 onStep(
@@ -216,16 +239,63 @@ class PlaybackLoadResolver
         private fun extractionFailureCause(videoId: String): Throwable? =
             InnerTubeVideoStreamExtractor.blockOf(videoId)?.let(::PlaybackBlockedException)
 
+        /**
+         * Starts the <720p SABR upgrade for a direct result that already shipped, as a child of
+         * the load job so it ends with the load and dies when a newer load supersedes it. The
+         * upgrade is bounded by [SabrRoutingPolicy.UPGRADE_BUDGET_MS] inside the extractor and
+         * its outcome is only recorded: by the time it lands, playback has started on the direct
+         * result, and a second Vod step would be dropped by the preparer's
+         * `isPreparedForPlayback` guard (and would double-fire the watch-history ping and the
+         * auto-download resolution), so nothing is re-emitted.
+         */
+        private fun maybeStartBackgroundSabrUpgrade(
+            scope: CoroutineScope,
+            videoId: String,
+            direct: InnerTubeVideoStreamExtractor.VideoExtractionResult,
+            isCurrent: () -> Boolean,
+        ) {
+            if (direct.isLive || direct.sabrInfo != null) return
+            val directMaxHeight = direct.videoFormats.maxOfOrNull { it.height ?: 0 } ?: 0
+            if (!SabrRoutingPolicy.shouldAttemptSabrUpgrade(directMaxHeight)) return
+            if (!isCurrent()) return
+            scope.launch(networkDispatcher) {
+                try {
+                    val upgraded = InnerTubeVideoStreamExtractor.upgradeToSabr(videoId, direct)
+                    if (!isCurrent()) return@launch
+                    val sabrHeight = upgraded.sabrInfo?.videoHeight
+                    if (SabrRoutingPolicy.backgroundUpgradeWon(directMaxHeight, sabrHeight)) {
+                        Log.w(
+                            TAG,
+                            "Background SABR upgrade for $videoId would have won " +
+                                "(${directMaxHeight}p → ${sabrHeight}p) but arrived after first frame — " +
+                                "keeping direct playback",
+                        )
+                    } else {
+                        Log.d(
+                            TAG,
+                            "Background SABR upgrade for $videoId did not beat direct ${directMaxHeight}p — " +
+                                "keeping direct playback",
+                        )
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Log.d(TAG, "Background SABR upgrade failed for $videoId: ${e.message}")
+                }
+            }
+        }
+
         private suspend fun extractInnerTube(
             videoId: String,
             forceSabr: Boolean,
+            skipSabrUpgrade: Boolean = false,
         ): InnerTubeVideoStreamExtractor.VideoExtractionResult? =
             try {
                 if (forceSabr) {
                     InnerTubeVideoStreamExtractor.extract(videoId, forceSabr = true)
                 } else {
                     withTimeoutOrNull(INNERTUBE_TIMEOUT_MS) {
-                        InnerTubeVideoStreamExtractor.extract(videoId, forceSabr = false)
+                        InnerTubeVideoStreamExtractor.extract(videoId, forceSabr = false, skipSabrUpgrade = skipSabrUpgrade)
                     }
                 }
             } catch (e: CancellationException) {
