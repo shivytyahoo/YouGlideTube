@@ -103,13 +103,15 @@ jobs:
             exit 1
           fi
           {
-            echo "## What's new in YouGlideTube $version"
+            echo "## What's new in $version"
             echo
             sed -e '/^VERSION:/d' -e '/^DATE:/d' -e 's/^• /- /' "$notes"
             echo
             prev="$(git describe --tags --abbrev=0 HEAD~1 2>/dev/null || true)"
             if [ -n "$prev" ]; then
-              echo "**Full Changelog**: https://github.com/shivytyahoo/YouGlideTube/compare/$prev...v$version"
+              echo "Universal APK — one file for every device · installs over ${prev#v} · Android 8.0 (API 26) or newer"
+            else
+              echo "Universal APK — one file for every device · Android 8.0 (API 26) or newer"
             fi
           } > dist/release-notes.md
 

@@ -1,37 +1,22 @@
 package io.github.shivytyahoo.glidetube.ui.tv.screens
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.shivytyahoo.glidetube.R
 import io.github.shivytyahoo.glidetube.data.model.Video
 import io.github.shivytyahoo.glidetube.ui.components.rememberFeedGridLayout
-import io.github.shivytyahoo.glidetube.ui.components.shared.GlideLogo
 import io.github.shivytyahoo.glidetube.ui.components.shared.dpadFocusGroup
 import io.github.shivytyahoo.glidetube.ui.screens.home.HomeFeedBody
 import io.github.shivytyahoo.glidetube.ui.screens.home.HomeFeedEffects
@@ -55,8 +40,6 @@ fun TvHomeScreen(
     onVideoClick: (Video) -> Unit,
     onPlayPlaylist: (List<Video>, String) -> Unit,
     onOpenLibrary: () -> Unit,
-    onOpenSettings: () -> Unit,
-    onOpenSearch: () -> Unit,
     modifier: Modifier = Modifier,
     settings: TvHomeViewModel = hiltViewModel(),
 ) {
@@ -120,56 +103,6 @@ fun TvHomeScreen(
                 onOpenShortsFeed = {},
                 showShorts = false,
             )
-            if (uiState.isGuestEmpty && !uiState.isLoading) {
-                TvGuestLanding(
-                    onOpenSettings = onOpenSettings,
-                    onOpenSearch = onOpenSearch,
-                    modifier = Modifier.fillMaxSize(),
-                )
-            }
-        }
-    }
-}
-
-/** The phone's signed-out landing, laid out for a remote: Sign in takes focus first. */
-@Composable
-private fun TvGuestLanding(
-    onOpenSettings: () -> Unit,
-    onOpenSearch: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val signInFocusRequester = remember { FocusRequester() }
-    LaunchedEffect(Unit) { signInFocusRequester.requestFocus() }
-    Column(
-        modifier = modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        GlideLogo(Modifier.width(120.dp))
-        Spacer(Modifier.height(20.dp))
-        Text(
-            text = stringResource(R.string.home_guest_title),
-            style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.onBackground,
-            textAlign = TextAlign.Center,
-        )
-        Spacer(Modifier.height(8.dp))
-        Text(
-            text = stringResource(R.string.home_guest_message),
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
-        Spacer(Modifier.height(24.dp))
-        Button(
-            onClick = onOpenSettings,
-            modifier = Modifier.focusRequester(signInFocusRequester),
-        ) {
-            Text(stringResource(R.string.home_guest_sign_in))
-        }
-        Spacer(Modifier.height(8.dp))
-        TextButton(onClick = onOpenSearch) {
-            Text(stringResource(R.string.search))
         }
     }
 }

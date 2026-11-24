@@ -14,9 +14,6 @@
     <string name="subscribed">Subscribed</string>
     <string name="no_subscriptions_yet">No Subscriptions Yet</string>
     <string name="empty_subscriptions_body">Subscribe to channels to see their latest videos here</string>
-    <string name="home_guest_title">You\'re signed out</string>
-    <string name="home_guest_message">Sign in to see your feed, subscriptions and history — or search for something to watch.</string>
-    <string name="home_guest_sign_in">Sign in</string>
     <string name="home_refresh_feed">Refresh Feed</string>
     <string name="home_load_more_failed">Couldn\'t load more videos</string>
     <string name="home_load_more_failed_body">Check your connection</string>

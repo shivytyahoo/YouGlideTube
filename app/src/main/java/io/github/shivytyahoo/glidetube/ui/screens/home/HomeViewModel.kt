@@ -1,7 +1,5 @@
 package io.github.shivytyahoo.glidetube.ui.screens.home
 
-import io.github.shivytyahoo.glidetube.utils.ShivLog
-
 import android.content.Context
 import android.util.Log
 import androidx.lifecycle.SavedStateHandle
@@ -10,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.shivytyahoo.glidetube.R
+import io.github.shivytyahoo.glidetube.data.engagement.FeedExclusions
 import io.github.shivytyahoo.glidetube.data.engagement.FeedInvalidationBus
 import io.github.shivytyahoo.glidetube.data.feed.FeedPrefetchQueue
 import io.github.shivytyahoo.glidetube.data.feed.FeedPrefetchRequest
@@ -19,7 +18,6 @@ import io.github.shivytyahoo.glidetube.data.local.HomeFeedCacheRepository
 import io.github.shivytyahoo.glidetube.data.local.SessionHistory
 import io.github.shivytyahoo.glidetube.data.model.Video
 import io.github.shivytyahoo.glidetube.data.model.toVideo
-import io.github.shivytyahoo.glidetube.data.engagement.FeedExclusions
 import io.github.shivytyahoo.glidetube.data.repository.YouTubeRepository
 import io.github.shivytyahoo.glidetube.data.repository.needsChannelMetadata
 import io.github.shivytyahoo.glidetube.data.shorts.ShortsFeedRepository
@@ -29,6 +27,7 @@ import io.github.shivytyahoo.glidetube.ui.screens.home.chips.ChipFeedContext
 import io.github.shivytyahoo.glidetube.ui.screens.home.chips.HomeChipFeeds
 import io.github.shivytyahoo.glidetube.ui.screens.home.chips.HomeChipsState
 import io.github.shivytyahoo.glidetube.utils.PerformanceDispatcher
+import io.github.shivytyahoo.glidetube.utils.ShivLog
 import io.github.shivytyahoo.glidetube.utils.ThumbnailUrlResolver
 import io.github.shivytyahoo.glidetube.utils.traced
 import kotlinx.coroutines.CancellationException
@@ -146,6 +145,7 @@ class HomeViewModel
                 )
 
         private var isInitialized = false
+
         // A TV's SoC works far harder per card than a phone's: page in smaller steps there.
         private val isTvDevice =
             io.github.shivytyahoo.glidetube.platform.DeviceFormFactorDetector
@@ -207,22 +207,6 @@ class HomeViewModel
                 savedState = savedStateHandle,
                 context = ChipFeedContext(::cacheFilters, ::feedExclusions) { watchedVideoIds.value },
             )
-            // A signed-out home left empty fills itself once this session's searches arrive,
-            // so the feed appears on its own after a search instead of waiting for a
-            // pull-to-refresh. Fires only while the landing is up; a landed feed stops it.
-            viewModelScope.launch {
-                var lastSearchCount = 0
-                searchHistory.getSearchHistoryFlow().collect { searches ->
-                    val count = searches.size
-                    val isNew = count != lastSearchCount
-                    lastSearchCount = count
-                    if (isNew && count > 0 && !YouTube.isSignedIn() &&
-                        _uiState.value.isGuestEmpty && !_uiState.value.isLoading
-                    ) {
-                        loadFlowFeed()
-                    }
-                }
-            }
             // A content country or language change must reload the feed: the new
             // locale applies to the next request, but the visible feed is the old
             // locale's until it is re-fetched. The first emission is the stored
@@ -517,8 +501,7 @@ class HomeViewModel
                 showOnHome = playerPreferences.homeSubscriptionsEnabled.first(),
             )
 
-        private suspend fun feedExclusions(): FeedExclusions =
-            sessionExclusions.snapshot().hidingChannels(subscriptionScope().hidden)
+        private suspend fun feedExclusions(): FeedExclusions = sessionExclusions.snapshot().hidingChannels(subscriptionScope().hidden)
 
         private suspend fun cacheFilters(): HomeFeedCacheFilters =
             HomeFeedCacheFilters(watchedVideoIds = watchedVideoIds.value, exclusions = feedExclusions())
@@ -596,11 +579,13 @@ class HomeViewModel
                     // The first load of a session — above all the one right after sign-in, while
                     // the client's identity is still warming up — can come back failed or empty
                     // when the same request a moment later succeeds. Retry before believing
-                    // either, so a cold start never settles on a blank home.
+                    // either, so a cold start never settles on a blank home. Signed out
+                    // this matters more, not less: the guest browse rides on the same
+                    // warming-up visitor, so guests retry exactly like signed-in users.
                     var attempt = 0
                     while (
                         (page == null || (page.videos.isEmpty() && page.shorts.isEmpty())) &&
-                        attempt < 2 && YouTube.isSignedIn()
+                        attempt < 2
                     ) {
                         attempt++
                         delay(if (attempt == 1) 1500L else 3000L)
@@ -608,10 +593,10 @@ class HomeViewModel
                             withTimeoutOrNull(SERVER_FEED_TIMEOUT_MS) {
                                 YouTube.serverHome().getOrNull()
                             }
-                        ShivLog.i("home load retry $attempt page=${if (page == null) "null" else "ok"} videos=${page?.videos?.size ?: -1}",
-                        )
+                        ShivLog.i("home load retry $attempt page=${if (page == null) "null" else "ok"} videos=${page?.videos?.size ?: -1}")
                     }
-                    ShivLog.i("home load end page=${if (page == null) "null" else "ok"} " +
+                    ShivLog.i(
+                        "home load end page=${if (page == null) "null" else "ok"} " +
                             "videos=${page?.videos?.size ?: -1} after ${System.currentTimeMillis() - loadStartMs}ms",
                     )
                     if (page == null || (page.videos.isEmpty() && page.shorts.isEmpty())) {
@@ -626,7 +611,6 @@ class HomeViewModel
                                         isLoading = false,
                                         isRefreshing = false,
                                         error = null,
-                                        isGuestEmpty = false,
                                         isFlowFeed = true,
                                         hasMorePages = false,
                                         lastRefreshTime = System.currentTimeMillis(),
@@ -647,24 +631,21 @@ class HomeViewModel
                                     isLoading = false,
                                     isRefreshing = false,
                                     error = null,
-                                    isGuestEmpty = false,
                                     hasMorePages = false,
                                 )
                             }
                             return@launch
                         }
-                        // Signed out, an empty guest load is not a failure — home becomes the
-                        // calm sign-in landing instead of an error with a Retry button (the
-                        // guest shell often carries no feed at all, and shouting about it
-                        // helps nobody). Signed in, never let a failed load masquerade as a
-                        // feed: whatever is on screen is a stale cache, and the person must
-                        // be told it failed.
+                        // An empty load is a failure whoever is watching: whatever is on
+                        // screen is a stale cache, and the person must be told it failed
+                        // instead of being shown a sign-in prompt. Signed out, the feed
+                        // still comes from the same anonymous browse as the desktop app,
+                        // so there is no sign-in landing to fall back to.
                         _uiState.update { state ->
                             state.copy(
                                 isLoading = false,
                                 isRefreshing = false,
-                                error = if (YouTube.isSignedIn()) "Could not load your feed" else null,
-                                isGuestEmpty = !YouTube.isSignedIn(),
+                                error = "Could not load your feed",
                             )
                         }
                         return@launch
@@ -683,7 +664,6 @@ class HomeViewModel
                             isFlowFeed = true,
                             hasMorePages = feedPage.continuation != null,
                             error = null,
-                            isGuestEmpty = false,
                             lastRefreshTime = System.currentTimeMillis(),
                             origins = emptyMap(),
                         )
@@ -692,8 +672,6 @@ class HomeViewModel
                     runCatching { persistentHomeFeedCache.saveLastFeed(videos) }
                 }
         }
-
-
 
         /**
          * A signed-out home the guest shell left empty: fill it from this session's own
@@ -724,10 +702,7 @@ class HomeViewModel
             return videos.filterWatched(watchedVideoIds.value).take(GUEST_FALLBACK_MAX_VIDEOS)
         }
 
-        /** Wave 2: the discovery queries wave 1 did not have time for, merged in after paint. */
-
-
-
+        // Wave 2: the discovery queries wave 1 did not have time for, merged in after paint.
 
         /**
          * One load-more attempt. Cards [held] from the run's earlier attempts start the page, and a
@@ -775,7 +750,6 @@ class HomeViewModel
                 }
             }
         }
-
 
         private suspend fun appendLoadMorePage(
             page: List<Video>,
@@ -868,7 +842,6 @@ class HomeViewModel
             }
         }
 
-
         /**
          * The viewer's refresh. A load already running is the refresh: the indicator stays until it
          * lands, and repeated pulls cannot stack pipelines (#1171).
@@ -890,9 +863,6 @@ class HomeViewModel
             loadFlowFeed(forceRefresh = true)
         }
 
-
-
-
         fun retry() {
             resetHomePrefetch()
             wave2Job?.cancel()
@@ -906,8 +876,6 @@ class HomeViewModel
             usedVideoIds: MutableSet<String>,
             maxPerChannel: Int = 2,
         ): Boolean = addUniqueVideo(video, targetList, channelCounts, usedVideoIds, maxPerChannel)
-
-
 
         fun recordShelfImpressions(visibleIds: List<String>) = Unit
 

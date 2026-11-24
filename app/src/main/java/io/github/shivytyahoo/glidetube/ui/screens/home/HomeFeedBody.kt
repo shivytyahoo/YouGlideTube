@@ -173,7 +173,7 @@ internal fun HomeFeedBody(
             )
         }
 
-        uiState.error != null && uiState.videos.isEmpty() && !uiState.isGuestEmpty -> {
+        uiState.error != null && uiState.videos.isEmpty() -> {
             GlideErrorState(
                 error = uiState.error ?: stringResource(R.string.error_occurred),
                 onRetry = { viewModel.retry() },

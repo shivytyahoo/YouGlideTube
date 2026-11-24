@@ -17,10 +17,10 @@ import io.github.shivytyahoo.glidetube.data.localmedia.toMusicTrack
 import io.github.shivytyahoo.glidetube.data.localmedia.toVideo
 import io.github.shivytyahoo.glidetube.data.model.Video
 import io.github.shivytyahoo.glidetube.data.music.DownloadedTrack
-import io.github.shivytyahoo.glidetube.data.video.DownloadedVideo
 import io.github.shivytyahoo.glidetube.data.music.model.toMusicTrack
 import io.github.shivytyahoo.glidetube.data.music.model.toVideo
 import io.github.shivytyahoo.glidetube.data.shorts.queue.ShortsQueueSource
+import io.github.shivytyahoo.glidetube.data.video.DownloadedVideo
 import io.github.shivytyahoo.glidetube.ui.components.layout.navigation.GlideTab
 import io.github.shivytyahoo.glidetube.ui.components.shared.MediaKind
 import io.github.shivytyahoo.glidetube.ui.screens.channel.ChannelScreen
@@ -106,8 +106,6 @@ fun TvNavHost(
                 onVideoClick = onPlayVideo,
                 onPlayPlaylist = { videos, title -> onPlayPlaylist(videos, 0, title, false) },
                 onOpenLibrary = { onSelectRoot(GlideTab.Library.route) },
-                onOpenSettings = { onSelectRoot(TV_SETTINGS_ROUTE) },
-                onOpenSearch = { onSelectRoot(GlideTab.Search.route) },
                 modifier = Modifier.fillMaxSize(),
             )
         }

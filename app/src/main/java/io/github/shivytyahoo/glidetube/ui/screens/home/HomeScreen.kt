@@ -1,25 +1,19 @@
 package io.github.shivytyahoo.glidetube.ui.screens.home
 
-import android.content.Intent
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Button
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.TextButton
-import io.github.shivytyahoo.glidetube.ui.screens.settings.account.GoogleLoginActivity
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
@@ -42,9 +36,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -214,53 +206,6 @@ fun HomeScreen(
                         onNavigateToHistory = onNavigateToHistory,
                         onOpenShortsFeed = onOpenShortsFeed,
                     )
-                }
-                // Signed out with nothing to show: the calm landing, not an error. (A failed
-                // signed-in load is rendered once, by HomeFeedBody's error state — this screen
-                // used to draw a second one over it, two Retry buttons deep.)
-                if (uiState.isGuestEmpty && !uiState.isLoading) {
-                    Column(
-                        modifier =
-                            Modifier
-                                .fillMaxSize()
-                                .background(Color.Transparent)
-                                .padding(32.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center,
-                    ) {
-                        GlideHeaderLogoIcon(
-                            isDeepGlideActive = deepGlideActive,
-                            modifier = Modifier.size(76.dp),
-                        )
-                        Spacer(Modifier.height(20.dp))
-                        Text(
-                            text = stringResource(R.string.home_guest_title),
-                            style = MaterialTheme.typography.headlineSmall,
-                            color = MaterialTheme.colorScheme.onBackground,
-                            textAlign = TextAlign.Center,
-                        )
-                        Spacer(Modifier.height(8.dp))
-                        Text(
-                            text = stringResource(R.string.home_guest_message),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center,
-                        )
-                        Spacer(Modifier.height(24.dp))
-                        Button(
-                            onClick = {
-                                context.startActivity(
-                                    Intent(context, GoogleLoginActivity::class.java),
-                                )
-                            },
-                        ) {
-                            Text(stringResource(R.string.home_guest_sign_in))
-                        }
-                        Spacer(Modifier.height(8.dp))
-                        TextButton(onClick = onSearchClick) {
-                            Text(stringResource(R.string.search))
-                        }
-                    }
                 }
             }
         }

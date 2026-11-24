@@ -1,8 +1,9 @@
 VERSION: 1.1.2
 DATE: 2026-11-24
-• Faster playback: the next video's stream is prepared while you browse, the two fastest players race and the winner plays, and reopening a video reuses its last stream instead of fetching it again
-• Fixed videos failing to load when the current session is blocked: the app now gets a fresh session before retrying, instead of retrying with the blocked one
-• Playback no longer gets stuck at a quality your connection can't sustain: after repeated buffering it steps down one quality level and keeps playing
-• Fixed a video getting stuck in the middle when the session is blocked: the app now fetches the same video from another source instead of replaying the blocked one
-• Update prompt fixed: the update page now comes back on every app open until you download or skip that version — backing out no longer silences it
-• Update check now runs every time you open the app, not just the first time after install
+• ⚡ Faster playback: the next video's stream is prepared while you browse, the two fastest players race and the winner plays, and reopening a video reuses its last stream instead of fetching it again
+• 🔄 Fixed videos failing to load when the current session is blocked: the app now gets a fresh session before retrying, instead of retrying with the blocked one
+• 📉 Playback no longer gets stuck at a quality your connection can't sustain: after repeated buffering it steps down one quality level and keeps playing
+• 🔔 Update prompt fixed: the update page now comes back on every app open until you download or skip that version — backing out no longer silences it
+• 🔁 Update check now runs every time you open the app, not just the first time after install
+• 🎬 Fixed a video getting stuck in the middle when the session is blocked: the app now fetches the same video from another source instead of replaying the blocked one
+• 🏠 Home feed without sign-in: the home feed now loads videos even when you are signed out, just like in a browser — no more sign-in screen on Home
