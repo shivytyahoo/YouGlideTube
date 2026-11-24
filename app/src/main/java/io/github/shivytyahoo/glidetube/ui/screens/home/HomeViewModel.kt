@@ -101,8 +101,9 @@ class HomeViewModel
             private const val MIN_PAGE_SIZE = 8
             private const val LOAD_MORE_GRAPH_SEEDS = 3
 
-            private const val GUEST_FALLBACK_QUERIES = 3
+            private const val GUEST_FALLBACK_QUERY_POOL = 10
             private const val GUEST_FALLBACK_MAX_VIDEOS = 24
+            private const val GUEST_FALLBACK_PAGE_SIZE = 12
             private const val GUEST_FALLBACK_TIMEOUT_MS = 15_000L
 
             // Saved rows of each source ranked again on load-more; the best of them fill the page.
@@ -172,6 +173,12 @@ class HomeViewModel
         private var subsTopUpJob: Job? = null
         private var neighbourJob: Job? = null
         private var visibleMetadataJob: Job? = null
+
+        // The guest feed's seed pool: spent by load-more, rebuilt on every load so a refresh
+        // starts from a different point instead of the same list.
+        private var guestSeedRotation = 0
+        private var guestFallbackPool: GuestFallbackPool? = null
+        private var isGuestFallbackFeed = false
 
         // Changes with every feed load, so work cancelled by leaving Home can tell it from a reload.
         @Volatile
@@ -464,6 +471,8 @@ class HomeViewModel
 
         private fun resetHomePrefetch() {
             homePrefetchQueue.reset()
+            guestFallbackPool = null
+            isGuestFallbackFeed = false
             synchronized(homePrefetchWorkerLock) {
                 homePrefetchJob?.cancel()
             }
@@ -567,11 +576,14 @@ class HomeViewModel
             feedGeneration++
             resetHomePrefetch()
             serverContinuation = null
-            _uiState.update { it.copy(isLoading = true, error = null) }
+            _uiState.update { it.copy(isLoading = true, error = null, isGuest = !YouTube.isSignedIn()) }
 
             feedJob =
                 viewModelScope.launch(PerformanceDispatcher.networkIO) {
                     val loadStartMs = System.currentTimeMillis()
+                    // A refresh must not show the same list again: the videos on screen now are
+                    // excluded from the next guest feed, and the seed rotation moves its start.
+                    val previousFeedIds = _uiState.value.videos.mapTo(HashSet()) { it.id }
                     ShivLog.i("home load start signedIn=${YouTube.isSignedIn()}")
                     var page =
                         withTimeoutOrNull(SERVER_FEED_TIMEOUT_MS) {
@@ -611,8 +623,26 @@ class HomeViewModel
                     )
                     if (page == null || (page.videos.isEmpty() && page.shorts.isEmpty())) {
                         if (!YouTube.isSignedIn()) {
-                            val fallback = guestSearchFallback()
+                            // The server browse serves no feed to this visitor, so the feed is
+                            // seeded instead: the session's searches first, then the trending
+                            // chart. The pool stays for load-more, so scrolling never ends at
+                            // the first 24 videos.
+                            val pool =
+                                GuestFallbackPool(
+                                    repository = repository,
+                                    queries = guestFallbackQueries(),
+                                    excludeIds = previousFeedIds,
+                                    rotation = guestSeedRotation,
+                                    chartSupplier = { trendingChartVideos() },
+                                )
+                            guestSeedRotation++
+                            val fallback =
+                                withTimeoutOrNull(GUEST_FALLBACK_TIMEOUT_MS) {
+                                    pool.nextPage(GUEST_FALLBACK_MAX_VIDEOS)
+                                }?.filterWatched(watchedVideoIds.value).orEmpty()
                             if (fallback.isNotEmpty()) {
+                                guestFallbackPool = pool
+                                isGuestFallbackFeed = true
                                 ShivLog.i("home guest fallback videos=${fallback.size}")
                                 _uiState.update { state ->
                                     state.copy(
@@ -622,7 +652,7 @@ class HomeViewModel
                                         isRefreshing = false,
                                         error = null,
                                         isFlowFeed = true,
-                                        hasMorePages = false,
+                                        hasMorePages = pool.hasMore,
                                         lastRefreshTime = System.currentTimeMillis(),
                                         origins = emptyMap(),
                                     )
@@ -684,32 +714,25 @@ class HomeViewModel
         }
 
         /**
-         * A signed-out home the guest shell left empty: fill it from this session's own
-         * searches, the closest thing to what the official app learns from watching. Only
-         * within the session — search history does not persist — and only while the viewer
-         * left history on; otherwise home stays the sign-in landing.
+         * The guest feed's search seeds: this session's own searches, the closest thing to what
+         * the official app learns from watching. Only within the session — search history does
+         * not persist — and only while the viewer left history on; otherwise the chart seeds it.
          */
-        private suspend fun guestSearchFallback(): List<Video> {
-            val queries =
-                runCatching { searchHistory.getRecentSearches(GUEST_FALLBACK_QUERIES) }
-                    .getOrElse { emptyList() }
-                    .map { it.query }
-                    .filter { it.isNotBlank() }
-                    .distinct()
-                    .take(GUEST_FALLBACK_QUERIES)
-            if (queries.isEmpty()) return emptyList()
-            val videos = mutableListOf<Video>()
-            val seen = HashSet<String>()
-            withTimeoutOrNull(GUEST_FALLBACK_TIMEOUT_MS) {
-                for (query in queries) {
-                    val (page, _) = repository.searchVideos(query)
-                    for (video in page) {
-                        if (seen.add(video.id)) videos += video
-                    }
-                    if (videos.size >= GUEST_FALLBACK_MAX_VIDEOS) break
-                }
-            }
-            return videos.filterWatched(watchedVideoIds.value).take(GUEST_FALLBACK_MAX_VIDEOS)
+        private suspend fun guestFallbackQueries(): List<String> =
+            runCatching { searchHistory.getRecentSearches(GUEST_FALLBACK_QUERY_POOL) }
+                .getOrElse { emptyList() }
+                .map { it.query }
+                .filter { it.isNotBlank() }
+                .distinct()
+
+        /** A country's trending music videos: YouTube Music's charts page names the chart playlist. */
+        private suspend fun trendingChartVideos(): List<Video> {
+            val region = runCatching { playerPreferences.trendingRegion.first() }.getOrElse { "US" }
+            return YouTube
+                .musicVideoChart(region)
+                .getOrNull()
+                ?.entries
+                .orEmpty()
         }
 
         // Wave 2: the discovery queries wave 1 did not have time for, merged in after paint.
@@ -723,6 +746,23 @@ class HomeViewModel
             held: HeldPage?,
             lastAttempt: Boolean,
         ): PrefetchAttempt {
+            // A guest feed has no server continuation: its next page comes from the seed pool.
+            if (serverContinuation == null) {
+                val pool =
+                    if (isGuestFallbackFeed) {
+                        guestFallbackPool
+                    } else {
+                        null
+                            ?: return PrefetchAttempt(LoadMoreOutcome.EXHAUSTED)
+                    }
+                val page = pool.nextPage(GUEST_FALLBACK_PAGE_SIZE).filterWatched(watchedVideoIds.value)
+                return finishPrefetchPage(
+                    (held?.videos.orEmpty() + page).distinctBy { it.id },
+                    held,
+                    generation,
+                    lastAttempt,
+                )
+            }
             val token = serverContinuation ?: return PrefetchAttempt(LoadMoreOutcome.EXHAUSTED)
             val page =
                 withTimeoutOrNull(SERVER_FEED_TIMEOUT_MS) {
@@ -741,8 +781,21 @@ class HomeViewModel
                 }
             }
             // A held page and its successor can carry the same video; the grid keys by id.
-            val videos = (held?.videos.orEmpty() + page.videos).distinctBy { it.id }
-            return when (val outcome = loadMoreOutcome(videos.size, lastAttempt, false)) {
+            return finishPrefetchPage(
+                (held?.videos.orEmpty() + page.videos).distinctBy { it.id },
+                held,
+                generation,
+                lastAttempt,
+            )
+        }
+
+        private suspend fun finishPrefetchPage(
+            videos: List<Video>,
+            held: HeldPage?,
+            generation: Int,
+            lastAttempt: Boolean,
+        ): PrefetchAttempt =
+            when (val outcome = loadMoreOutcome(videos.size, lastAttempt, false)) {
                 LoadMoreOutcome.APPENDED -> {
                     val appended = appendLoadMorePage(videos, generation, held?.origins.orEmpty())
                     appended?.let { persistentHomeFeedCache.saveLastFeed(it) }
@@ -759,7 +812,6 @@ class HomeViewModel
                     PrefetchAttempt(outcome)
                 }
             }
-        }
 
         private suspend fun appendLoadMorePage(
             page: List<Video>,

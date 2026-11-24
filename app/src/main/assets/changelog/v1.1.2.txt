@@ -9,3 +9,7 @@ DATE: 2026-11-24
 • 🏠 Home feed without sign-in: the home feed now loads videos even when you are signed out, just like in a browser — no more sign-in screen on Home
 • 🤖 Fixed everything going blank after signing out: when YouTube blocks this device's anonymous session, the app now gets a fresh one by itself — the home feed, search and playback recover instead of staying empty
 • 🔒 Anonymous sessions stay anonymous: the app no longer opens YouTube's homepage at startup to prepare its session, and signing out gives the guest session a fresh identity instead of the old mixed one
+• ♾️ Home feed never ends now: keep scrolling and more videos keep coming, even without signing in — the feed is seeded from your searches and trending music when YouTube sends no home feed
+• 🔀 Every Home tap shows fresh videos: the feed rotates its seeds and leaves out the videos you just saw, so the same list doesn't repeat
+• 🎞️ Shorts keep coming too: the reel feed now finds more shorts from your searches and trending music channels instead of stopping
+• 🔍 Signed-out home has search and sign-in in the middle: search any video and it lands on your feed and plays, no login needed

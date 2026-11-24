@@ -15,6 +15,8 @@ data class HomeUiState(
     val loadMoreFailed: Boolean = false,
     val error: String? = null,
     val isFlowFeed: Boolean = false,
+    /** Signed out: the empty state offers search and sign-in instead of a bare error. */
+    val isGuest: Boolean = false,
     val lastRefreshTime: Long = 0L,
     /** Why each card is on Home; channel memory cards also say so under their title. */
     val origins: Map<String, HomeCardOrigin> = emptyMap(),

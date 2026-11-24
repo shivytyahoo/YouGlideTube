@@ -3,21 +3,20 @@ package io.github.shivytyahoo.glidetube.data.shorts
 import android.content.Context
 import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
+import io.github.shivytyahoo.glidetube.data.account.AccountSubscriptions
+import io.github.shivytyahoo.glidetube.data.engagement.FeedExclusions
+import io.github.shivytyahoo.glidetube.data.engagement.SessionExclusions
+import io.github.shivytyahoo.glidetube.data.engagement.SessionLikeState
 import io.github.shivytyahoo.glidetube.data.local.CachedHomeVideo
 import io.github.shivytyahoo.glidetube.data.local.HomeFeedCacheFilters
 import io.github.shivytyahoo.glidetube.data.local.HomeFeedCacheRepository
-import io.github.shivytyahoo.glidetube.data.engagement.SessionLikeState
 import io.github.shivytyahoo.glidetube.data.local.PlayerPreferences
-import io.github.shivytyahoo.glidetube.data.account.AccountSubscriptions
+import io.github.shivytyahoo.glidetube.data.local.SearchHistoryRepository
 import io.github.shivytyahoo.glidetube.data.local.SessionHistory
 import io.github.shivytyahoo.glidetube.data.model.ShortVideo
 import io.github.shivytyahoo.glidetube.data.model.Video
 import io.github.shivytyahoo.glidetube.data.model.toShortVideo
 import io.github.shivytyahoo.glidetube.data.model.toVideo
-import io.github.shivytyahoo.glidetube.data.engagement.FeedExclusions
-import io.github.shivytyahoo.glidetube.data.engagement.SessionExclusions
-import io.github.shivytyahoo.glidetube.data.shorts.feed.ShortsSeedInput
-import io.github.shivytyahoo.glidetube.data.shorts.feed.ShortsSeedSource
 import io.github.shivytyahoo.glidetube.data.shorts.feed.InnerTubeShortsFeedSources
 import io.github.shivytyahoo.glidetube.data.shorts.feed.ShortsFeedContext
 import io.github.shivytyahoo.glidetube.data.shorts.feed.ShortsFeedEngine
@@ -26,6 +25,9 @@ import io.github.shivytyahoo.glidetube.data.shorts.feed.ShortsFeedLane
 import io.github.shivytyahoo.glidetube.data.shorts.feed.ShortsFeedPager
 import io.github.shivytyahoo.glidetube.data.shorts.feed.ShortsFeedProfile
 import io.github.shivytyahoo.glidetube.data.shorts.feed.ShortsLaneItem
+import io.github.shivytyahoo.glidetube.data.shorts.feed.ShortsSeedInput
+import io.github.shivytyahoo.glidetube.data.shorts.feed.ShortsSeedSource
+import io.github.shivytyahoo.glidetube.innertube.YouTube
 import io.github.shivytyahoo.glidetube.utils.PerformanceDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -54,6 +56,7 @@ class ShortsFeedRepository
         private val playerPreferences: PlayerPreferences,
         private val homeFeedCache: HomeFeedCacheRepository,
         private val sessionExclusions: SessionExclusions,
+        private val searchHistory: SearchHistoryRepository,
     ) {
         private val lock = Mutex()
         private var pager: ShortsFeedPager? = null
@@ -166,7 +169,43 @@ class ShortsFeedRepository
                     subscribedChannelIds: Set<String>,
                 ): List<Video> = videos
 
-                override suspend fun discoveryQueries(resetDepth: Boolean): List<String> = emptyList()
+                // The discovery lane was a stub: no queries, so a guest's reel feed ended with
+                // the reserve. The session's searches seed it now, rotated per regeneration so
+                // each depth asks different queries; with no searches yet, the trending chart's
+                // channels stand in — searching a channel returns its shorts.
+                private var discoveryRotation = 0
+                private var chartChannels: List<String>? = null
+
+                override suspend fun discoveryQueries(resetDepth: Boolean): List<String> {
+                    val searches =
+                        runCatching { searchHistory.getRecentSearches(DISCOVERY_QUERY_POOL) }
+                            .getOrElse { emptyList() }
+                            .map { it.query }
+                            .filter { it.isNotBlank() }
+                            .distinct()
+                    if (searches.isNotEmpty()) {
+                        val start = (discoveryRotation++).mod(searches.size)
+                        return (searches.drop(start) + searches.take(start)).take(DISCOVERY_QUERY_POOL)
+                    }
+                    return trendingChartChannels()
+                }
+
+                private suspend fun trendingChartChannels(): List<String> {
+                    chartChannels?.let { return it }
+                    val region = runCatching { playerPreferences.trendingRegion.first() }.getOrElse { "US" }
+                    val channels =
+                        YouTube
+                            .musicVideoChart(region)
+                            .getOrNull()
+                            ?.entries
+                            ?.map { it.channelName }
+                            .filter { it.isNotBlank() }
+                            .distinct()
+                            .take(DISCOVERY_QUERY_POOL)
+                            .orEmpty()
+                    chartChannels = channels
+                    return channels
+                }
 
                 override suspend fun selectSeeds(
                     candidates: List<ShortsSeedInput>,
@@ -195,7 +234,11 @@ class ShortsFeedRepository
                         watchedIds = watchedReelIds(),
                         seenIds =
                             runCatching {
-                                viewHistory.getVideoHistoryFlow().first().filter { it.isShort }.mapTo(HashSet()) { it.videoId }
+                                viewHistory
+                                    .getVideoHistoryFlow()
+                                    .first()
+                                    .filter { it.isShort }
+                                    .mapTo(HashSet()) { it.videoId }
                             }.getOrDefault(emptySet()),
                         suppressedIds = snapshot.suppressedVideoIds,
                         excludedChannelIds = excludedChannelIds(),
@@ -246,5 +289,6 @@ class ShortsFeedRepository
             const val COLD_START_INTERACTIONS = 30
             const val SEED_HISTORY_MAX = 40
             const val SEED_SOURCE_MAX = 40
+            const val DISCOVERY_QUERY_POOL = 6
         }
     }

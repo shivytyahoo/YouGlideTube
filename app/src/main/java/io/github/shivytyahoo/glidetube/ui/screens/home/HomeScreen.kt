@@ -1,5 +1,6 @@
 package io.github.shivytyahoo.glidetube.ui.screens.home
 
+import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -55,6 +56,7 @@ import io.github.shivytyahoo.glidetube.ui.components.layout.topbar.GlideTopBar
 import io.github.shivytyahoo.glidetube.ui.components.rememberFeedGridLayout
 import io.github.shivytyahoo.glidetube.ui.components.shared.GlidePullToRefreshBox
 import io.github.shivytyahoo.glidetube.ui.screens.home.chips.HomeChipRow
+import io.github.shivytyahoo.glidetube.ui.screens.settings.account.GoogleLoginActivity
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
@@ -66,6 +68,7 @@ fun HomeScreen(
     onVideoClick: (Video) -> Unit,
     onShortClick: (ShortsQueueSource) -> Unit,
     onSearchClick: () -> Unit,
+    onOpenSearch: (String) -> Unit = {},
     onNavigateToHistory: () -> Unit = {},
     onOpenShortsFeed: () -> Unit = {},
     onPlayMix: (videos: List<Video>, title: String) -> Unit = { _, _ -> },
@@ -205,6 +208,12 @@ fun HomeScreen(
                         onShortClick = onShortClick,
                         onNavigateToHistory = onNavigateToHistory,
                         onOpenShortsFeed = onOpenShortsFeed,
+                        onOpenSearch = onOpenSearch,
+                        onSignIn = {
+                            context.startActivity(
+                                Intent(context, GoogleLoginActivity::class.java),
+                            )
+                        },
                     )
                 }
             }

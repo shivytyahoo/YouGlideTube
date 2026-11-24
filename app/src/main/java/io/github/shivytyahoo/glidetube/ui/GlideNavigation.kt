@@ -1,5 +1,6 @@
 package io.github.shivytyahoo.glidetube.ui
 
+import android.net.Uri
 import androidx.compose.animation.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.unit.dp
@@ -79,38 +80,41 @@ fun NavGraphBuilder.flowAppGraph(
     composable("home") {
         currentRoute.value = "home"
         HomeScreen(
-        onVideoClick = { video ->
-            // Read before stopping: the preview's position is needed to
-            // continue from it, and stop clears it. The stop itself must
-            // be explicit — the player opens as a sheet over Home, so the
-            // feed never disposes and nothing else would silence a
-            // preview, unmuted or not, while the player plays.
-            // Sub-second positions are ignored, the same rule the link
-            // path uses.
-            val previewMs = FeedPreviewController.positionIfPreviewing(video.id).takeIf { it > 1000L }
-            FeedPreviewController.stop()
-            navController.openVideoOrShorts(video, disableShortsPlayer) {
-                playerViewModel.playVideo(it, startPositionMs = previewMs)
-                GlobalPlayerState.setCurrentVideo(it)
-            }
-        },
-        onShortClick = { source ->
-            // A previewing shelf shares the feed preview player, so it
-            // must die here too, not when the Shorts player starts.
-            FeedPreviewController.stop()
-            navController.openShortsOrPlayer(source, disableShortsPlayer)
-        },
-        onSearchClick = {
-            navController.navigate("search")
-        },
-        onNavigateToHistory = {
-            navController.navigate("history")
-        },
-        onOpenShortsFeed = {
-            navController.openShorts(ShortsQueueSource.Feed)
-        },
-        onPlayMix = { videos, title -> playerViewModel.playPlaylist(videos, 0, title, false) },
-        viewModel = homeViewModel,
+            onVideoClick = { video ->
+                // Read before stopping: the preview's position is needed to
+                // continue from it, and stop clears it. The stop itself must
+                // be explicit — the player opens as a sheet over Home, so the
+                // feed never disposes and nothing else would silence a
+                // preview, unmuted or not, while the player plays.
+                // Sub-second positions are ignored, the same rule the link
+                // path uses.
+                val previewMs = FeedPreviewController.positionIfPreviewing(video.id).takeIf { it > 1000L }
+                FeedPreviewController.stop()
+                navController.openVideoOrShorts(video, disableShortsPlayer) {
+                    playerViewModel.playVideo(it, startPositionMs = previewMs)
+                    GlobalPlayerState.setCurrentVideo(it)
+                }
+            },
+            onShortClick = { source ->
+                // A previewing shelf shares the feed preview player, so it
+                // must die here too, not when the Shorts player starts.
+                FeedPreviewController.stop()
+                navController.openShortsOrPlayer(source, disableShortsPlayer)
+            },
+            onSearchClick = {
+                navController.navigate("search")
+            },
+            onOpenSearch = { query ->
+                navController.navigate("search?query=${Uri.encode(query)}")
+            },
+            onNavigateToHistory = {
+                navController.navigate("history")
+            },
+            onOpenShortsFeed = {
+                navController.openShorts(ShortsQueueSource.Feed)
+            },
+            onPlayMix = { videos, title -> playerViewModel.playPlaylist(videos, 0, title, false) },
+            viewModel = homeViewModel,
         )
     }
 
@@ -279,10 +283,20 @@ fun NavGraphBuilder.flowAppGraph(
         )
     }
 
-    composable("search") {
+    composable(
+        "search?query={query}",
+        arguments =
+            listOf(
+                navArgument("query") {
+                    type = NavType.StringType
+                    defaultValue = ""
+                },
+            ),
+    ) { backStackEntry ->
         currentRoute.value = "search"
         // Search owns the whole screen, the way YouTube's does.
         SearchScreen(
+            initialQuery = backStackEntry.arguments?.getString("query").orEmpty(),
             onVideoClick = { video ->
                 navController.openVideoOrShorts(video, disableShortsPlayer) { playerViewModel.playVideo(it) }
             },

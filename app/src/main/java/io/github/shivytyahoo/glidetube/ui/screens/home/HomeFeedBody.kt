@@ -1,19 +1,33 @@
 package io.github.shivytyahoo.glidetube.ui.screens.home
 
 import androidx.activity.compose.ReportDrawnWhen
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberSaveable
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleStartEffect
 import io.github.shivytyahoo.glidetube.R
@@ -23,6 +37,7 @@ import io.github.shivytyahoo.glidetube.ui.TabScrollEventBus
 import io.github.shivytyahoo.glidetube.ui.components.FeedGridLayout
 import io.github.shivytyahoo.glidetube.ui.components.shared.FeedGridSkeleton
 import io.github.shivytyahoo.glidetube.ui.components.shared.GlideErrorState
+import io.github.shivytyahoo.glidetube.ui.components.shared.GlideSearchField
 import io.github.shivytyahoo.glidetube.ui.screens.home.chips.HomeChipContent
 import io.github.shivytyahoo.glidetube.ui.screens.home.chips.HomeChipsState
 import kotlinx.coroutines.FlowPreview
@@ -142,6 +157,8 @@ internal fun HomeFeedBody(
     onShortClick: (ShortsQueueSource) -> Unit,
     onNavigateToHistory: () -> Unit,
     onOpenShortsFeed: () -> Unit,
+    onOpenSearch: ((String) -> Unit)? = null,
+    onSignIn: (() -> Unit)? = null,
     showShorts: Boolean = true,
 ) {
     val context = LocalContext.current
@@ -174,10 +191,19 @@ internal fun HomeFeedBody(
         }
 
         uiState.error != null && uiState.videos.isEmpty() -> {
-            GlideErrorState(
-                error = uiState.error ?: stringResource(R.string.error_occurred),
-                onRetry = { viewModel.retry() },
-            )
+            // TV passes neither callback, so it keeps the plain error state.
+            if (uiState.isGuest && onOpenSearch != null && onSignIn != null) {
+                GuestEmptyState(
+                    onOpenSearch = onOpenSearch,
+                    onSignIn = onSignIn,
+                    onRetry = { viewModel.retry() },
+                )
+            } else {
+                GlideErrorState(
+                    error = uiState.error ?: stringResource(R.string.error_occurred),
+                    onRetry = { viewModel.retry() },
+                )
+            }
         }
 
         else -> {
@@ -208,6 +234,56 @@ internal fun HomeFeedBody(
                 footerMinVideos = 0,
                 showShorts = showShorts,
             )
+        }
+    }
+}
+
+/**
+ * Signed out and nothing loaded at all: the old landing's sign-in, with a search field above it.
+ * Searching fills the feed without signing in, so the empty home is a way in, not a dead end.
+ */
+@Composable
+private fun GuestEmptyState(
+    onOpenSearch: (String) -> Unit,
+    onSignIn: () -> Unit,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var query by rememberSaveable { mutableStateOf("") }
+    Box(
+        modifier = modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            modifier = Modifier.padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.home_guest_title),
+                style = MaterialTheme.typography.headlineSmall,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+            Text(
+                text = stringResource(R.string.home_guest_message),
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            GlideSearchField(
+                query = query,
+                onQueryChange = { query = it },
+                placeholder = stringResource(R.string.search_videos_channels_placeholder),
+                modifier = Modifier.fillMaxWidth(),
+                onSearch = { if (query.isNotBlank()) onOpenSearch(query.trim()) },
+            )
+            Button(onClick = onSignIn) {
+                Text(stringResource(R.string.home_guest_sign_in))
+            }
+            TextButton(onClick = onRetry) {
+                Text(stringResource(R.string.action_retry))
+            }
         }
     }
 }

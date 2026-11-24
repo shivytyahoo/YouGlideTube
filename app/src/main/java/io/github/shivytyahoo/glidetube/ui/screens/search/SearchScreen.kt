@@ -1,6 +1,5 @@
 package io.github.shivytyahoo.glidetube.ui.screens.search
 
-import androidx.compose.ui.graphics.Color
 import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Context
@@ -26,6 +25,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -61,6 +61,7 @@ fun SearchScreen(
     onShortsQueue: (ShortsQueueSource) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    initialQuery: String = "",
     viewModel: SearchViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
@@ -80,6 +81,16 @@ fun SearchScreen(
 
     val submitWith = rememberSearchSubmitter(viewModel, state, quickActions)
     val submit: (String) -> Unit = { raw -> submitWith(raw, uiState.filters) }
+
+    // A query carried in from another screen (the empty home's search field) runs once, exactly
+    // like a typed search, and lands in history so Home's fallback picks it up on the way back.
+    var initialQueryConsumed by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(initialQuery) {
+        if (initialQuery.isNotBlank() && !initialQueryConsumed) {
+            initialQueryConsumed = true
+            submit(initialQuery)
+        }
+    }
 
     val voiceSearchLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
