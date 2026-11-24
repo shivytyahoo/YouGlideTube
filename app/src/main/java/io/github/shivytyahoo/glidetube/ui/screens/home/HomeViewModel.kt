@@ -29,6 +29,7 @@ import io.github.shivytyahoo.glidetube.ui.screens.home.chips.HomeChipsState
 import io.github.shivytyahoo.glidetube.utils.PerformanceDispatcher
 import io.github.shivytyahoo.glidetube.utils.ShivLog
 import io.github.shivytyahoo.glidetube.utils.ThumbnailUrlResolver
+import io.github.shivytyahoo.glidetube.utils.potoken.WebPoTokenSession
 import io.github.shivytyahoo.glidetube.utils.traced
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineStart
@@ -576,6 +577,15 @@ class HomeViewModel
                         withTimeoutOrNull(SERVER_FEED_TIMEOUT_MS) {
                             YouTube.serverHome().getOrNull()
                         }
+                    // A guest browse that parsed fine but came back empty is usually the bot
+                    // wall on this visitor, not an empty feed: replace the visitor once so
+                    // the retries below ask again with a fresh one. Bounded by the
+                    // player-wall generation guard — a second call for the same visitor
+                    // is a no-op — and a fresh visitor walled again just falls through
+                    // to the fallback below.
+                    if (page != null && page.videos.isEmpty() && page.shorts.isEmpty() && !YouTube.isSignedIn()) {
+                        WebPoTokenSession.rerollAfterPlayerWall(WebPoTokenSession.identityGeneration)
+                    }
                     // The first load of a session — above all the one right after sign-in, while
                     // the client's identity is still warming up — can come back failed or empty
                     // when the same request a moment later succeeds. Retry before believing

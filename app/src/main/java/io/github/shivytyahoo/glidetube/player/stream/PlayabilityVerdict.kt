@@ -9,9 +9,6 @@ private val BotWallReason = Regex("""not a bot|confirm you.re""", RegexOption.IG
 // Clients the ladder skipped without asking say nothing about the video.
 private val NotAskedReason = Regex("""demoted|no visitorData|PoToken unavailable|not asked""")
 
-// A client that never answered cannot contradict a wall the others reported.
-private val NoAnswerReason = Regex("""timeout or null response|exception=""")
-
 /** Why YouTube refused a video to this viewer, when the refusal is about the viewer and not the video. */
 enum class PlaybackBlock {
     /** "Sign in to confirm you're not a bot" on every client: this visitor is flagged. */
@@ -51,10 +48,16 @@ internal object PlayabilityVerdict {
         return statuses.isNotEmpty() && statuses.all { it in GoneStatuses }
     }
 
-    /** Every client that answered was bot-walled, so the refusal is about this viewer only. */
+    /**
+     * Every client that gave a verdict about the viewer was bot-walled, so the refusal is
+     * about this viewer only. Only verdicts count: a bot-wall tag, a bot-wall reason, or a
+     * playability status. Timeouts, transport errors and the decoder's "0/N formats solved"
+     * say nothing about the visitor, and letting one veto the wall is what left a fully
+     * bot-walled visitor with no recovery — the re-roll never fired.
+     */
     fun everyClientWalled(failureReasons: List<String>): Boolean {
-        val answered = failureReasons.filterNot { NotAskedReason.containsMatchIn(it) || NoAnswerReason.containsMatchIn(it) }
-        return answered.isNotEmpty() && answered.all { "BOT_WALL" in it }
+        val verdicts = failureReasons.filter { "BOT_WALL" in it || "status=" in it || isBotWall(it) }
+        return verdicts.isNotEmpty() && verdicts.all { "BOT_WALL" in it || isBotWall(it) }
     }
 
     /** Extraction runs in en-US, so the reason is English; "confirm your age" is not a bot wall. */

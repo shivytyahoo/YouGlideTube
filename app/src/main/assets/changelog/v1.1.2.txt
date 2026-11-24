@@ -7,3 +7,4 @@ DATE: 2026-11-24
 • 🔁 Update check now runs every time you open the app, not just the first time after install
 • 🎬 Fixed a video getting stuck in the middle when the session is blocked: the app now fetches the same video from another source instead of replaying the blocked one
 • 🏠 Home feed without sign-in: the home feed now loads videos even when you are signed out, just like in a browser — no more sign-in screen on Home
+• 🤖 Fixed everything going blank after signing out: when YouTube blocks this device's anonymous session, the app now gets a fresh one by itself — the home feed, search and playback recover instead of staying empty

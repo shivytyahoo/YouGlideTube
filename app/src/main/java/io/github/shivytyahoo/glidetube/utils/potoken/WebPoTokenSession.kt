@@ -300,7 +300,9 @@ object WebPoTokenSession {
      * reaches [rerollAfterWall] (#1354). Replaces the visitor that [walledGeneration] names, once:
      * a fresh visitor walled again points at the network, not the visitor. The first re-roll on a
      * network the visitor was not minted on skips the shared budget, since carrying a walled
-     * visitor onto a new network is the case this exists for.
+     * visitor onto a new network is the case this exists for. A spent budget is likewise
+     * bypassed: a total wall means nothing plays at all, and the once-per-generation guard
+     * above is what stops a loop, not the budget.
      */
     suspend fun rerollAfterPlayerWall(walledGeneration: Int): PlayerWallReroll {
         rotationMutex.withLock {
@@ -317,8 +319,8 @@ object WebPoTokenSession {
                     null
                 } else {
                     store.tryTakeReroll(now) ?: run {
-                        logWall("every client walled this visitor at /player, but the re-roll budget is spent")
-                        return PlayerWallReroll.UNAVAILABLE
+                        logWall("every client walled this visitor at /player; budget spent, re-rolling anyway")
+                        null
                     }
                 }
             val fresh = YouTube.visitorData().getOrNull()?.takeIf { it.isNotBlank() }
@@ -393,6 +395,6 @@ enum class PlayerWallReroll {
     /** The visitor was already fresh from a wall like this one, so the network is the likelier cause. */
     FRESH_VISITOR_WALLED,
 
-    /** No re-roll was possible: no store, the budget is spent, or no visitor could be fetched. */
+    /** No re-roll was possible: no store, or no visitor could be fetched. */
     UNAVAILABLE,
 }
