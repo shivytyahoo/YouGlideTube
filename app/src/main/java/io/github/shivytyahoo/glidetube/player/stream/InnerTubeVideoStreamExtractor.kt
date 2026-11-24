@@ -301,7 +301,7 @@ object InnerTubeVideoStreamExtractor {
 
             var failureReasons = mutableListOf<String>()
             val walledGeneration = WebPoTokenSession.identityGeneration
-            walkLadder(videoId, audioOnly, failureReasons, allowLowTrust, skipSabrUpgrade)?.let { return@withContext it }
+            walkLadder(videoId, audioOnly, failureReasons, allowLowTrust, skipSabrUpgrade, walledGeneration)?.let { return@withContext it }
 
             // A wall at /player issues no stream URLs, so no 403 ever reaches the re-roll that GVS
             // refusals trigger, and a retry would ask again with the same walled visitor (#1354).
@@ -311,7 +311,14 @@ object InnerTubeVideoStreamExtractor {
                 PlayerDiagnostics.logWarning(TAG, "every client bot-walled $videoId, retrying once with a fresh visitor")
                 dropGatesOnIdentityChange()
                 failureReasons = mutableListOf()
-                walkLadder(videoId, audioOnly, failureReasons, allowLowTrust, skipSabrUpgrade)?.let { return@withContext it }
+                walkLadder(
+                    videoId,
+                    audioOnly,
+                    failureReasons,
+                    allowLowTrust,
+                    skipSabrUpgrade,
+                    walledGeneration,
+                )?.let { return@withContext it }
             }
             val freshVisitorWalled = reroll == PlayerWallReroll.REROLLED || reroll == PlayerWallReroll.FRESH_VISITOR_WALLED
 
@@ -335,6 +342,7 @@ object InnerTubeVideoStreamExtractor {
         failureReasons: MutableList<String>,
         allowLowTrust: Boolean = false,
         skipSabrUpgrade: Boolean = false,
+        walledGeneration: Int,
     ): VideoExtractionResult? {
         val liveDetected = booleanArrayOf(false)
         // The first gated client step 1 raced (ANDROID_VR_1_65_10 while ungated); step 3
@@ -359,31 +367,50 @@ object InnerTubeVideoStreamExtractor {
                 return it
             }
         } else {
-            // A cold start pays DNS and TLS inside the first request, which can outlast the
-            // per-client timeout; one retry on the warm connection beats falling to the web path.
-            // The first gated client races the fast path instead of waiting behind the SABR
-            // and Tizen steps: whichever answers playable first wins, the loser is cancelled,
-            // and step 3 below retries only the gated clients this race did not already try.
-            val raceGatedFirst = GATED_FALLBACK_CLIENTS.ungated().firstOrNull()
-            racedGatedClient = raceGatedFirst
-            val direct =
-                if (raceGatedFirst != null) {
-                    raceFirstTwoDirectClients(videoId, fastClients, raceGatedFirst, failureReasons, liveDetected, allowLowTrust)
-                } else {
-                    tryDirectClients(
-                        videoId,
-                        fastClients,
-                        failureReasons,
-                        liveDetected = liveDetected,
-                        retryTimeoutOnce = true,
-                        allowLowTrust = allowLowTrust,
-                    )
+            // The wall is known the moment the fast race ends: every fast client refused
+            // this visitor. Re-roll NOW and re-race, instead of spending the user's
+            // patience on SABR/Tizen/gated steps that need the same walled visitor — that
+            // tail is why a wall used to end with the user leaving before the end-of-ladder
+            // recovery ever ran (#67). Once per generation, like the ladder-end recovery.
+            var reRaced = false
+            while (true) {
+                // A cold start pays DNS and TLS inside the first request, which can outlast the
+                // per-client timeout; one retry on the warm connection beats falling to the web path.
+                // The first gated client races the fast path instead of waiting behind the SABR
+                // and Tizen steps: whichever answers playable first wins, the loser is cancelled,
+                // and step 3 below retries only the gated clients this race did not already try.
+                val raceGatedFirst = GATED_FALLBACK_CLIENTS.ungated().firstOrNull()
+                racedGatedClient = raceGatedFirst
+                val direct =
+                    if (raceGatedFirst != null) {
+                        raceFirstTwoDirectClients(videoId, fastClients, raceGatedFirst, failureReasons, liveDetected, allowLowTrust)
+                    } else {
+                        tryDirectClients(
+                            videoId,
+                            fastClients,
+                            failureReasons,
+                            liveDetected = liveDetected,
+                            retryTimeoutOnce = true,
+                            allowLowTrust = allowLowTrust,
+                        )
+                    }
+                direct?.let {
+                    val result = if (audioOnly || skipSabrUpgrade) it else maybeUpgradeToSabr(videoId, it, failureReasons)
+                    Log.w(TAG, "Extraction OK for $videoId via ${result.usedClient.clientName} (mode=${resultMode(result)})")
+                    PlayerDiagnostics.logWarning(TAG, "extract OK $videoId via ${result.usedClient.clientName} mode=${resultMode(result)}")
+                    return result
                 }
-            direct?.let {
-                val result = if (audioOnly || skipSabrUpgrade) it else maybeUpgradeToSabr(videoId, it, failureReasons)
-                Log.w(TAG, "Extraction OK for $videoId via ${result.usedClient.clientName} (mode=${resultMode(result)})")
-                PlayerDiagnostics.logWarning(TAG, "extract OK $videoId via ${result.usedClient.clientName} mode=${resultMode(result)}")
-                return result
+                if (!reRaced && PlayabilityVerdict.everyClientWalled(failureReasons) &&
+                    WebPoTokenSession.rerollAfterPlayerWall(walledGeneration) == PlayerWallReroll.REROLLED
+                ) {
+                    reRaced = true
+                    Log.w(TAG, "Fast clients walled for $videoId — re-rolled the visitor, re-racing them")
+                    PlayerDiagnostics.logWarning(TAG, "fast path walled $videoId — re-rolled visitor, re-racing")
+                    dropGatesOnIdentityChange()
+                    failureReasons.clear()
+                    continue
+                }
+                break
             }
         }
 

@@ -301,18 +301,19 @@ object WebPoTokenSession {
      * network the visitor was not minted on skips the shared budget, since carrying a walled
      * visitor onto a new network is the case this exists for. A spent budget is likewise
      * bypassed: a total wall means nothing plays at all, and the once-per-generation guard
-     * above is what stops a loop, not the budget.
+     * above is what stops a loop, not the budget. The guard likewise does not apply on a new
+     * network: a wall there is a new situation, not the same visitor failing twice (#68).
      */
     suspend fun rerollAfterPlayerWall(walledGeneration: Int): PlayerWallReroll {
         rotationMutex.withLock {
             if (identityGeneration != walledGeneration) return PlayerWallReroll.REROLLED
-            if (playerWallRerollGeneration == identityGeneration) {
-                logWall("every client walled a fresh visitor at /player too")
-                return PlayerWallReroll.FRESH_VISITOR_WALLED
-            }
             val store = identityStore ?: return PlayerWallReroll.UNAVAILABLE
             val now = System.currentTimeMillis()
             val newNetwork = store.mintedOnOtherNetwork()
+            if (playerWallRerollGeneration == identityGeneration && !newNetwork) {
+                logWall("every client walled a fresh visitor at /player too")
+                return PlayerWallReroll.FRESH_VISITOR_WALLED
+            }
             val takenAt =
                 if (newNetwork) {
                     null

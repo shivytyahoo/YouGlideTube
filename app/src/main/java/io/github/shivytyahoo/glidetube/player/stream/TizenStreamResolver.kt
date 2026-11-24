@@ -31,6 +31,9 @@ internal object TizenStreamResolver {
     ): InnerTubeVideoStreamExtractor.VideoExtractionResult? =
         withContext(Dispatchers.IO) {
             val refuse = { why: String -> fail(videoId, why, failureReasons) }
+            // Every Tizen format is signed, so without the decoder this step cannot
+            // succeed — skip it instead of burning the /player timeout proving that (#67).
+            if (PipePipeNsigDecoder.isDownRecently()) return@withContext refuse("decoder down, skipping")
             val signatureTimestamp =
                 PipePipeNsigDecoder.signatureTimestamp() ?: return@withContext refuse("not asked (no signature timestamp)")
             val response =

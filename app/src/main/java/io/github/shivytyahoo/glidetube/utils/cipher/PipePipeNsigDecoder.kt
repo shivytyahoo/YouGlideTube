@@ -1,6 +1,7 @@
 package io.github.shivytyahoo.glidetube.utils.cipher
 
 import android.content.Context
+import android.os.SystemClock
 import android.util.Log
 import io.github.shivytyahoo.glidetube.network.AppProxyManager
 import kotlinx.coroutines.CancellationException
@@ -48,6 +49,11 @@ object PipePipeNsigDecoder {
     private const val USER_AGENT = "PipePipe/4.9.0"
     private const val PLAYER_TTL_MS = 24L * 60L * 60L * 1000L
 
+    // The decoder is a third-party host: when it stops answering, every Tizen/SABR
+    // attempt burns its 8s timeouts proving it again. Remember the last failure for
+    // a few minutes so the ladder fails fast instead (#67).
+    private const val DECODER_DOWN_COOLDOWN_MS = 5 * 60 * 1000L
+
     private const val PREFS_NAME = "flow_prefs"
     private const val KEY_PLAYER_ID = "nsig_player_id"
     private const val KEY_PLAYER_STS = "nsig_player_sts"
@@ -85,6 +91,8 @@ object PipePipeNsigDecoder {
 
     @Volatile private var restoredFromDisk = false
 
+    @Volatile private var lastDecoderFailureMs = 0L
+
     @Volatile private var cachedClient: OkHttpClient? = null
 
     @Volatile private var cachedClientSignature: String? = null
@@ -103,6 +111,16 @@ object PipePipeNsigDecoder {
     suspend fun warmUp() {
         runCatching { ensurePlayerId() }
             .onFailure { Log.w(TAG, "warm-up failed: ${it.javaClass.simpleName}: ${it.message}") }
+    }
+
+    /**
+     * True while the decoder is known to have failed recently. Tizen and the SABR solve path
+     * cannot succeed without it, so they fail fast instead of burning timeouts (#67).
+     */
+    fun isDownRecently(): Boolean = SystemClock.elapsedRealtime() - lastDecoderFailureMs < DECODER_DOWN_COOLDOWN_MS
+
+    private fun noteDecoderFailure() {
+        lastDecoderFailureMs = SystemClock.elapsedRealtime()
     }
 
     /**
@@ -156,13 +174,21 @@ object PipePipeNsigDecoder {
                 .url(url)
                 .header("User-Agent", USER_AGENT)
                 .build()
-        return client().newCall(request).await().use { response ->
-            if (!response.isSuccessful) {
-                Log.w(TAG, "HTTP ${response.code} for ${url.substringBefore('?')}")
-                null
-            } else {
-                response.body.string()
+        return try {
+            client().newCall(request).await().use { response ->
+                if (!response.isSuccessful) {
+                    Log.w(TAG, "HTTP ${response.code} for ${url.substringBefore('?')}")
+                    noteDecoderFailure()
+                    null
+                } else {
+                    response.body.string()
+                }
             }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            noteDecoderFailure()
+            throw e
         }
     }
 
@@ -197,6 +223,8 @@ object PipePipeNsigDecoder {
         withContext(Dispatchers.IO) {
             restorePersistedPlayerId()
             playerId?.let { if (System.currentTimeMillis() < playerIdExpiryMs) return@withContext it }
+            // The decoder just failed: don't burn another round of timeouts re-proving it (#67).
+            if (isDownRecently()) return@withContext null
             playerIdMutex.withLock {
                 // A concurrent caller may have refreshed it while this one waited for the lock.
                 playerId?.let { if (System.currentTimeMillis() < playerIdExpiryMs) return@withLock it }
@@ -243,7 +271,7 @@ object PipePipeNsigDecoder {
     suspend fun prefetch(urls: List<String>) {
         val pid = ensurePlayerId() ?: return
         val ns = urls.mapNotNull { rawN(it) }.distinct().filter { nCache["$pid:$it"] == null }
-        if (ns.isEmpty()) return
+        if (ns.isEmpty() || isDownRecently()) return
         withContext(Dispatchers.IO) {
             try {
                 val joined = ns.joinToString(",") { URLEncoder.encode(it, "UTF-8") }
@@ -266,6 +294,7 @@ object PipePipeNsigDecoder {
     private suspend fun decodeN(n: String): String? {
         val pid = ensurePlayerId() ?: return null
         nCache["$pid:$n"]?.let { return it }
+        if (isDownRecently()) return null
         return withContext(Dispatchers.IO) {
             try {
                 val encoded = URLEncoder.encode(n, "UTF-8")
@@ -312,7 +341,7 @@ object PipePipeNsigDecoder {
         val pid = playerId ?: ensurePlayerId() ?: return emptyMap()
         val wanted = signatures.distinct()
         val missing = wanted.filter { sigCache["$pid:$it"] == null }
-        if (missing.isNotEmpty()) {
+        if (missing.isNotEmpty() && !isDownRecently()) {
             withContext(Dispatchers.IO) {
                 try {
                     val data = parseData(get(signatureRequestUrl(pid, missing))) ?: return@withContext
