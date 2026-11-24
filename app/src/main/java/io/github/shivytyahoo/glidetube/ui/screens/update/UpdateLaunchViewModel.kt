@@ -28,7 +28,7 @@ import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
-/** Re-check at most this often while the app is opened again: re-asks on every open. */
+/** Re-check at most this often while the app is opened again: the update page is re-offered on every open. */
 private val RECHECK_INTERVAL_MS = TimeUnit.MINUTES.toMillis(10)
 
 /** Runs the launch update check on every app open and asks for the update page when it finds one. */

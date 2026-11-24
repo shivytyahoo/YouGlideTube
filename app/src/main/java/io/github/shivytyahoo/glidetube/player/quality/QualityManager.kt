@@ -429,12 +429,18 @@ class QualityManager(
         // sustain it, so the stall safety net (forceCheck) must act even while the ladder
         // is active. Only the periodic bandwidth check stands down to Media3.
         if (isAdaptiveLadderActive && !forceCheck) return
-        // A pinned quality is the user's choice and is never moved: it neither falls back to
-        // Auto nor steps down, however often it stalls. The playStall line stays as the only
-        // visibility into a pinned quality stalling.
+        // A pinned quality is the user's choice, so it is not moved by the periodic
+        // bandwidth check — but a stall episode is ground truth that the link cannot
+        // sustain this rung: after repeated rebuffers it steps down one rung instead
+        // of stalling forever at the pinned height. The pin is kept at the new rung;
+        // the next video re-pins from the user's preference as before.
         if (!isAdaptiveQualityEnabled) {
             if (!forceCheck) return
             logPlayStall(videoId, currentVideoStream, bufferedAheadMs)
+            val current = currentVideoStream ?: return
+            val lower = AutoQualityPolicy.stepDown(current, getWorkingStreams(), preferredCodecKey) ?: return
+            Log.d(TAG, "Pinned DOWNGRADE (buffering): ${qualityHeight(current)}p -> ${qualityHeight(lower)}p")
+            switchQualityByStreamKey(streamKey(lower), currentPosition)
             return
         }
         val current = currentVideoStream ?: return
@@ -563,8 +569,8 @@ class QualityManager(
      * Increment buffering count for adaptive quality tracking.
      */
     fun incrementBufferingCount() {
-        // Counted in pinned mode too: the stall is logged at the pinned height, but the pin
-        // itself is never moved.
+        // Counted in pinned mode too: a stall episode at the pinned height steps the pin
+        // down one rung (see checkAdaptiveQualityDowngrade).
         consecutiveBufferingCount++
     }
 
