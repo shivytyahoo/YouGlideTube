@@ -114,39 +114,44 @@ object WebPoTokenSession {
     ): PoTokenResult? {
         val started = System.currentTimeMillis()
         var nullReason: String? = null
-        val result = withTimeoutOrNull(maxWaitMs) {
-            mintCoalescer.run(videoId) {
-                val vd = sessionVisitorData()
-                if (vd == null) {
-                    nullReason = "no-visitor"
-                    return@run null
-                }
-                try {
-                    generator
-                        .getWebClientPoTokenSuspend(
-                            videoId,
-                            vd,
-                            consumeReattestationRequest(),
-                            allowLowTrust,
-                        )
-                        .also { noteMintTrust(it) }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    nullReason = "exception:${e.javaClass.simpleName}"
-                    Log.w(TAG, "Bounded PoToken mint failed for $videoId: ${e.message}")
-                    null
+        val result =
+            withTimeoutOrNull(maxWaitMs) {
+                mintCoalescer.run(videoId) {
+                    val vd = sessionVisitorData()
+                    if (vd == null) {
+                        nullReason = "no-visitor"
+                        return@run null
+                    }
+                    try {
+                        generator
+                            .getWebClientPoTokenSuspend(
+                                videoId,
+                                vd,
+                                consumeReattestationRequest(),
+                                allowLowTrust,
+                            ).also { noteMintTrust(it) }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        nullReason = "exception:${e.javaClass.simpleName}"
+                        Log.w(TAG, "Bounded PoToken mint failed for $videoId: ${e.message}")
+                        null
+                    }
                 }
             }
-        }
         if (result == null) {
             val elapsed = System.currentTimeMillis() - started
             // A joined coalesced mint never runs this caller's block, so its reason stays null
             // and is inferred here; the leading waiter's own line carries the precise reason.
-            val reason = nullReason
-                ?: if (elapsed >= maxWaitMs) "timeout"
-                else if (generator.isWebViewBroken) "webViewBroken"
-                else "unknown"
+            val reason =
+                nullReason
+                    ?: if (elapsed >= maxWaitMs) {
+                        "timeout"
+                    } else if (generator.isWebViewBroken) {
+                        "webViewBroken"
+                    } else {
+                        "unknown"
+                    }
             val message = "mint null for $videoId in ${elapsed}ms reason=$reason webViewBroken=${generator.isWebViewBroken}"
             Log.w(TAG, message)
             PlayerDiagnostics.logWarning(TAG, message)
@@ -255,32 +260,40 @@ object WebPoTokenSession {
      * it across restarts. Budgeted by [VisitorIdentityStore.tryTakeReroll].
      */
     fun rerollAfterWall(client: String) {
-        rerollScope.launch {
-            rotationMutex.withLock {
-                val now = System.currentTimeMillis()
-                if (now - lastWallRerollMs < WALL_REROLL_SETTLE_MS) return@withLock
-                val store = identityStore ?: return@withLock
-                val takenAt =
-                    store.tryTakeReroll(now) ?: run {
-                        logWall("$client walled this visitor, but the re-roll budget is spent")
-                        return@withLock
-                    }
-                val fresh = YouTube.visitorData().getOrNull()?.takeIf { it.isNotBlank() }
-                if (fresh == null) {
-                    store.refundReroll(takenAt)
-                    logWall("$client walled this visitor; no fresh visitor could be fetched")
-                    return@withLock
-                }
-                lastWallRerollMs = now
-                generator.resetSession()
-                consecutiveLowTrustMints = 0
-                tokenRejections = 0
-                YouTube.visitorData = fresh
-                identityGeneration++
-                logWall("$client walled this visitor; re-rolled the visitor identity")
-            }
-        }
+        rerollScope.launch { rerollAfterWallNow(client) }
     }
+
+    /**
+     * The same re-roll, awaited: true when the identity was replaced. A reload that needs the
+     * fresh visitor calls this instead of racing the fire-and-forget [rerollAfterWall] — the
+     * reload's re-extraction otherwise runs under the walled visitor and hands back the URLs
+     * that just 403'd until the denial budget gives up.
+     */
+    suspend fun rerollAfterWallNow(client: String): Boolean =
+        rotationMutex.withLock {
+            val now = System.currentTimeMillis()
+            if (now - lastWallRerollMs < WALL_REROLL_SETTLE_MS) return@withLock false
+            val store = identityStore ?: return@withLock false
+            val takenAt =
+                store.tryTakeReroll(now) ?: run {
+                    logWall("$client walled this visitor, but the re-roll budget is spent")
+                    return@withLock false
+                }
+            val fresh = YouTube.visitorData().getOrNull()?.takeIf { it.isNotBlank() }
+            if (fresh == null) {
+                store.refundReroll(takenAt)
+                logWall("$client walled this visitor; no fresh visitor could be fetched")
+                return@withLock false
+            }
+            lastWallRerollMs = now
+            generator.resetSession()
+            consecutiveLowTrustMints = 0
+            tokenRejections = 0
+            YouTube.visitorData = fresh
+            identityGeneration++
+            logWall("$client walled this visitor; re-rolled the visitor identity")
+            true
+        }
 
     /**
      * Every client was bot-walled at /player, which issues no stream URLs, so no refusal ever

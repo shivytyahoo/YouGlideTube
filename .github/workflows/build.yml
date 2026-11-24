@@ -93,6 +93,26 @@ jobs:
           path: dist/*
           if-no-files-found: error
 
+      - name: Prepare release notes
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          notes="app/src/main/assets/changelog/v$version.txt"
+          if [ ! -f "$notes" ]; then
+            echo "::error::Changelog asset $notes is missing; refusing to publish an empty release."
+            exit 1
+          fi
+          {
+            echo "## What's new in YouGlideTube $version"
+            echo
+            sed -e '/^VERSION:/d' -e '/^DATE:/d' -e 's/^• /- /' "$notes"
+            echo
+            prev="$(git describe --tags --abbrev=0 HEAD~1 2>/dev/null || true)"
+            if [ -n "$prev" ]; then
+              echo "**Full Changelog**: https://github.com/shivytyahoo/YouGlideTube/compare/$prev...v$version"
+            fi
+          } > dist/release-notes.md
+
       - name: Publish GitHub release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
@@ -100,4 +120,4 @@ jobs:
           files: |
             dist/YouGlideTube.apk
             dist/checksums.txt
-          generate_release_notes: true
+          body_path: dist/release-notes.md

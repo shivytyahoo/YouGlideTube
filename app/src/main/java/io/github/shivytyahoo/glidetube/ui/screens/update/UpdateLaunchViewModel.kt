@@ -3,11 +3,16 @@ package io.github.shivytyahoo.glidetube.ui.screens.update
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -20,9 +25,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
-/** Runs the launch update check once per activity and asks for the update page when it finds one. */
+/** Re-check at most this often while the app is opened again: re-asks on every open. */
+private val RECHECK_INTERVAL_MS = TimeUnit.MINUTES.toMillis(10)
+
+/** Runs the launch update check on every app open and asks for the update page when it finds one. */
 @HiltViewModel
 class UpdateLaunchViewModel
     @Inject
@@ -30,15 +39,15 @@ class UpdateLaunchViewModel
         private val updates: UpdateRepository,
         private val prompts: LaunchPrompts,
     ) : ViewModel() {
-        private var checked = false
+        private var lastCheckMs = 0L
         private val _openUpdate = MutableStateFlow(false)
         val openUpdate: StateFlow<Boolean> = _openUpdate.asStateFlow()
         private val _foundVersion = MutableStateFlow<String?>(null)
         val foundVersion: StateFlow<String?> = _foundVersion.asStateFlow()
 
-        fun check() {
-            if (checked) return
-            checked = true
+        fun check(nowMs: Long = System.currentTimeMillis()) {
+            if (nowMs - lastCheckMs < RECHECK_INTERVAL_MS) return
+            lastCheckMs = nowMs
             if (BuildConfig.DEBUG || !BuildConfig.UPDATER_ENABLED) {
                 prompts.updateCheckFinished(shownUpdate = false)
                 return
@@ -68,16 +77,27 @@ fun UpdateLaunchEffect(
     val viewModel: UpdateLaunchViewModel = hiltViewModel(activity)
     val openUpdate by viewModel.openUpdate.collectAsStateWithLifecycle()
     val foundVersion by viewModel.foundVersion.collectAsStateWithLifecycle()
+    val needsOnboardingState = rememberUpdatedState(needsOnboarding)
+    val lifecycleOwner = LocalLifecycleOwner.current
     LaunchedEffect(needsOnboarding) { if (needsOnboarding == false) viewModel.check() }
+    DisposableEffect(lifecycleOwner) {
+        val observer =
+            LifecycleEventObserver { _, event ->
+                if (event == Lifecycle.Event.ON_START && needsOnboardingState.value == false) viewModel.check()
+            }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
     LaunchedEffect(openUpdate) {
         if (openUpdate) {
             viewModel.consumeOpenUpdate()
             foundVersion?.let { version ->
-                Toast.makeText(
-                    activity,
-                    activity.getString(R.string.notification_update_available, version),
-                    Toast.LENGTH_LONG,
-                ).show()
+                Toast
+                    .makeText(
+                        activity,
+                        activity.getString(R.string.notification_update_available, version),
+                        Toast.LENGTH_LONG,
+                    ).show()
             }
             onOpenUpdate()
         }

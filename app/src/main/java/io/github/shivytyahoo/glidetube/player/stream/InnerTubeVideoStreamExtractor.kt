@@ -240,6 +240,13 @@ object InnerTubeVideoStreamExtractor {
         skipSabrUpgrade: Boolean = false,
     ): VideoExtractionResult? {
         val key = ExtractionKey(videoId, forceSabr, audioOnly, skipSabrUpgrade)
+        // A walled visitor's cached result hands back the URLs that just 403'd, and the
+        // re-roll the denial report fired races the reload that needs it. Await a fresh
+        // visitor while the fast path is demoted: the generation bump invalidates the
+        // cache below, so the ladder runs again under the new identity.
+        if (FAST_CLIENTS.ungated().isEmpty()) {
+            WebPoTokenSession.rerollAfterWallNow(FAST_CLIENTS.first().clientName)
+        }
         // Only the plain calls are cached. A forced-SABR result is a recovery path that
         // must always re-run the ladder, an audio-only result answers a different
         // question, and a low-trust Shorts result was minted under a trust exception the

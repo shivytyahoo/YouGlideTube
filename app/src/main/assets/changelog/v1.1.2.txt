@@ -1,0 +1,5 @@
+VERSION: 1.1.2
+DATE: 2026-11-24
+• Faster playback: the next video's stream is prepared while you browse, the two fastest players race and the winner plays, and reopening a video reuses its last stream instead of fetching it again
+• Update prompt fixed: the update page now comes back on every app open until you download or skip that version — backing out no longer silences it
+• Update check now runs every time you open the app, not just the first time after install
