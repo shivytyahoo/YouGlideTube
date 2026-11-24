@@ -39,8 +39,8 @@ import io.github.shivytyahoo.glidetube.data.model.Video
 import io.github.shivytyahoo.glidetube.data.model.VideoCollaborator
 import io.github.shivytyahoo.glidetube.player.stream.PlaybackPrefetcher
 import io.github.shivytyahoo.glidetube.ui.components.layout.navigation.LocalMediaNavigator
-import io.github.shivytyahoo.glidetube.ui.components.shared.LocalDpadNavigation
 import io.github.shivytyahoo.glidetube.ui.components.shared.FocusLiftDefaults
+import io.github.shivytyahoo.glidetube.ui.components.shared.LocalDpadNavigation
 import io.github.shivytyahoo.glidetube.ui.components.shared.focusLift
 import io.github.shivytyahoo.glidetube.ui.components.shared.onMenuKey
 import io.github.shivytyahoo.glidetube.ui.components.shared.pressScale
@@ -129,12 +129,10 @@ internal fun Modifier.videoCardClickable(
             } else {
                 Modifier
             },
-        )
-        .onMenuKey {
+        ).onMenuKey {
             PlaybackPrefetcher.prefetch(state.video.id)
             state.sheets.showQuickActions = true
-        }
-        .combinedClickable(
+        }.combinedClickable(
             interactionSource = interactionSource,
             indication = ripple(focusRingShape = MaterialTheme.shapes.large),
             onClickLabel = null,

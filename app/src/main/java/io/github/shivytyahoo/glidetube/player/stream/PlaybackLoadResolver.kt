@@ -2,8 +2,8 @@ package io.github.shivytyahoo.glidetube.player.stream
 
 import android.util.Log
 import io.github.shivytyahoo.glidetube.data.local.PlayerPreferences
-import io.github.shivytyahoo.glidetube.data.local.VideoQuality
 import io.github.shivytyahoo.glidetube.data.local.SessionHistory
+import io.github.shivytyahoo.glidetube.data.local.VideoQuality
 import io.github.shivytyahoo.glidetube.data.model.Video
 import io.github.shivytyahoo.glidetube.data.repository.SponsorBlockRepository
 import io.github.shivytyahoo.glidetube.data.repository.YouTubeRepository

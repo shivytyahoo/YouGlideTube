@@ -4,13 +4,13 @@ import android.content.Context
 import android.net.Uri
 import android.util.Log
 import io.github.shivytyahoo.glidetube.data.account.AccountSessionManager
+import io.github.shivytyahoo.glidetube.data.engagement.InteractionType
 import io.github.shivytyahoo.glidetube.data.local.PlayerPreferences
 import io.github.shivytyahoo.glidetube.data.local.SessionHistory
 import io.github.shivytyahoo.glidetube.data.localmedia.LocalMediaIds
 import io.github.shivytyahoo.glidetube.data.localmedia.LocalSubtitles
 import io.github.shivytyahoo.glidetube.data.model.SponsorBlockSegment
 import io.github.shivytyahoo.glidetube.data.model.Video
-import io.github.shivytyahoo.glidetube.data.engagement.InteractionType
 import io.github.shivytyahoo.glidetube.data.repository.SponsorBlockRepository
 import io.github.shivytyahoo.glidetube.data.repository.YouTubeRepository
 import io.github.shivytyahoo.glidetube.data.video.OfflineSubtitleStore
@@ -234,8 +234,11 @@ internal class PlaybackSessionApplier(
         val webTracking = if (deferred) awaitDeferredWebTracking(videoId, loadToken) else result.webTracking
         // The bounded wait can outlive the load; never beacon for a superseded one.
         if (deferred && !isLoadCurrent(loadToken)) return
-        val trackingUrl = webTracking?.videostatsPlaybackUrl?.baseUrl
-            ?: result.playerResponse.playbackTracking?.videostatsPlaybackUrl?.baseUrl
+        val trackingUrl =
+            webTracking?.videostatsPlaybackUrl?.baseUrl
+                ?: result.playerResponse.playbackTracking
+                    ?.videostatsPlaybackUrl
+                    ?.baseUrl
         if (trackingUrl == null) {
             ShivLog.i("serverHistoryPing id=${videoId.take(12)} status=no-tracking-url")
             return
@@ -254,10 +257,16 @@ internal class PlaybackSessionApplier(
         // question is whether the URL even identifies the video/session (ei
         // and friends) — keys only, never values.
         val cpnParam = "(^|[?&])cpn=".toRegex()
-        val watchtimeRaw = webTracking?.videostatsWatchtimeUrl?.baseUrl
-            ?: result.playerResponse.playbackTracking?.videostatsWatchtimeUrl?.baseUrl
+        val watchtimeRaw =
+            webTracking?.videostatsWatchtimeUrl?.baseUrl
+                ?: result.playerResponse.playbackTracking
+                    ?.videostatsWatchtimeUrl
+                    ?.baseUrl
+
         fun keysOf(url: String): String =
-            url.substringAfter("?", "").split("&")
+            url
+                .substringAfter("?", "")
+                .split("&")
                 .mapNotNull { it.substringBefore("=").takeIf { it.isNotEmpty() } }
                 .joinToString(",")
         ShivLog.i(

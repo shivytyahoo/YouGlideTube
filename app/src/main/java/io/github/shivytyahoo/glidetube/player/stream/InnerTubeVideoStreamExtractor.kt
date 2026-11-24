@@ -117,7 +117,10 @@ object InnerTubeVideoStreamExtractor {
         }
     }
 
-    private fun storeExtraction(key: ExtractionKey, result: VideoExtractionResult) {
+    private fun storeExtraction(
+        key: ExtractionKey,
+        result: VideoExtractionResult,
+    ) {
         synchronized(extractionCache) {
             extractionCache[key] =
                 CachedExtraction(
@@ -447,7 +450,14 @@ object InnerTubeVideoStreamExtractor {
         if (demoted.isNotEmpty()) {
             Log.w(TAG, "Nothing playable for $videoId without the demoted clients — retrying them: ${demoted.map { it.clientName }}")
             PlayerDiagnostics.logWarning(TAG, "retrying DEMOTED clients for $videoId: ${demoted.joinToString { it.clientName }}")
-            tryDirectClients(videoId, demoted, failureReasons, allowUntransformedN = true, liveDetected = liveDetected, allowLowTrust = allowLowTrust)?.let {
+            tryDirectClients(
+                videoId,
+                demoted,
+                failureReasons,
+                allowUntransformedN = true,
+                liveDetected = liveDetected,
+                allowLowTrust = allowLowTrust,
+            )?.let {
                 PlayerDiagnostics.logWarning(TAG, "extract OK $videoId via ${it.usedClient.clientName} mode=DIRECT/demoted-retry")
                 return if (liveDetected[0] && !it.isLive) it.copy(isLive = true) else it
             }
@@ -482,46 +492,47 @@ object InnerTubeVideoStreamExtractor {
         // both branches — including a cancelled loser — have fully finished.
         val fastFailures = mutableListOf<String>()
         val gatedFailures = mutableListOf<String>()
-        val winner = coroutineScope {
-            val fast =
-                async {
-                    tryDirectClients(
-                        videoId,
-                        fastClients,
-                        fastFailures,
-                        liveDetected = liveDetected,
-                        retryTimeoutOnce = true,
-                        allowLowTrust = allowLowTrust,
-                    )
+        val winner =
+            coroutineScope {
+                val fast =
+                    async {
+                        tryDirectClients(
+                            videoId,
+                            fastClients,
+                            fastFailures,
+                            liveDetected = liveDetected,
+                            retryTimeoutOnce = true,
+                            allowLowTrust = allowLowTrust,
+                        )
+                    }
+                val gated =
+                    async {
+                        tryDirectClients(
+                            videoId,
+                            listOf(gatedFirst),
+                            gatedFailures,
+                            liveDetected = liveDetected,
+                            allowLowTrust = allowLowTrust,
+                        )
+                    }
+                var winner: VideoExtractionResult? = null
+                select<Unit> {
+                    fast.onAwait { winner = it }
+                    gated.onAwait { winner = it }
                 }
-            val gated =
-                async {
-                    tryDirectClients(
-                        videoId,
-                        listOf(gatedFirst),
-                        gatedFailures,
-                        liveDetected = liveDetected,
-                        allowLowTrust = allowLowTrust,
-                    )
+                if (winner != null) {
+                    // coroutineScope does not return until every child completes, so without
+                    // this the race would cost max(fast, gated) instead of min: cancel the
+                    // loser outright. The scope's exit still waits for the cancelled child
+                    // to actually stop, so its cancellation propagates before we return.
+                    if (!fast.isCompleted) fast.cancel()
+                    if (!gated.isCompleted) gated.cancel()
+                } else {
+                    // The first finisher failed; wait out the other one's existing timeout.
+                    winner = if (fast.isCompleted) gated.await() else fast.await()
                 }
-            var winner: VideoExtractionResult? = null
-            select<Unit> {
-                fast.onAwait { winner = it }
-                gated.onAwait { winner = it }
+                winner
             }
-            if (winner != null) {
-                // coroutineScope does not return until every child completes, so without
-                // this the race would cost max(fast, gated) instead of min: cancel the
-                // loser outright. The scope's exit still waits for the cancelled child
-                // to actually stop, so its cancellation propagates before we return.
-                if (!fast.isCompleted) fast.cancel()
-                if (!gated.isCompleted) gated.cancel()
-            } else {
-                // The first finisher failed; wait out the other one's existing timeout.
-                winner = if (fast.isCompleted) gated.await() else fast.await()
-            }
-            winner
-        }
         failureReasons += fastFailures
         failureReasons += gatedFailures
         winner
@@ -693,8 +704,7 @@ object InnerTubeVideoStreamExtractor {
      * that call site is wired, the beacon falls back to the winning response's own
      * tracking URLs, as it does for any failed WEB fetch today.
      */
-    fun takeDeferredWebTracking(videoId: String): PlayerResponse.PlaybackTracking? =
-        deferredWebTracking.remove(videoId)
+    fun takeDeferredWebTracking(videoId: String): PlayerResponse.PlaybackTracking? = deferredWebTracking.remove(videoId)
 
     /** The mint's player token, only if the mint already finished — this never waits for it. */
     private fun Deferred<PoTokenResult?>?.readyPlayerToken(): String? {
@@ -735,16 +745,19 @@ object InnerTubeVideoStreamExtractor {
         poToken: String?,
     ): Pair<PlayerResponse.PlaybackTracking?, String?> {
         if (winner.clientName == YouTubeClient.WEB.clientName) return null to "winner-is-web"
-        val visitorData = WebPoTokenSession.sessionVisitorData()
-            ?: return null to "no-visitor"
-        val token = poToken?.takeIf { it.isNotBlank() }
-            ?: withTimeoutOrNull(10_000L) {
-                WebPoTokenSession.mintForVisitorData(videoId, visitorData)
-            }?.playerRequestPoToken
+        val visitorData =
+            WebPoTokenSession.sessionVisitorData()
+                ?: return null to "no-visitor"
+        val token =
+            poToken?.takeIf { it.isNotBlank() }
+                ?: withTimeoutOrNull(10_000L) {
+                    WebPoTokenSession.mintForVisitorData(videoId, visitorData)
+                }?.playerRequestPoToken
         if (token.isNullOrBlank()) return null to "mint-failed"
-        val sts = withTimeoutOrNull(SIGNATURE_TIMESTAMP_WAIT_MS) {
-            CipherDeobfuscator.ensureSignatureTimestamp()
-        }
+        val sts =
+            withTimeoutOrNull(SIGNATURE_TIMESTAMP_WAIT_MS) {
+                CipherDeobfuscator.ensureSignatureTimestamp()
+            }
         return try {
             val result =
                 withTimeoutOrNull(WEB_PLAYER_TIMEOUT_MS) {
@@ -1088,10 +1101,17 @@ object InnerTubeVideoStreamExtractor {
                 // the live /player actually hit.
                 val cause =
                     when {
-                        playerResult == null -> "timeout"
-                        playerResult.exceptionOrNull() != null ->
+                        playerResult == null -> {
+                            "timeout"
+                        }
+
+                        playerResult.exceptionOrNull() != null -> {
                             "error=${playerResult.exceptionOrNull()?.javaClass?.simpleName}: ${playerResult.exceptionOrNull()?.message}"
-                        else -> "null response"
+                        }
+
+                        else -> {
+                            "null response"
+                        }
                     }
                 failureReasons.add("$label: $cause")
                 Log.w(TAG, "$label+SABR: player request $cause")
