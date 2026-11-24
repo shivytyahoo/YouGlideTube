@@ -749,12 +749,8 @@ class HomeViewModel
             // A guest feed has no server continuation: its next page comes from the seed pool.
             if (serverContinuation == null) {
                 val pool =
-                    if (isGuestFallbackFeed) {
-                        guestFallbackPool
-                    } else {
-                        null
-                            ?: return PrefetchAttempt(LoadMoreOutcome.EXHAUSTED)
-                    }
+                    guestFallbackPool.takeIf { isGuestFallbackFeed }
+                        ?: return PrefetchAttempt(LoadMoreOutcome.EXHAUSTED)
                 val page = pool.nextPage(GUEST_FALLBACK_PAGE_SIZE).filterWatched(watchedVideoIds.value)
                 return finishPrefetchPage(
                     (held?.videos.orEmpty() + page).distinctBy { it.id },

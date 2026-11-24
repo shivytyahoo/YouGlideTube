@@ -193,16 +193,18 @@ class ShortsFeedRepository
                 private suspend fun trendingChartChannels(): List<String> {
                     chartChannels?.let { return it }
                     val region = runCatching { playerPreferences.trendingRegion.first() }.getOrElse { "US" }
-                    val channels =
+                    val entries =
                         YouTube
                             .musicVideoChart(region)
                             .getOrNull()
                             ?.entries
-                            ?.map { it.channelName }
+                            .orEmpty()
+                    val channels =
+                        entries
+                            .map { it.channelName }
                             .filter { it.isNotBlank() }
                             .distinct()
                             .take(DISCOVERY_QUERY_POOL)
-                            .orEmpty()
                     chartChannels = channels
                     return channels
                 }
