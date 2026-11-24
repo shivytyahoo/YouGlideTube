@@ -535,7 +535,7 @@ object InnerTubeVideoStreamExtractor {
             }
         failureReasons += fastFailures
         failureReasons += gatedFailures
-        winner
+        return winner
     }
 
     /** Videos YouTube reported as removed or unplayable on every client; a queue skips them. */
