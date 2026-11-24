@@ -75,13 +75,13 @@ class LocalDataManager
             private val ACTIVE_CUSTOM_THEME_DARK = stringPreferencesKey("custom_theme_id_dark")
             private const val LEGACY_CUSTOM_THEME_ID = "custom-android-legacy"
             private val THEME_VARIANT = stringPreferencesKey("theme_variant")
+
             // v2-only keys: this project is a fresh-look rebuild, so the v1-saved system themes
             // must not drag the old violet default in front of the Morphe palette. Login lives in
             // its own preferences file, so this touches theme only.
             private val SYSTEM_LIGHT_THEME_MODE = stringPreferencesKey("v2_system_light_theme_mode")
             private val SYSTEM_DARK_THEME_MODE = stringPreferencesKey("v2_system_dark_theme_mode")
             private val SYSTEM_DARK_THEME_VARIANT = stringPreferencesKey("system_dark_theme_variant")
-
         }
 
         // Update Settings
@@ -248,7 +248,10 @@ class LocalDataManager
         }
 
         /** Puts custom theme [id] in one Follow-system slot, leaving the other slot alone. */
-        suspend fun setSystemSlotCustomTheme(lightSlot: Boolean, id: String) {
+        suspend fun setSystemSlotCustomTheme(
+            lightSlot: Boolean,
+            id: String,
+        ) {
             context.dataStore.edit { prefs ->
                 prefs[if (lightSlot) ACTIVE_CUSTOM_THEME_LIGHT else ACTIVE_CUSTOM_THEME_DARK] = id
             }
@@ -322,7 +325,8 @@ class LocalDataManager
             context.dataStore.data.map { prefs ->
                 val raw = prefs[WATCH_LEDGER_JSON] ?: return@map emptyMap()
                 runCatching {
-                    ledgerJson.decodeFromString<Map<String, Long>>(raw)
+                    ledgerJson
+                        .decodeFromString<Map<String, Long>>(raw)
                         .mapNotNull { (day, ms) ->
                             runCatching { LocalDate.parse(day) }.getOrNull()?.let { it to ms }
                         }.toMap()
@@ -336,14 +340,18 @@ class LocalDataManager
             }
 
         /** Adds [ms] of real watch time to [day]'s ledger entry, keeping the last 30 days. */
-        suspend fun addWatchLedgerMs(day: LocalDate, ms: Long) {
+        suspend fun addWatchLedgerMs(
+            day: LocalDate,
+            ms: Long,
+        ) {
             if (ms <= 0) return
             context.dataStore.edit { prefs ->
                 val current =
                     runCatching {
-                        prefs[WATCH_LEDGER_JSON]?.let {
-                            ledgerJson.decodeFromString<Map<String, Long>>(it)
-                        }.orEmpty()
+                        prefs[WATCH_LEDGER_JSON]
+                            ?.let {
+                                ledgerJson.decodeFromString<Map<String, Long>>(it)
+                            }.orEmpty()
                     }.getOrDefault(emptyMap())
                 val cutoff = day.minusDays(30)
                 val updated =
@@ -393,6 +401,4 @@ class LocalDataManager
                 prefs[BREAK_FREQUENCY] = minutes
             }
         }
-
-
     }
