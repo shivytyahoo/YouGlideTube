@@ -1,6 +1,7 @@
 package io.github.shivytyahoo.glidetube.data.update
 
 import android.content.Context
+import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.shivytyahoo.glidetube.BuildConfig
 import io.github.shivytyahoo.glidetube.data.local.LocalDataManager
@@ -22,10 +23,14 @@ import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
+private const val TAG = "UpdateRepository"
 private const val STABLE_RELEASE_API = "https://api.github.com/repos/shivytyahoo/YouGlideTube/releases/latest"
 private const val GITHUB_JSON = "application/vnd.github+json"
 
-/** Where an automatic check may surface a release; each announces a version once. */
+/**
+ * Where an automatic check may surface a release. A notification announces a version once;
+ * the launch page re-offers it on every app open until it is downloaded or skipped.
+ */
 enum class UpdateAnnouncement { LAUNCH_PAGE, NOTIFICATION }
 
 /** How the automatic checks space themselves out and which releases they may show. */
@@ -71,6 +76,11 @@ class UpdateRepository
          * only if [announcement] has not shown this version before and the user has not skipped it.
          * The launch check passes [bypassCooldown] so opening the app always asks GitHub now
          * instead of waiting out the cooldown a background check already spent.
+         *
+         * The launch page re-offers a release on every app open until the user downloads it or
+         * skips that version: backing out of the update page is "later", not "never". Marking a
+         * version announced before it was shown silenced it forever after a single dismissal.
+         * The notification still announces a version once.
          */
         suspend fun releaseToAnnounce(
             announcement: UpdateAnnouncement,
@@ -79,18 +89,17 @@ class UpdateRepository
         ): AppRelease? =
             mutex.withLock {
                 if (!bypassCooldown && !UpdateSchedule.isDue(dataManager.lastUpdateCheck.first(), nowMs)) return@withLock null
-                val release = runCatching { fetchLocked() }.getOrNull() ?: return@withLock null
-                val announced =
-                    when (announcement) {
-                        UpdateAnnouncement.LAUNCH_PAGE -> dataManager.promptedUpdateVersion.first()
-                        UpdateAnnouncement.NOTIFICATION -> dataManager.notifiedUpdateVersion.first()
-                    }
-                if (!UpdateSchedule.mayAnnounce(release.version, dataManager.skippedUpdateVersion.first(), announced)) {
+                val release =
+                    runCatching { fetchLocked() }
+                        .onFailure { Log.w(TAG, "Update check failed", it) }
+                        .getOrNull() ?: return@withLock null
+                val skipped = dataManager.skippedUpdateVersion.first()
+                if (announcement == UpdateAnnouncement.NOTIFICATION) {
+                    val notified = dataManager.notifiedUpdateVersion.first()
+                    if (!UpdateSchedule.mayAnnounce(release.version, skipped, notified)) return@withLock null
+                    dataManager.setNotifiedUpdateVersion(release.version)
+                } else if (release.version == skipped) {
                     return@withLock null
-                }
-                when (announcement) {
-                    UpdateAnnouncement.LAUNCH_PAGE -> dataManager.setPromptedUpdateVersion(release.version)
-                    UpdateAnnouncement.NOTIFICATION -> dataManager.setNotifiedUpdateVersion(release.version)
                 }
                 release
             }
