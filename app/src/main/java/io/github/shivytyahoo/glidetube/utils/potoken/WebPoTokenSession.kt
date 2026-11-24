@@ -12,7 +12,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
 /**
@@ -365,24 +364,6 @@ object WebPoTokenSession {
             generator.resetSession()
             YouTube.visitorData = null
             identityGeneration++
-        }
-    }
-
-    // Pre-warm the BotGuard session at app start so the first real extraction is fast.
-    suspend fun prewarm() {
-        try {
-            val visitorData = sessionVisitorData() ?: return
-            withContext(Dispatchers.IO) {
-                val started = System.currentTimeMillis()
-                generator.prewarmWebClient(visitorData)
-                val outcome = if (generator.lastStreamingTokenWasLowTrust) "still-low-trust" else "trusted"
-                val message = "prewarm $outcome in ${System.currentTimeMillis() - started}ms"
-                Log.w(TAG, message)
-                ShivLog.i(message)
-                PlayerDiagnostics.logWarning(TAG, message)
-            }
-        } catch (e: Exception) {
-            Log.w(TAG, "prewarm failed: ${e.message}")
         }
     }
 }

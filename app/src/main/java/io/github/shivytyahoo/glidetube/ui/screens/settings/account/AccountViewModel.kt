@@ -1,16 +1,19 @@
 package io.github.shivytyahoo.glidetube.ui.screens.settings.account
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.shivytyahoo.glidetube.data.account.AccountCookieStore
 import io.github.shivytyahoo.glidetube.data.account.AccountSessionManager
 import io.github.shivytyahoo.glidetube.data.account.SavedAccount
 import io.github.shivytyahoo.glidetube.innertube.YouTube
 import io.github.shivytyahoo.glidetube.ui.screens.home.HomeFeedCache
-import javax.inject.Inject
+import io.github.shivytyahoo.glidetube.utils.potoken.WebPoTokenSession
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 @HiltViewModel
 internal class AccountViewModel
@@ -45,7 +48,8 @@ internal class AccountViewModel
 
         /** Signs out of the active account (the next saved one takes over, or guest). */
         fun signOut() {
-            if (accountSessionManager.isSignedIn) {
+            val wasSignedIn = accountSessionManager.isSignedIn
+            if (wasSignedIn) {
                 // An OAuth entry carries no cookie: removing its row alone would
                 // leave its token live and the app signed in with no account.
                 val wasOAuth = activeAccount.value?.cookie.isNullOrBlank()
@@ -59,6 +63,12 @@ internal class AccountViewModel
                 oauthSessionManager.signOut()
                 YouTube.useLoginForBrowse = false
                 HomeFeedCache.clear()
+            }
+            // Signing out of the last account leaves the app a guest on the same visitor
+            // that carried the signed-in session: give the anonymous session a fresh
+            // visitor instead of inheriting the mixed-history one.
+            if (wasSignedIn && !accountSessionManager.isSignedIn) {
+                viewModelScope.launch { WebPoTokenSession.resetIdentity() }
             }
             refresh()
         }

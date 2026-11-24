@@ -53,9 +53,9 @@ data class YouTubeClient(
     val attestation: AttestationPlatform = AttestationPlatform.WEB,
     /**
      * Whether [userAgent] is repeated inside `context.client` as well as sent as the HTTP header.
-     * Only MWEB expects this; sending it for other clients is a fingerprint inconsistency. Clients
-     * that leave it false serialise no `userAgent` key at all — the InnerTube Json sets
-     * `explicitNulls = false` — so their request bodies are byte-identical to before this existed.
+     * MWEB, ANDROID, VISIONOS and ANDROID_VR send it. Clients that leave it false serialise no
+     * `userAgent` key at all — the InnerTube Json sets `explicitNulls = false` — so their request
+     * bodies are byte-identical to before this existed.
      */
     val sendUserAgentInContext: Boolean = false,
     val referer: String? = null,
@@ -353,6 +353,7 @@ data class YouTubeClient(
                 loginSupported = false,
                 useSignatureTimestamp = false,
                 attestation = AttestationPlatform.DROIDGUARD,
+                sendUserAgentInContext = true,
             )
 
         val ANDROID_VR_1_43_32 =
@@ -426,6 +427,7 @@ data class YouTubeClient(
                 loginSupported = false,
                 useSignatureTimestamp = false,
                 attestation = AttestationPlatform.IOSGUARD,
+                sendUserAgentInContext = true,
             )
 
         val IPADOS =

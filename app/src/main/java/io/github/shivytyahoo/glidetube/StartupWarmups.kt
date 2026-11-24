@@ -7,7 +7,6 @@ import android.util.Log
 import io.github.shivytyahoo.glidetube.innertube.YouTube
 import io.github.shivytyahoo.glidetube.utils.cipher.CipherDeobfuscator
 import io.github.shivytyahoo.glidetube.utils.cipher.PipePipeNsigDecoder
-import io.github.shivytyahoo.glidetube.utils.potoken.WebPoTokenSession
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -16,7 +15,7 @@ import kotlinx.coroutines.launch
 
 /**
  * The network warm-ups that only pay off when someone is about to watch: the n-decoder player id,
- * a missing visitor id, the PoToken WebView and the player script. They wait for the first activity,
+ * a missing visitor id and the player script. They wait for the first activity,
  * so a process started in the background for a worker, a widget or the media controls skips them.
  */
 internal class StartupWarmups(
@@ -81,11 +80,9 @@ internal class StartupWarmups(
                     .onSuccess { data -> if (!data.isNullOrEmpty()) YouTube.visitorData = data }
                     .onFailure { e -> Log.w(TAG, "visitorData fetch failed: ${e.message}") }
             }
-            try {
-                WebPoTokenSession.prewarm()
-            } catch (e: Exception) {
-                Log.w(TAG, "WebPoTokenSession prewarm failed: ${e.message}")
-            }
+            // The BotGuard session is built lazily by the first SABR mint instead of at
+            // startup: loading the YouTube homepage in a WebView on every launch put the
+            // playback visitor through a bot challenge before any video was asked for.
             // A cold player script is a 3 MB download the first web-client extraction would wait on.
             CipherDeobfuscator.ensureSignatureTimestamp()
         }

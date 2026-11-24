@@ -110,20 +110,6 @@ object PoTokenGenerator {
         }
     }
 
-    fun prewarmWebClient(sessionId: String): Boolean {
-        if (sessionId.isBlank() || !webViewSupported || webViewBadImpl) return false
-        return try {
-            runBlocking { ensureWebPoTokenGenerator(sessionId, forceRecreate = false) }
-            true
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            Log.w(TAG, "Web poToken prewarm failed: ${e.message}", e)
-            if (e is BadWebViewException) webViewBadImpl = true
-            false
-        }
-    }
-
     /**
      * @param forceRecreate whether to force the recreation of [webPoTokenGenerator], to be used in
      * case the current [webPoTokenGenerator] threw an error last time
@@ -220,8 +206,9 @@ object PoTokenGenerator {
                 webPoTokenStreamingPotLowTrust = lowTrust
                 Log.d(TAG, "Streaming poToken generated for sessionId=${sessionId.take(20)}... lowTrust=$lowTrust")
                 val built = webPoTokenGenerator!!
-                val message = "PoToken session built ${built.diagnostics()} " +
-                    "potLen=${newStreamingPot?.let { PoTokenAttestationPolicy.tokenLength(it) } ?: -1}"
+                val message =
+                    "PoToken session built ${built.diagnostics()} " +
+                        "potLen=${newStreamingPot?.let { PoTokenAttestationPolicy.tokenLength(it) } ?: -1}"
                 Log.w(TAG, message)
                 // ShivLog: the Log.w line rotates out of the report's 5s logcat window, so the
                 // challenge source (homepage vs att-get vs legacy) was unverifiable from Report 52.

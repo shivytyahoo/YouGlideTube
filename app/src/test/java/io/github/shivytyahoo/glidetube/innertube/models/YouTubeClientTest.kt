@@ -54,6 +54,15 @@ class YouTubeClientTest {
     }
 
     @Test
+    fun directClientsEchoTheirUserAgentInsideTheContext() {
+        assertEquals(YouTubeClient.VISIONOS.userAgent, contextOf(YouTubeClient.VISIONOS).client.userAgent)
+        assertEquals(
+            YouTubeClient.ANDROID_VR_1_65_10.userAgent,
+            contextOf(YouTubeClient.ANDROID_VR_1_65_10).client.userAgent,
+        )
+    }
+
+    @Test
     fun everyOtherClientLeavesTheContextUserAgentUnset() {
         val others =
             listOf(
@@ -64,7 +73,6 @@ class YouTubeClientTest {
                 YouTubeClient.IPADOS,
                 YouTubeClient.TVHTML5,
                 YouTubeClient.ANDROID_VR_1_61_48,
-                YouTubeClient.ANDROID_VR_1_65_10,
             )
 
         others.forEach { client ->
