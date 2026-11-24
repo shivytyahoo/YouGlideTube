@@ -263,8 +263,19 @@ class PlayerCacheManager(
     ): List<PlayerResponse.StreamingData.Format>? {
         val result =
             when (kind) {
-                StreamDenialKind.URL_EXPIRED -> InnerTubeVideoStreamExtractor.extract(videoId)
-                else -> TizenStreamResolver.resolve(videoId)
+                StreamDenialKind.URL_EXPIRED -> {
+                    InnerTubeVideoStreamExtractor.extract(videoId)
+                }
+
+                // A gated client is refused per visitor, not per quality: the same file
+                // minted by an ungated client is byte-identical, so the ladder runs first
+                // (it steps over the demoted client) and TV_TIZEN — whose signature
+                // solving needs the remote decoder — is only the fallback when the
+                // ladder yields nothing.
+                else -> {
+                    InnerTubeVideoStreamExtractor.extract(videoId)
+                        ?: TizenStreamResolver.resolve(videoId)
+                }
             } ?: return null
         return result.videoFormats + result.audioFormats
     }

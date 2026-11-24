@@ -7,8 +7,10 @@ import androidx.media3.exoplayer.upstream.DefaultBandwidthMeter
 import io.github.shivytyahoo.glidetube.player.config.PlayerConfig
 import io.github.shivytyahoo.glidetube.player.config.VideoSizeCap
 import io.github.shivytyahoo.glidetube.player.config.adaptiveTrackSelectorDefaults
+import io.github.shivytyahoo.glidetube.player.error.StreamDenialClassifier
 import io.github.shivytyahoo.glidetube.player.state.EnhancedPlayerState
 import io.github.shivytyahoo.glidetube.player.state.QualityOption
+import io.github.shivytyahoo.glidetube.player.stream.ClientGateTracker
 import io.github.shivytyahoo.glidetube.player.stream.VideoCodecUtils
 import io.github.shivytyahoo.glidetube.utils.ShivLog
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -438,6 +440,10 @@ class QualityManager(
             if (!forceCheck) return
             logPlayStall(videoId, currentVideoStream, bufferedAheadMs)
             val current = currentVideoStream ?: return
+            // A stall on a gated client is a refusal, not bandwidth: every rung of that
+            // client is refused the same way, so stepping down only replays the wall.
+            // The refusal swapper owns this case; the net stands down here.
+            if (ClientGateTracker.isGated(StreamDenialClassifier.clientOf(current.getContent()))) return
             val lower = AutoQualityPolicy.stepDown(current, getWorkingStreams(), preferredCodecKey) ?: return
             Log.d(TAG, "Pinned DOWNGRADE (buffering): ${qualityHeight(current)}p -> ${qualityHeight(lower)}p")
             switchQualityByStreamKey(streamKey(lower), currentPosition)
