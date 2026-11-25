@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.1.2 — 2026-11-24
+
+- Faster playback: the next video's stream is prepared while you browse, the two fastest players race and the winner plays, and reopening a video reuses its last stream instead of fetching it again
+- Fixed videos failing to load when the current session is blocked: the app now gets a fresh session before retrying, instead of retrying with the blocked one
+- Playback no longer gets stuck at a quality your connection can't sustain: after repeated buffering it steps down one quality level and keeps playing
+- Update prompt fixed: the update page now comes back on every app open until you download or skip that version — backing out no longer silences it
+- Update check now runs every time you open the app, not just the first time after install
+- Fixed a video getting stuck in the middle when the session is blocked: the app now fetches the same video from another source instead of replaying the blocked one
+- Home feed without sign-in: the home feed now loads videos even when you are signed out, just like in a browser — no more sign-in screen on Home
+- Fixed everything going blank after signing out: when YouTube blocks this device's anonymous session, the app now gets a fresh one by itself — the home feed, search and playback recover instead of staying empty
+- Anonymous sessions stay anonymous: the app no longer opens YouTube's homepage at startup to prepare its session, and signing out gives the guest session a fresh identity instead of the old mixed one
+- Home feed never ends now: keep scrolling and more videos keep coming, even without signing in — the feed is seeded from your searches and trending music when YouTube sends no home feed
+- Every Home tap shows fresh videos: the feed rotates its seeds and leaves out the videos you just saw, so the same list doesn't repeat
+- Shorts keep coming too: the reel feed now finds more shorts from your searches and trending music channels instead of stopping
+- Signed-out home has search and sign-in in the middle: search any video and it lands on your feed and plays, no login needed
+- Videos no longer stop suddenly when the session is blocked: the app switches to a fresh session right away instead of waiting, and stops wasting time on the unavailable signature service
+- Some videos start faster: when YouTube refuses a video on the fast sources, the app now tries the web and TV sources at the same time instead of one after the other
+- Fixed web playback for videos whose player script is missing: their formats are now solved against the decoder's latest player instead of being dropped
+
 ## 1.1.1 — 2026-11-19
 
 - Feed preview quality: pick the preview quality for videos and Shorts, separately on Wi-Fi and mobile data — Auto up to 8K for videos and up to 4K for Shorts — so previews use less data and don't stall
