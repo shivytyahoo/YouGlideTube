@@ -421,23 +421,43 @@ object InnerTubeVideoStreamExtractor {
             }
         }
 
-        // 2) Durable path: web client + BotGuard PoToken + SABR. Ranked above every remaining
-        // direct client because it is the only other path whose token YouGlideTube can actually mint —
-        // the clients below it are all served unattested and can be cut off mid-playback.
-        trySabrClients(videoId, failureReasons)?.let {
-            Log.w(TAG, "Extraction OK for $videoId via ${it.usedClient.clientName} (mode=SABR)")
-            PlayerDiagnostics.logWarning(TAG, "extract OK $videoId mode=SABR (durable) via ${it.usedClient.clientName}")
-            return if (liveDetected[0] && !it.isLive) it.copy(isLive = true) else it
-        }
+        // When the fast clients all refused the video itself (UNPLAYABLE — a content
+        // restriction, not a wall), the video comes from SABR or Tizen and nothing else
+        // in the ladder can serve it sooner. Race them instead of walking SABR first
+        // and Tizen after: a working SABR still wins in ~1s, and a failing SABR no
+        // longer costs its full time before Tizen starts (#69 — 6.5s to first frame).
+        val allUnplayable =
+            !liveDetected[0] && failureReasons.isNotEmpty() && failureReasons.all { "status=UNPLAYABLE" in it }
+        if (allUnplayable) {
+            raceSabrVsTizen(videoId, failureReasons)?.let {
+                if (it.usedClient == YouTubeClient.TV_TIZEN) {
+                    Log.w(TAG, "Extraction OK for $videoId via TV_TIZEN (mode=DIRECT/web-fallback)")
+                    PlayerDiagnostics.logWarning(TAG, "extract OK $videoId via TV_TIZEN mode=DIRECT/web-fallback")
+                    return it
+                }
+                Log.w(TAG, "Extraction OK for $videoId via ${it.usedClient.clientName} (mode=SABR)")
+                PlayerDiagnostics.logWarning(TAG, "extract OK $videoId mode=SABR (durable) via ${it.usedClient.clientName}")
+                return if (liveDetected[0] && !it.isLive) it.copy(isLive = true) else it
+            }
+        } else {
+            // 2) Durable path: web client + BotGuard PoToken + SABR. Ranked above every remaining
+            // direct client because it is the only other path whose token YouGlideTube can actually mint —
+            // the clients below it are all served unattested and can be cut off mid-playback.
+            trySabrClients(videoId, failureReasons)?.let {
+                Log.w(TAG, "Extraction OK for $videoId via ${it.usedClient.clientName} (mode=SABR)")
+                PlayerDiagnostics.logWarning(TAG, "extract OK $videoId mode=SABR (durable) via ${it.usedClient.clientName}")
+                return if (liveDetected[0] && !it.isLive) it.copy(isLive = true) else it
+            }
 
-        // 2b) Label and kids videos are UNPLAYABLE on the app clients, so once the web clients
-        // fail this is their only source (#1292). The gated clients below stop at a minute and
-        // swap to it mid-playback anyway. Skipped when step 1 already asked it.
-        if (fastClients.isNotEmpty() && !liveDetected[0]) {
-            TizenStreamResolver.resolve(videoId, failureReasons)?.let {
-                Log.w(TAG, "Extraction OK for $videoId via TV_TIZEN (mode=DIRECT/web-fallback)")
-                PlayerDiagnostics.logWarning(TAG, "extract OK $videoId via TV_TIZEN mode=DIRECT/web-fallback")
-                return it
+            // 2b) Label and kids videos are UNPLAYABLE on the app clients, so once the web clients
+            // fail this is their only source (#1292). The gated clients below stop at a minute and
+            // swap to it mid-playback anyway. Skipped when step 1 already asked it.
+            if (fastClients.isNotEmpty() && !liveDetected[0]) {
+                TizenStreamResolver.resolve(videoId, failureReasons)?.let {
+                    Log.w(TAG, "Extraction OK for $videoId via TV_TIZEN (mode=DIRECT/web-fallback)")
+                    PlayerDiagnostics.logWarning(TAG, "extract OK $videoId via TV_TIZEN mode=DIRECT/web-fallback")
+                    return it
+                }
             }
         }
 
@@ -569,6 +589,43 @@ object InnerTubeVideoStreamExtractor {
             }
         failureReasons += fastFailures
         failureReasons += gatedFailures
+        return winner
+    }
+
+    /**
+     * Races SABR against Tizen for a video the fast clients all refused as UNPLAYABLE.
+     * Both run under their existing timeouts, the first playable result wins, and the
+     * loser is cancelled outright — same shape as [raceFirstTwoDirectClients]. A working
+     * SABR still wins in ~1s; a failing one no longer costs its full time before Tizen
+     * starts, which is what made such videos take ~6s to first frame (#69). Per-branch
+     * failure lists for the same reason as the direct race: the caller's list is not
+     * thread-safe.
+     */
+    private suspend fun raceSabrVsTizen(
+        videoId: String,
+        failureReasons: MutableList<String>,
+    ): VideoExtractionResult? {
+        val sabrFailures = mutableListOf<String>()
+        val tizenFailures = mutableListOf<String>()
+        val winner =
+            coroutineScope {
+                val sabr = async { trySabrClients(videoId, sabrFailures) }
+                val tizen = async { TizenStreamResolver.resolve(videoId, tizenFailures) }
+                var winner: VideoExtractionResult? = null
+                select<Unit> {
+                    sabr.onAwait { winner = it }
+                    tizen.onAwait { winner = it }
+                }
+                if (winner != null) {
+                    if (!sabr.isCompleted) sabr.cancel()
+                    if (!tizen.isCompleted) tizen.cancel()
+                } else {
+                    winner = if (sabr.isCompleted) tizen.await() else sabr.await()
+                }
+                winner
+            }
+        failureReasons += sabrFailures
+        failureReasons += tizenFailures
         return winner
     }
 
@@ -1408,12 +1465,20 @@ object InnerTubeVideoStreamExtractor {
                 .mapNotNull { format -> SignatureCipher.parse(format.signatureCipher ?: format.cipher)?.let { format to it } }
                 .toMap()
         val solved = if (ciphers.isEmpty()) emptyMap() else solveSignatures(videoId, ciphers.values.map { it.signature })
-        return mapNotNull { format ->
-            when {
-                !format.url.isNullOrEmpty() -> format
-                else -> ciphers[format]?.let { cipher -> solved[cipher.signature]?.let { format.copy(url = cipher.signedUrl(it)) } }
+        val result =
+            mapNotNull { format ->
+                when {
+                    !format.url.isNullOrEmpty() -> format
+                    else -> ciphers[format]?.let { cipher -> solved[cipher.signature]?.let { format.copy(url = cipher.signedUrl(it)) } }
+                }
             }
+        // A silent drop here used to read as "0/N formats playable" with no cause
+        // attached (#69); name how many formats needed solving and how many survived.
+        val dropped = size - result.size
+        if (dropped > 0) {
+            Log.w(TAG, "decipher dropped $dropped/$size formats for $videoId (ciphers=${ciphers.size}, solved=${solved.size})")
         }
+        return result
     }
 
     /**
@@ -1423,7 +1488,9 @@ object InnerTubeVideoStreamExtractor {
      * ~30 failing WebView round trips blew the extraction budget).
      *
      * The remote decoder is asked for the local script's hash: a signature only matches the
-     * timestamp the `/player` request carried, which is the local script's.
+     * timestamp the `/player` request carried, which is the local script's. When there is no
+     * local script at all, the `/player` request carried no timestamp, so the decoder's
+     * latest player is the right one to solve against.
      */
     private suspend fun solveSignatures(
         videoId: String,
@@ -1438,7 +1505,13 @@ object InnerTubeVideoStreamExtractor {
         if (missing.isEmpty()) return solved
         val playerHash = CipherDeobfuscator.playerHash()
         if (playerHash == null) {
-            Log.w(TAG, "Signature deciphering unavailable for $videoId — no player script")
+            // No local player script, so the /player request carried no signature
+            // timestamp either — its signatures are against YouTube's current player,
+            // which is what the decoder's latest id is. Solving against that instead
+            // of giving up keeps ciphered formats playable when the local script is
+            // missing (#69).
+            Log.w(TAG, "No local player script for $videoId; solving signatures against the decoder's latest player")
+            solved += PipePipeNsigDecoder.decodeSignatures(missing)
             return solved
         }
         Log.w(TAG, "Local signature function unavailable for $videoId; solving ${missing.size} remotely for $playerHash")

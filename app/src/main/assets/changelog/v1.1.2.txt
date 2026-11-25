@@ -14,3 +14,5 @@ DATE: 2026-11-24
 • 🎞️ Shorts keep coming too: the reel feed now finds more shorts from your searches and trending music channels instead of stopping
 • 🔍 Signed-out home has search and sign-in in the middle: search any video and it lands on your feed and plays, no login needed
 • 🛡️ Videos no longer stop suddenly when the session is blocked: the app switches to a fresh session right away instead of waiting, and stops wasting time on the unavailable signature service
+• ⏩ Some videos start faster: when YouTube refuses a video on the fast sources, the app now tries the web and TV sources at the same time instead of one after the other
+• 🔓 Fixed web playback for videos whose player script is missing: their formats are now solved against the decoder's latest player instead of being dropped
