@@ -1346,6 +1346,7 @@
     <string name="player_settings_playback_method_dialog_body">Which source supplies this video’s streams. Auto chooses the fastest one that works; a forced method only tries that source. Live streams always use Auto.</string>
     <string name="player_settings_playback_method_auto">Auto</string>
     <string name="player_settings_playback_method_visionos">visionOS</string>
+    <string name="player_settings_playback_method_ios_studio">iOS Studio</string>
     <string name="player_settings_playback_method_android_vr">Android VR</string>
     <string name="player_settings_playback_method_kids">YouTube Kids</string>
     <string name="player_settings_playback_method_sabr">SABR (web)</string>
@@ -2478,7 +2479,8 @@
     <string name="resize_to">Resize: %1$s</string>
     <string name="resize_fit">Fit</string>
     <string name="resize_fill">Fill</string>
-    <string name="resize_zoom">Zoom</string>
+    <string name="resize_zoom_fill">Zoom to fill</string>
+    <string name="resize_zoom_2x">2x zoom</string>
     <!-- Shorts Player Features -->
     <string name="shorts_audio_track">Audio Track</string>
     <string name="shorts_settings_this_short">This Short</string>

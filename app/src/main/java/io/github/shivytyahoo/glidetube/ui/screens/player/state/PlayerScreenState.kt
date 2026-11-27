@@ -62,7 +62,7 @@ class PlayerScreenState {
     var selectedTranscriptUrl by mutableStateOf<String?>(null)
 
     // Video Display
-    var resizeMode by mutableIntStateOf(0) // 0=Fit, 1=Fill, 2=Zoom
+    var resizeMode by mutableIntStateOf(0) // 0=Fit (1x), 1=Zoom to fill, 2=2x
 
     // Pinch-to-Zoom State
     var zoomScale by mutableFloatStateOf(1f)
@@ -102,6 +102,7 @@ class PlayerScreenState {
         showShortsPrompt = false
         activeSheet = PlayerSheet.None
         showLiveChatPanel = false
+        resizeMode = 0
         zoomScale = 1f
         zoomOffsetX = 0f
         zoomOffsetY = 0f
@@ -134,8 +135,18 @@ class PlayerScreenState {
         closeSheet()
     }
 
+    /**
+     * Cycles Fit (1x) -> Zoom to fill -> 2x. Every step sets the pinch transform explicitly: the
+     * old Fill mode stretched the picture instead of fitting it, and a leftover pinch scale would
+     * compound with the crop. The read-out pill flashes the resulting scale.
+     */
     fun cycleResizeMode() {
         resizeMode = (resizeMode + 1) % 3
+        zoomScale = if (resizeMode == 2) 2f else 1f
+        zoomOffsetX = 0f
+        zoomOffsetY = 0f
+        showZoomIndicator = true
+        zoomIndicatorSequence += 1
     }
 
     fun toggleFullscreen() {

@@ -25,12 +25,20 @@ class SubtitleAreaTest {
     }
 
     @Test
-    fun `zoom, fill and an unknown ratio use the whole player`() {
+    fun `zoom to fill and an unknown ratio use the whole player`() {
         val whole = SubtitleArea(0f, 0f, 400f, 900f)
 
-        assertThat(subtitleArea(400f, 900f, 16f / 9f, resizeMode = 2)).isEqualTo(whole)
         assertThat(subtitleArea(400f, 900f, 16f / 9f, resizeMode = 1)).isEqualTo(whole)
         assertThat(subtitleArea(400f, 900f, null, resizeMode = 0)).isEqualTo(whole)
+    }
+
+    @Test
+    fun `two x captions stay on the fit picture`() {
+        val area = subtitleArea(width = 400f, height = 900f, videoAspectRatio = 16f / 9f, resizeMode = 2)
+
+        assertThat(area.width).isEqualTo(400f)
+        assertThat(area.height).isEqualTo(225f)
+        assertThat(area.top).isEqualTo(337.5f)
     }
 
     @Test

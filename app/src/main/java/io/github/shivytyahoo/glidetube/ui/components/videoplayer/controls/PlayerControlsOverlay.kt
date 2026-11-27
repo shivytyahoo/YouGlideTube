@@ -56,8 +56,8 @@ internal fun PlayerControlsOverlay(
     val resizeModes =
         listOf(
             stringResource(R.string.resize_fit),
-            stringResource(R.string.resize_fill),
-            stringResource(R.string.resize_zoom),
+            stringResource(R.string.resize_zoom_fill),
+            stringResource(R.string.resize_zoom_2x),
         )
 
     val scrubController =

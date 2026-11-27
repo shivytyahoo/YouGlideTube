@@ -97,5 +97,6 @@ object ClientGateTracker : ClientGateRegistry(
 /**
  * The app clients GVS walls per visitor rather than per client (#921): a fresh visitor is served
  * on them again, so a gate on one of these replaces the identity as well as demoting the client.
+ * IOS_PRODUCER is walled the same way as VISIONOS — an unattested iOS app client.
  */
-private val VISITOR_WALLED_CLIENTS = setOf("VISIONOS", "ANDROID_VR")
+private val VISITOR_WALLED_CLIENTS = setOf("VISIONOS", "IOS_PRODUCER", "ANDROID_VR")

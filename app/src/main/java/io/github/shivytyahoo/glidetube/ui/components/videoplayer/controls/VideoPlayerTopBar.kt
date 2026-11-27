@@ -23,7 +23,7 @@ import androidx.compose.material.icons.rounded.AspectRatio
 import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material.icons.rounded.Cast
 import androidx.compose.material.icons.rounded.ClosedCaption
-import androidx.compose.material.icons.rounded.Fullscreen
+import androidx.compose.material.icons.rounded.Crop
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.PictureInPicture
@@ -189,20 +189,20 @@ internal fun VideoPlayerTopBar(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(actionSpacing),
             ) {
-                if (isFullscreen) {
-                    TopBarIconButton(
-                        onClick = actions.onResizeClick,
-                        buttonSize = actionButtonSize,
-                        iconSize = actionIconSize,
-                        icon =
-                            when (resizeMode) {
-                                0 -> Icons.Rounded.AspectRatio
-                                1 -> Icons.Rounded.Fullscreen
-                                else -> Icons.Rounded.ZoomIn
-                            },
-                        contentDescription = stringResource(R.string.resize_to, resizeModeLabels[resizeMode]),
-                    )
-                }
+                // The zoom control lives here in both modes: it used to be fullscreen-only, so the
+                // normal player had no zoom icon at all.
+                TopBarIconButton(
+                    onClick = actions.onResizeClick,
+                    buttonSize = actionButtonSize,
+                    iconSize = actionIconSize,
+                    icon =
+                        when (resizeMode) {
+                            0 -> Icons.Rounded.AspectRatio
+                            1 -> Icons.Rounded.Crop
+                            else -> Icons.Rounded.ZoomIn
+                        },
+                    contentDescription = stringResource(R.string.resize_to, resizeModeLabels[resizeMode]),
+                )
 
                 if (isFullscreen && hasQueue) {
                     TopBarIconButton(

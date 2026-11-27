@@ -126,6 +126,7 @@ internal fun usedClientLabel(clientName: String): String {
     val labelRes =
         when (clientName) {
             "VISIONOS" -> R.string.player_settings_playback_method_visionos
+            "IOS_PRODUCER" -> R.string.player_settings_playback_method_ios_studio
             "ANDROID_VR" -> R.string.player_settings_playback_method_android_vr
             "ANDROID_KIDS" -> R.string.player_settings_playback_method_kids
             "MWEB", "WEB" -> R.string.player_settings_playback_method_sabr

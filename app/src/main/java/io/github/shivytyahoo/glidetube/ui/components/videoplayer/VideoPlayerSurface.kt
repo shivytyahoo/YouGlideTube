@@ -267,11 +267,12 @@ fun VideoPlayerSurface(
                     }
                 }
 
+                // 1 is zoom-to-fill (crop); the old Fill stretched the picture to the frame and
+                // broke its aspect ratio, which is why fullscreen zoom never fit. 2x zooms on
+                // the fit frame through the pinch transform, so the surface itself stays Fit.
                 val desiredResizeMode =
                     when (resizeMode) {
-                        0 -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
-                        1 -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FILL
-                        2 -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                        1 -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
                         else -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
                     }
                 if (view.resizeMode != desiredResizeMode) {

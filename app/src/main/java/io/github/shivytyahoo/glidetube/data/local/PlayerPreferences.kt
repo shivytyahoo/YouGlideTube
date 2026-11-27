@@ -459,7 +459,7 @@ class PlayerPreferences(
         val DISK_READ_AHEAD_ENABLED = booleanPreferencesKey("disk_read_ahead_enabled")
 
         // Playback method: "" (Auto, default) or a forced InnerTube client — "VISIONOS",
-        // "ANDROID_VR", "KIDS", "SABR", "TV". See PlaybackMethod.
+        // "IOS_PRODUCER", "ANDROID_VR", "KIDS", "SABR", "TV". See PlaybackMethod.
         val PLAYBACK_METHOD = stringPreferencesKey("playback_method")
 
         // Long-buffer mode: hold much more of the video in memory (default off)

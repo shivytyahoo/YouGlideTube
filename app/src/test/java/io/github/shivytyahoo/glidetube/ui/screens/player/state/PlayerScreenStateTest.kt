@@ -74,6 +74,7 @@ class PlayerScreenStateTest {
             "showShortsPrompt",
             "activeSheet",
             "showLiveChatPanel",
+            "resizeMode",
             "zoomScale",
             "zoomOffsetX",
             "zoomOffsetY",
@@ -94,7 +95,6 @@ class PlayerScreenStateTest {
             "speedSwipeLevel",
             "seekAccumulation",
             "subtitleStyle",
-            "resizeMode",
             "isSpeedBoostActive",
             "normalSpeed",
         )
@@ -291,16 +291,28 @@ class PlayerScreenStateTest {
     }
 
     @Test
-    fun `cycleResizeMode wraps fit fill zoom`() {
-        val state = PlayerScreenState()
+    fun `cycleResizeMode wraps fit zoom to fill two x and resets the pinch transform`() {
+        val state =
+            PlayerScreenState().apply {
+                zoomScale = 3.5f
+                zoomOffsetX = 40f
+                zoomOffsetY = -40f
+            }
 
-        val seen = mutableListOf(state.resizeMode)
+        val modes = mutableListOf(state.resizeMode)
+        val scales = mutableListOf(state.zoomScale)
         repeat(3) {
             state.cycleResizeMode()
-            seen += state.resizeMode
+            modes += state.resizeMode
+            scales += state.zoomScale
         }
 
-        assertThat(seen).containsExactly(0, 1, 2, 0).inOrder()
+        assertThat(modes).containsExactly(0, 1, 2, 0).inOrder()
+        assertThat(scales).containsExactly(3.5f, 1f, 2f, 1f).inOrder()
+        assertThat(state.zoomOffsetX).isEqualTo(0f)
+        assertThat(state.zoomOffsetY).isEqualTo(0f)
+        assertThat(state.showZoomIndicator).isTrue()
+        assertThat(state.zoomIndicatorSequence).isEqualTo(3)
     }
 
     @Test

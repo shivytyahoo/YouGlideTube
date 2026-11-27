@@ -20,6 +20,7 @@ enum class PlaybackMethod(
 ) {
     AUTO("", R.string.player_settings_playback_method_auto),
     VISIONOS("VISIONOS", R.string.player_settings_playback_method_visionos),
+    IOS_PRODUCER("IOS_PRODUCER", R.string.player_settings_playback_method_ios_studio),
     ANDROID_VR("ANDROID_VR", R.string.player_settings_playback_method_android_vr),
     KIDS("KIDS", R.string.player_settings_playback_method_kids),
     SABR("SABR", R.string.player_settings_playback_method_sabr),
@@ -28,7 +29,7 @@ enum class PlaybackMethod(
 
     companion object {
         /** The order the Settings dialog and the player sheet list the methods in. */
-        val menuOrder: List<PlaybackMethod> = listOf(AUTO, VISIONOS, ANDROID_VR, KIDS, SABR, TV)
+        val menuOrder: List<PlaybackMethod> = listOf(AUTO, VISIONOS, IOS_PRODUCER, ANDROID_VR, KIDS, SABR, TV)
 
         /** Unknown stored values (a future method, a corrupt write) read as Auto. */
         fun fromStored(raw: String?): PlaybackMethod = entries.firstOrNull { it.storedValue == raw } ?: AUTO

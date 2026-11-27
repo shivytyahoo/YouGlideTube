@@ -155,13 +155,16 @@ object InnerTubeVideoStreamExtractor {
         val forcedMethod: String,
     )
 
-    // The token-free direct client. VISIONOS alone: it serves direct adaptive URLs with no PO Token
+    // The token-free direct clients. VISIONOS first: it serves direct adaptive URLs with no PO Token
     // and no `n` parameter, so first frame costs neither an attestation nor an nsig decode. GVS
     // honours them for the whole video unless it has walled this visitor, which it does a minute in
     // on every video (#921); then the ladder goes to TV_TIZEN and the visitor is re-rolled.
+    // IOS_PRODUCER second: the Studio iPhone app, plain direct H.264/AAC links to 1080p, whole
+    // videos — the fallback when VISIONOS can't play a video, before the ANDROID_VR variants.
     private val FAST_CLIENTS: List<YouTubeClient> =
         listOf(
             YouTubeClient.VISIONOS,
+            YouTubeClient.IOS_PRODUCER,
         )
 
     /**
@@ -579,17 +582,16 @@ object InnerTubeVideoStreamExtractor {
     }
 
     /**
-     * Races the fast path against the first gated direct client (VISIONOS vs
-     * ANDROID_VR_1_65_10 — the ladder's first two direct clients) instead of trying them
-     * one after another. Both run under their existing per-client timeouts, the first
-     * playable result wins, and the loser is cancelled outright — a bare coroutineScope
-     * would wait for it, so the race would cost max(fast, gated) instead of min. When the
-     * first finisher fails, the other is waited out up to its own timeout — a fast
-     * failure must not end the race. Neither client is WEB-attested (VISIONOS is
-     * IOSGUARD, ANDROID_VR is DROIDGUARD), so neither starts a PoToken mint and the
-     * branches share nothing but [liveDetected] (a write-once flag) and their own
-     * failure lists, merged below in ladder order because the caller's list is not
-     * thread-safe.
+     * Races the fast path against the first gated direct client (the VISIONOS/IOS_PRODUCER
+     * fast clients vs ANDROID_VR_1_65_10) instead of trying them one after another. Both run
+     * under their existing per-client timeouts, the first playable result wins, and the loser
+     * is cancelled outright — a bare coroutineScope would wait for it, so the race would cost
+     * max(fast, gated) instead of min. When the first finisher fails, the other is waited out
+     * up to its own timeout — a fast failure must not end the race. No client here is
+     * WEB-attested (VISIONOS and IOS_PRODUCER are IOSGUARD, ANDROID_VR is DROIDGUARD), so
+     * neither starts a PoToken mint and the branches share nothing but [liveDetected] (a
+     * write-once flag) and their own failure lists, merged below in ladder order because the
+     * caller's list is not thread-safe.
      */
     private suspend fun raceFirstTwoDirectClients(
         videoId: String,
@@ -937,10 +939,10 @@ object InnerTubeVideoStreamExtractor {
     }
 
     /**
-     * One forced method, and nothing else. VISIONOS and KIDS are single clients; ANDROID_VR is
-     * its version variants in ladder order (still one client name — a demoted variant retried
-     * here is the same client, not a fallback to another one); TV is the Tizen resolver only;
-     * SABR is the web-client SABR path. Live detection rides along for the direct clients so
+     * One forced method, and nothing else. VISIONOS, IOS_PRODUCER and KIDS are single clients;
+     * ANDROID_VR is its version variants in ladder order (still one client name — a demoted variant
+     * retried here is the same client, not a fallback to another one); TV is the Tizen resolver
+     * only; SABR is the web-client SABR path. Live detection rides along for the direct clients so
      * the caller can fall through to the live branch when the forced client cannot serve a
      * live broadcast.
      */
@@ -958,7 +960,17 @@ object InnerTubeVideoStreamExtractor {
             PlaybackMethod.VISIONOS -> {
                 tryDirectClients(
                     videoId,
-                    FAST_CLIENTS,
+                    listOf(YouTubeClient.VISIONOS),
+                    failureReasons,
+                    liveDetected = liveDetected,
+                    retryTimeoutOnce = true,
+                )
+            }
+
+            PlaybackMethod.IOS_PRODUCER -> {
+                tryDirectClients(
+                    videoId,
+                    listOf(YouTubeClient.IOS_PRODUCER),
                     failureReasons,
                     liveDetected = liveDetected,
                     retryTimeoutOnce = true,

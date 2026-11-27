@@ -458,6 +458,32 @@ data class YouTubeClient(
                 sendUserAgentInContext = true,
             )
 
+        /**
+         * The YouTube Studio iPhone app, asked anonymously. Plain direct URLs like VISIONOS,
+         * H.264 and AAC only, up to 1080p, whole videos — measured 2026-11-27 against three
+         * videos (8/8 formats direct, 0 ciphered, heights to 1080p). Tried after VISIONOS
+         * when it can't play a video, before the ANDROID_VR variants. No signature
+         * timestamp: the probe that returned those formats sent none.
+         */
+        val IOS_PRODUCER =
+            YouTubeClient(
+                clientName = "IOS_PRODUCER",
+                clientVersion = "0.147.945",
+                clientId = "92",
+                userAgent =
+                    "com.google.ios.youtubeproducer/0.147.945 " +
+                        "(iPhone16,2; U; CPU iOS 18_3_2 like Mac OS X;)",
+                osName = "iPhone",
+                osVersion = "18.3.2.22D82",
+                deviceMake = "Apple",
+                deviceModel = "iPhone16,2",
+                friendlyName = "iOS Studio",
+                loginSupported = false,
+                useSignatureTimestamp = false,
+                attestation = AttestationPlatform.IOSGUARD,
+                sendUserAgentInContext = true,
+            )
+
         val IPADOS =
             YouTubeClient(
                 clientName = "IOS",

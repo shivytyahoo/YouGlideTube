@@ -30,6 +30,7 @@ class PlaybackMethodTest {
             listOf(
                 PlaybackMethod.AUTO,
                 PlaybackMethod.VISIONOS,
+                PlaybackMethod.IOS_PRODUCER,
                 PlaybackMethod.ANDROID_VR,
                 PlaybackMethod.KIDS,
                 PlaybackMethod.SABR,

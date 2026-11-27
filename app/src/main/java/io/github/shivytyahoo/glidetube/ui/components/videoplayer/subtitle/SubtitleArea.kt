@@ -9,11 +9,11 @@ internal data class SubtitleArea(
 )
 
 /**
- * Where the picture sits in a [width] by [height] player. Only the fit mode leaves bars; zoom crops
- * the picture past the edges and fill stretches it, so both use the whole player, which keeps
- * captions on screen.
+ * Where the picture sits in a [width] by [height] player. Only the fit modes leave bars; zoom to
+ * fill crops the picture past the edges, so it uses the whole player, which keeps captions on
+ * screen. The 2x mode zooms on the fit frame, so its captions stay on the fit picture.
  *
- * @param resizeMode the player's mode: 0 fit, 1 fill, 2 zoom.
+ * @param resizeMode the player's mode: 0 fit, 1 zoom to fill, 2 two-x.
  */
 internal fun subtitleArea(
     width: Float,
@@ -22,7 +22,11 @@ internal fun subtitleArea(
     resizeMode: Int,
 ): SubtitleArea {
     val whole = SubtitleArea(0f, 0f, width, height)
-    if (resizeMode != RESIZE_MODE_FIT || videoAspectRatio == null || videoAspectRatio <= 0f || width <= 0f || height <= 0f) return whole
+    if (resizeMode == RESIZE_MODE_ZOOM_FILL || videoAspectRatio == null || videoAspectRatio <= 0f ||
+        width <= 0f || height <= 0f
+    ) {
+        return whole
+    }
     return if (videoAspectRatio > width / height) {
         val pictureHeight = width / videoAspectRatio
         SubtitleArea(0f, (height - pictureHeight) / 2f, width, pictureHeight)
@@ -32,4 +36,4 @@ internal fun subtitleArea(
     }
 }
 
-private const val RESIZE_MODE_FIT = 0
+private const val RESIZE_MODE_ZOOM_FILL = 1

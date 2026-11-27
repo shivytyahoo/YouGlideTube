@@ -30,7 +30,7 @@ import io.github.shivytyahoo.glidetube.player.subtitle.toRollingCaptionText
  * the whole player, so letterbox bars never separate the two.
  *
  * @param bottomPadding the gap, in dp, between the bottom of the picture and the lowest line.
- * @param resizeMode the player's mode: 0 fit, 1 fill, 2 zoom.
+ * @param resizeMode the player's mode: 0 fit, 1 zoom to fill, 2 two-x.
  */
 @Composable
 fun Media3SubtitleOverlay(
