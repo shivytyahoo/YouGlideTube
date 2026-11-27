@@ -89,6 +89,12 @@ fun GlideApp(
     val context = LocalContext.current
     val activity = context as? androidx.activity.ComponentActivity
     val navController = rememberNavController()
+    val forwardNavigation = remember(navController) { ForwardNavigation(navController) }
+    LaunchedEffect(navController) {
+        navController.currentBackStack.collect { entries ->
+            forwardNavigation.onBackStackChanged(entries.map { ForwardNavigation.reconstructRoute(it) })
+        }
+    }
     val snackbarHostState = remember { androidx.compose.material3.SnackbarHostState() }
 
     val playerViewModel: VideoPlayerViewModel = hiltViewModel(activity!!)
@@ -502,6 +508,7 @@ fun GlideApp(
                                     LocalEqualizerState provides equalizerViewModel.state,
                                     LocalFlowBottomInsets provides bottomInsets,
                                     LocalStatusBarHero provides statusBarHero,
+                                        LocalForwardNavigation provides forwardNavigation,
                                 ) {
                                     NavHost(
                                         navController = navController,

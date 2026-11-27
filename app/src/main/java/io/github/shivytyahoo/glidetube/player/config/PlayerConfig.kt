@@ -75,6 +75,32 @@ object PlayerConfig {
     /** Preferred delay from the true live edge. Keeps YouTube live playback stable. */
     const val LIVE_EDGE_GAP_MS = 10_000L
 
+    /**
+     * Live edge per the stream's latency class: an ultra-low stream is only a few seconds
+     * behind live, so holding the normal 10 s back would leave the viewer a segment behind
+     * the chat; a normal-latency stream needs the room. Unknown classes fall back to the
+     * normal values. The class arrives prefixed on some clients (MWEB_LATENCY_CLASS_LOW),
+     * so the match is on the suffix.
+     */
+    fun liveTargetOffsetMs(latencyClass: String?): Long =
+        when {
+            latencyClass?.endsWith("ULTRA_LOW") == true -> 3_000L
+            latencyClass?.endsWith("LOW") == true -> 5_000L
+            else -> 8_000L
+        }
+
+    /** Minimum live offset for [liveTargetOffsetMs]: the player may not creep closer than this. */
+    fun liveMinOffsetMs(latencyClass: String?): Long =
+        when {
+            latencyClass?.endsWith("ULTRA_LOW") == true -> 2_000L
+            latencyClass?.endsWith("LOW") == true -> 3_000L
+            else -> 5_000L
+        }
+
+    /** How far the player may speed up or slow down to hold the live edge. */
+    const val LIVE_MIN_PLAYBACK_SPEED = 0.97f
+    const val LIVE_MAX_PLAYBACK_SPEED = 1.03f
+
     /** Maximum DVR window requested for live streams where the manifest supports it. */
     const val LIVE_DVR_MAX_OFFSET_MS = 2 * 60 * 60 * 1000L
 

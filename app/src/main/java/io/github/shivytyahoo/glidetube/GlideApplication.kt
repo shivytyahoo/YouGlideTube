@@ -8,6 +8,7 @@ import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
 import dagger.hilt.android.HiltAndroidApp
+import io.github.shivytyahoo.glidetube.data.local.PersonProfiles
 import io.github.shivytyahoo.glidetube.data.local.PlayerPreferences
 import io.github.shivytyahoo.glidetube.data.repository.NewPipeDownloader
 import io.github.shivytyahoo.glidetube.data.repository.YouTubeRepository
@@ -18,10 +19,12 @@ import io.github.shivytyahoo.glidetube.notification.BackgroundCheckScheduler
 import io.github.shivytyahoo.glidetube.notification.NotificationHelper
 import io.github.shivytyahoo.glidetube.player.PlaybackShutdown
 import io.github.shivytyahoo.glidetube.player.SleepTimerManager
+import io.github.shivytyahoo.glidetube.player.stream.PlaybackPrefetcher
 import io.github.shivytyahoo.glidetube.ui.screens.home.HomeFeedLocaleReset
 import io.github.shivytyahoo.glidetube.utils.AppLanguageManager
 import io.github.shivytyahoo.glidetube.utils.GlideCrashHandler
 import io.github.shivytyahoo.glidetube.utils.PerformanceDispatcher
+import io.github.shivytyahoo.glidetube.utils.StartupSentinel
 import io.github.shivytyahoo.glidetube.utils.cipher.PipePipeNsigDecoder
 import io.github.shivytyahoo.glidetube.utils.contentRegion
 import io.github.shivytyahoo.glidetube.utils.contentYouTubeLocale
@@ -69,6 +72,9 @@ class GlideApplication :
     lateinit var visitorIdentityStore: VisitorIdentityStore
 
     @Inject
+    lateinit var youTubeRepository: YouTubeRepository
+
+    @Inject
     lateinit var accountCookieStore: AccountCookieStore
 
     @Inject
@@ -102,6 +108,9 @@ class GlideApplication :
 
     @OptIn(ExperimentalCoroutinesApi::class)
     override fun onCreate() {
+        // Before anything opens a settings store: finish or abandon a person switch that was
+        // interrupted by a crash or a kill, so no launch starts on a half-swapped set of stores.
+        PersonProfiles.recoverInterruptedSwap(this)
         super.onCreate()
         appContext = applicationContext
         purgeRemovedContentStores()
@@ -112,6 +121,10 @@ class GlideApplication :
 
         // Install crash handler for real-time monitoring
         GlideCrashHandler.install(this)
+
+        // The card warm-up's details side goes through the repository's watch-response cache,
+        // so a warmed description is the same request the player screen would have made.
+        PlaybackPrefetcher.bindDetailsWarmer { videoId -> youTubeRepository.watchNextResponse(videoId) }
 
         try {
             // Seeded from the device locale so the very first extraction is already localized; the
@@ -158,8 +171,10 @@ class GlideApplication :
         }
         SleepTimerManager.attachExitCallback { PlaybackShutdown.closeApp(this) }
 
-        val warmups = StartupWarmups(this)
-        warmups.startWithFirstActivity()
+        // Safe mode skips the network warm-ups: a launch that died during startup tries again
+        // without them, and the first clean launch turns them back on.
+        val warmups = if (StartupSentinel.isSafeMode(this)) null else StartupWarmups(this)
+        warmups?.startWithFirstActivity()
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             playerPreferences.proxyConfig
                 .distinctUntilChanged()
@@ -171,7 +186,7 @@ class GlideApplication :
                     }
                 }.collectLatest { (proxyConfig, vpnActive) ->
                     applyProxyConfig(proxyConfig, vpnActive)
-                    warmups.onProxyApplied()
+                    warmups?.onProxyApplied()
                 }
         }
 
@@ -186,7 +201,7 @@ class GlideApplication :
             } catch (e: Exception) {
                 Log.w(TAG, "visitorData restore error: ${e.message}")
             }
-            warmups.onIdentityRestored()
+            warmups?.onIdentityRestored()
         }
 
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {

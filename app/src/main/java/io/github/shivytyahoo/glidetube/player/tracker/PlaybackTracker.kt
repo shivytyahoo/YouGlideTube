@@ -23,6 +23,7 @@ class PlaybackTracker(
     private val onSmoothPlayback: () -> Unit,
     private val onBandwidthCheckNeeded: () -> Unit,
     private val onLivePlaybackTick: (ExoPlayer) -> Unit = {},
+    private val onNearEndTick: (Long, Long) -> Unit = { _, _ -> },
 ) {
     companion object {
         private const val TAG = "PlaybackTracker"
@@ -107,6 +108,12 @@ class PlaybackTracker(
             }
 
             onSponsorBlockTick(currentPos)
+
+            // The next video is resolved once, 20 s from the end, so advancing needs no
+            // network round trip. Live streams report an unset duration and never reach this.
+            if (player.isPlaying) {
+                onNearEndTick(currentPos, player.duration)
+            }
 
             // Smart stall detection
             if (player.playbackState == Player.STATE_BUFFERING) {

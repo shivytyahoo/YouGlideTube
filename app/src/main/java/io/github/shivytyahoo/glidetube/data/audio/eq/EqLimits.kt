@@ -15,6 +15,11 @@ object EqLimits {
     const val MAX_PREAMP = 24.0
     const val MAX_BANDS = 20
     const val MAX_BASS_BOOST = 15.0
+    const val MIN_STEREO_WIDTH = 0.0
+    const val MAX_STEREO_WIDTH = 200.0
+    const val NEUTRAL_STEREO_WIDTH = 100.0
+    const val MIN_BALANCE = -100.0
+    const val MAX_BALANCE = 100.0
     const val DEFAULT_PEAK_Q = 1.41
 
     /** Butterworth Q: the slope the old processor gave every shelf, whatever Q it was handed. */

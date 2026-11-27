@@ -92,6 +92,8 @@ internal fun ChannelContent(
     onUnsubscribeClick: () -> Unit,
     onNotificationChange: (Boolean) -> Unit,
     onTabSelected: (ChannelTabKind) -> Unit,
+    autoDownloadEnabled: Boolean? = null,
+    onAutoDownloadChange: ((Boolean) -> Unit)? = null,
     onSearchToggle: () -> Unit = {},
     onSearchQueryChange: (String) -> Unit = {},
     onCommunityPostComments: (CommunityPost) -> Unit,
@@ -429,6 +431,8 @@ internal fun ChannelContent(
                     onSubscribeClick = onSubscribeClick,
                     onUnsubscribeClick = onUnsubscribeClick,
                     onNotificationChange = onNotificationChange,
+                    autoDownloadEnabled = autoDownloadEnabled,
+                    onAutoDownloadChange = onAutoDownloadChange,
                 )
             }
 

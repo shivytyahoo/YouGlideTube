@@ -71,6 +71,16 @@ sealed class SabrEvent {
         val reloadToken: String? = null,
     ) : SabrEvent()
 
+    /**
+     * The first media segment started past the time the session asked for, so the player would
+     * sit on a gap: restart the session [restartFromMs] instead of playing through it. The
+     * orchestrator resets the byte pipes and re-issues the session from there.
+     */
+    data class RestartRequired(
+        val restartFromMs: Long,
+        val reason: String,
+    ) : SabrEvent()
+
     data class SeekDirective(
         val targetMs: Long,
     ) : SabrEvent()
@@ -90,6 +100,15 @@ class SabrStreamController(
         private const val READ_BUFFER_SIZE = 16384
         private const val MAX_MEDIALESS_RESPONSES = 3
         private const val NEAR_END_TOLERANCE_MS = 2_000L
+
+        // A first segment starting this far past the wanted time is a mis-start, not the next
+        // segment boundary: the server guessed the start late and the player would sit on a gap.
+        private const val MIS_START_TOLERANCE_MS = 5_000L
+
+        // The restart goes this far back first, then three times further on each retry.
+        private const val MIS_START_BACKOFF_SECONDS = 20L
+        private const val MIS_START_BACKOFF_MULTIPLIER = 3L
+        private const val MAX_MIS_START_RESTARTS = 3
 
         /**
          * Appends the GVS session query params the SABR server expects: `alr=yes` and `cpn` (content-playback nonce) are added
@@ -169,12 +188,21 @@ class SabrStreamController(
     @Volatile
     private var reloadPending = false
 
+    // The time the session asked the server to start from, and whether its first media segment
+    // has landed yet: only that first segment can tell a mis-start from the server simply
+    // serving the next boundary. A server seek restarts the same question at its target.
+    private var firstSegmentWantedMs: Long = -1
+    private var sawFirstMediaSegment = false
+    private var misStartRestarts = 0
+
     suspend fun startSession() {
         aborted = false
         sessionState.requestSequence = 0
         consecutiveMedialessResponses = 0
         attestationRetried = false
         sawMediaInResponse = false
+        firstSegmentWantedMs = sessionState.playheadPositionMs
+        sawFirstMediaSegment = false
         frameDecoder.reset()
 
         Log.d(
@@ -213,6 +241,8 @@ class SabrStreamController(
         reloadPending = false
         sawMediaInResponse = false
         attestationRetried = false
+        firstSegmentWantedMs = sessionState.playheadPositionMs
+        sawFirstMediaSegment = false
     }
 
     fun updatePlayheadPosition(positionMs: Long) {
@@ -489,6 +519,7 @@ class SabrStreamController(
         }
         // Only a new segment counts: a session that re-sends what it already sent is as wedged as an empty one.
         sawMediaInResponse = true
+        if (!header.isInitSegment) checkMisStart(header)
 
         val formatMeta = sessionState.formatMetadata[header.itag]
         val isAudio = formatMeta?.isAudio ?: (header.itag in KNOWN_AUDIO_ITAGS)
@@ -529,9 +560,50 @@ class SabrStreamController(
         _events.emit(SabrEvent.SegmentReady(segment))
     }
 
+    /**
+     * The first media segment is the only one that can tell a mis-start: it started after the
+     * time wanted because the server guessed the start late, so the player would sit on a gap.
+     * Restart the session that much earlier — 20 s back first, then three times further — and
+     * snap the restart to the format's index so it lands on a real segment boundary. The segment
+     * itself still plays on through: if the restart budget is spent, or the restart would not
+     * move the start any earlier, playback continues with what the server sent.
+     */
+    private suspend fun checkMisStart(header: MediaHeader) {
+        if (sawFirstMediaSegment || firstSegmentWantedMs < 0) return
+        sawFirstMediaSegment = true
+        val wantedMs = firstSegmentWantedMs
+        val startsMs = header.timeRangeStartMs
+        if (startsMs <= wantedMs + MIS_START_TOLERANCE_MS) return
+        if (misStartRestarts >= MAX_MIS_START_RESTARTS) {
+            Log.w(TAG, "Mis-start at ${startsMs}ms for wanted ${wantedMs}ms — restart budget spent")
+            return
+        }
+        var backSeconds = MIS_START_BACKOFF_SECONDS
+        repeat(misStartRestarts) { backSeconds *= MIS_START_BACKOFF_MULTIPLIER }
+        val index = sessionState.formatIndexes[header.itag]
+        val backedOffMs = wantedMs - backSeconds * 1000L
+        val restartFromMs = (index?.startAtOrBefore(backedOffMs) ?: backedOffMs).coerceAtLeast(0L)
+        if (restartFromMs >= wantedMs) {
+            Log.w(TAG, "Mis-start at ${startsMs}ms for wanted ${wantedMs}ms — no earlier start to restart from")
+            return
+        }
+        misStartRestarts++
+        Log.w(
+            TAG,
+            "Mis-start: first segment at ${startsMs}ms, wanted ${wantedMs}ms — " +
+                "restarting at ${restartFromMs}ms (attempt $misStartRestarts/$MAX_MIS_START_RESTARTS)",
+        )
+        _events.emit(SabrEvent.RestartRequired(restartFromMs, "First segment started at ${startsMs}ms, wanted ${wantedMs}ms"))
+    }
+
     private suspend fun handleFormatInit(frame: UmpFrame) {
         val metadata = FormatInitializationMetadata.decode(frame.payload)
         sessionState.storeFormatMetadata(metadata)
+        // The init data is the header piece, so it carries the format's index with it.
+        val itag = metadata.formatId?.itag
+        if (itag != null && metadata.initData.isNotEmpty()) {
+            SabrIndex.parse(metadata.initData)?.let { sessionState.storeFormatIndex(itag, it) }
+        }
 
         Log.d(
             TAG,
@@ -574,6 +646,8 @@ class SabrStreamController(
         val seek = SabrSeek.decode(frame.payload)
         Log.d(TAG, "SeekDirective: target=${seek.seekTargetMs}ms")
         sessionState.playheadPositionMs = seek.seekTargetMs
+        firstSegmentWantedMs = seek.seekTargetMs
+        sawFirstMediaSegment = false
         _events.emit(SabrEvent.SeekDirective(seek.seekTargetMs))
     }
 

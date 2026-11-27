@@ -11,6 +11,7 @@ import io.github.shivytyahoo.glidetube.data.local.PlayerPreferences
 import io.github.shivytyahoo.glidetube.data.model.Comment
 import io.github.shivytyahoo.glidetube.data.model.Video
 import io.github.shivytyahoo.glidetube.data.model.distinctByNonBlankKey
+import io.github.shivytyahoo.glidetube.data.video.ChannelAutoDownloadStore
 import io.github.shivytyahoo.glidetube.innertube.YouTube
 import io.github.shivytyahoo.glidetube.innertube.pages.channel.ChannelTabKind
 import io.github.shivytyahoo.glidetube.innertube.pages.renderer.CommunityPost
@@ -23,6 +24,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -37,6 +39,7 @@ class ChannelViewModel
         @ApplicationContext private val appContext: Context,
         private val playerPreferences: PlayerPreferences,
         private val accountSubscriptions: io.github.shivytyahoo.glidetube.data.account.AccountSubscriptions,
+        private val channelAutoDownloadStore: ChannelAutoDownloadStore,
     ) : ViewModel() {
         /** Which channels the user follows, so a featured-channel row can show its real state. */
         val subscribedChannelIds: StateFlow<Set<String>> =
@@ -59,6 +62,24 @@ class ChannelViewModel
 
         private val _uiState = MutableStateFlow(ChannelUiState())
         val uiState: StateFlow<ChannelUiState> = _uiState.asStateFlow()
+
+        /** Whether this channel is opted into "Save new videos". */
+        val autoDownloadEnabled: StateFlow<Boolean> =
+            combine(_uiState, channelAutoDownloadStore.optedIn) { state, opted ->
+                state.channelId
+                    ?.let { it in opted }
+                    ?: false
+            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(GROUPS_SUBSCRIPTION_TIMEOUT_MS), false)
+
+        fun setAutoDownload(enabled: Boolean) {
+            viewModelScope.launch {
+                val id = _uiState.value.channelId ?: return@launch
+                val header = _uiState.value.header
+                val title = header?.title.orEmpty()
+                channelAutoDownloadStore.setOptedIn(id, title, enabled)
+            }
+        }
+
         private val communityController = ChannelCommunityController(viewModelScope)
         private var requestedChannelUrl: String? = null
         internal val communityUiState: StateFlow<ChannelCommunityUiState> = communityController.state

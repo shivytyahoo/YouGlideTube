@@ -17,6 +17,7 @@ import io.github.shivytyahoo.glidetube.BuildConfig
 import io.github.shivytyahoo.glidetube.data.localmedia.MediaStoreThumbnailFetcher
 import io.github.shivytyahoo.glidetube.innertube.YouTube
 import io.github.shivytyahoo.glidetube.player.cache.PlayerCacheManager
+import io.github.shivytyahoo.glidetube.player.config.DeviceCapabilities
 import okhttp3.OkHttpClient
 import okio.Path.Companion.toOkioPath
 import javax.inject.Singleton
@@ -59,7 +60,7 @@ object AppModule {
                     .directory(context.cacheDir.resolve(IMAGE_CACHE_DIR).toOkioPath())
                     .apply { if (limit != null) maxSizeBytes(limit) else maxSizePercent(AUTOMATIC_DISK_SHARE) }
                     .build()
-            }.crossfade(true)
+            }.crossfade(!DeviceCapabilities.isWeakDevice(context))
             .apply { if (BuildConfig.DEBUG) logger(DebugLogger()) }
             .build()
 }

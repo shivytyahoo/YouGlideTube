@@ -63,6 +63,12 @@ data class EqState(
     val graphic: EqWorkingCopy = EqWorkingCopy(null, GraphicEq.flatCurve()),
     val autoPreamp: Boolean = true,
     val bassBoost: Double = 0.0,
+    /** Stereo width in percent: 100 is untouched, 0 is mono, 200 is twice as wide. */
+    val stereoWidth: Double = EqLimits.NEUTRAL_STEREO_WIDTH,
+    /** Balance in percent: 0 is centred, −100 is fully left, 100 is fully right. */
+    val balance: Double = 0.0,
+    /** Night mode: a gentle compressor that evens out loud and quiet parts. */
+    val nightMode: Boolean = false,
     val userPresets: List<EqPreset> = emptyList(),
 ) {
     val active: EqWorkingCopy
@@ -78,6 +84,9 @@ data class EqProcessingSpec(
     val enabled: Boolean,
     val preampDb: Double,
     val bands: List<EqBand>,
+    val widthPercent: Double = EqLimits.NEUTRAL_STEREO_WIDTH,
+    val balance: Double = 0.0,
+    val nightMode: Boolean = false,
 ) {
     companion object {
         val OFF = EqProcessingSpec(enabled = false, preampDb = 0.0, bands = emptyList())

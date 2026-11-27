@@ -1,10 +1,12 @@
 package io.github.shivytyahoo.glidetube.ui.components.layout.topbar
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -12,10 +14,16 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.shivytyahoo.glidetube.R
+import io.github.shivytyahoo.glidetube.ui.LocalForwardNavigation
+import kotlinx.coroutines.flow.MutableStateFlow
 
 /**
  * Which screens show the app-shell actions ([GlideGlobalActions]).
@@ -89,6 +97,19 @@ fun GlideTopBar(
             GlideGlobalActionsMode.Auto -> onBack == null
         }
 
+    val forwardNavigation = LocalForwardNavigation.current
+    val canGoForward by remember(forwardNavigation) {
+        forwardNavigation?.canGoForward ?: MutableStateFlow(false)
+    }.collectAsStateWithLifecycle()
+    val forwardButton: @Composable () -> Unit = {
+        IconButton(onClick = { forwardNavigation?.goForward() }) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                contentDescription = stringResource(R.string.btn_forward),
+            )
+        }
+    }
+
     TopAppBar(
         modifier = modifier,
         title = title,
@@ -99,12 +120,19 @@ fun GlideTopBar(
                 }
 
                 onBack != null -> {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.btn_back),
-                        )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = onBack) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = stringResource(R.string.btn_back),
+                            )
+                        }
+                        if (canGoForward) forwardButton()
                     }
+                }
+
+                canGoForward -> {
+                    forwardButton()
                 }
             }
         },

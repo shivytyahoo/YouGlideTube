@@ -13,6 +13,8 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import org.json.JSONArray
+import org.json.JSONObject
 import java.io.File
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.resume
@@ -184,14 +186,36 @@ function transformN(id, nValue) {
         CipherBridge.onCallError(id, error + "\n" + (error.stack || ""));
     }
 }
-function decipherSignature(id, sig) {
+function solveBatch(id, json) {
     try {
-        var result = window._cipherSigFunc(sig);
-        if (typeof result !== 'string' || result.length === 0) {
-            CipherBridge.onCallError(id, "Signature function returned " + typeof result);
-            return;
+        var req = JSON.parse(json);
+        var out = {n: {}, sig: {}};
+        var i, v, r;
+        if (req.n) {
+            for (i = 0; i < req.n.length; i++) {
+                v = req.n[i];
+                try {
+                    if (typeof window._nTransformFunc === 'function') {
+                        r = window._nTransformFunc(v);
+                    } else if (typeof window._nUrlTransformFunc === 'function') {
+                        r = runNUrlTransform(v);
+                    } else {
+                        continue;
+                    }
+                    if (typeof r === 'string' && r) out.n[v] = r;
+                } catch (e) {}
+            }
         }
-        CipherBridge.onCallResult(id, result);
+        if (req.sig) {
+            for (i = 0; i < req.sig.length; i++) {
+                v = req.sig[i];
+                try {
+                    r = window._cipherSigFunc(v);
+                    if (typeof r === 'string' && r) out.sig[v] = r;
+                } catch (e) {}
+            }
+        }
+        CipherBridge.onCallResult(id, JSON.stringify(out));
     } catch (error) {
         CipherBridge.onCallError(id, error + "\n" + (error.stack || ""));
     }
@@ -336,9 +360,33 @@ function discoverAndInit() {
         return call("transformN", nValue)
     }
 
-    suspend fun decipherSignature(signature: String): String {
-        if (!sigFunctionAvailable) throw CipherException("Signature function not discovered")
-        return call("decipherSignature", signature)
+    /**
+     * Every distinct challenge in one bridge round trip: the answers are keyed "n:<challenge>"
+     * and "sig:<challenge>". A challenge the script cannot answer is absent, never null, so
+     * the caller falls back per challenge instead of losing the whole batch.
+     */
+    suspend fun solveBatch(
+        nValues: List<String>,
+        signatures: List<String>,
+    ): Map<String, String> {
+        val payload = JSONObject()
+        payload.put("n", JSONArray(nValues.distinct()))
+        payload.put("sig", JSONArray(signatures.distinct()))
+        val request = payload.toString()
+        val raw = call("solveBatch", request)
+        val parsed = runCatching { JSONObject(raw) }.getOrNull() ?: return emptyMap()
+        val out = mutableMapOf<String, String>()
+        parsed.optJSONObject("n")?.let { n ->
+            for (key in n.keys()) {
+                n.optString(key).takeIf { it.isNotEmpty() }?.let { out["n:$key"] = it }
+            }
+        }
+        parsed.optJSONObject("sig")?.let { sig ->
+            for (key in sig.keys()) {
+                sig.optString(key).takeIf { it.isNotEmpty() }?.let { out["sig:$key"] = it }
+            }
+        }
+        return out
     }
 
     private suspend fun call(

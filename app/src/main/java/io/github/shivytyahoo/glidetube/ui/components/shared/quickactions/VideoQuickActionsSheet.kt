@@ -11,6 +11,7 @@ import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.PlaylistRemove
@@ -70,9 +71,10 @@ private enum class VideoMenuPage { Actions, Details, Collaborators, Save }
  * A video's menu. [title] and [thumbnailUrl] are what the card shows, so a DeArrow title stays the
  * same in the menu. [showChannel] is false where the screen already is the channel. A playlist that
  * can drop the video passes [onRemoveFromCollection] with its [removeFromCollectionLabel] and icon;
- * it is the last row of the Options group. [whyShown] says why a feed shows
- * the video, on the Details page. [onPlayNow] puts Play now first in the Playback group, for a video
- * that is not open yet, such as one shared to YouGlideTube.
+ * it is the last row of the Options group. [onSaveAsOneFile] is passed only by the Downloads
+ * screen, for a finished download the viewer wants as one file outside the library. [whyShown]
+ * says why a feed shows the video, on the Details page. [onPlayNow] puts Play now first in the
+ * Playback group, for a video that is not open yet, such as one shared to YouGlideTube.
  */
 @Composable
 fun VideoQuickActionsBottomSheet(
@@ -85,6 +87,7 @@ fun VideoQuickActionsBottomSheet(
     onRemoveFromCollection: (() -> Unit)? = null,
     removeFromCollectionLabel: String? = null,
     removeFromCollectionIcon: ImageVector = Icons.Outlined.PlaylistRemove,
+    onSaveAsOneFile: (() -> Unit)? = null,
     onPlayNow: (() -> Unit)? = null,
     viewModel: QuickActionsViewModel = sharedQuickActionsViewModel(),
 ) {
@@ -155,9 +158,16 @@ fun VideoQuickActionsBottomSheet(
                     } else {
                         null
                     }
+                val saveRow =
+                    onSaveAsOneFile?.let { save ->
+                        actionRow("save_one_file", Icons.Outlined.FileDownload, stringResource(R.string.save_as_one_file)) {
+                            save()
+                            close()
+                        }
+                    }
                 QuickActionsGroup(
                     title = stringResource(R.string.section_options),
-                    rows = moreRows(video, viewModel, close) { page = VideoMenuPage.Details } + listOfNotNull(removeRow),
+                    rows = moreRows(video, viewModel, close) { page = VideoMenuPage.Details } + listOfNotNull(saveRow, removeRow),
                 )
             }
         }

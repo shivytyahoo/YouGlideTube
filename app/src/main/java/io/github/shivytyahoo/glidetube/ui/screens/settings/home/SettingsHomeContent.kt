@@ -82,7 +82,9 @@ group(key = "home.account", header = R.string.account_title) {
     }
     group(key = "home.data", header = R.string.settings_group_data) {
         page(SettingsDestination.DOWNLOADS)
+        page(SettingsDestination.BACKUP)
         page(SettingsDestination.HISTORY)
+        page(SettingsDestination.PROFILES)
     }
     group(key = "home.engine", header = R.string.settings_glide_engine_header) {
         row(HomeIndex.deepGlide.key) { shape ->

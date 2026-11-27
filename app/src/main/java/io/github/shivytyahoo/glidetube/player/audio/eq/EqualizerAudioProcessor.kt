@@ -5,9 +5,12 @@ import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.audio.BaseAudioProcessor
 import androidx.media3.common.util.UnstableApi
 import io.github.shivytyahoo.glidetube.data.audio.eq.EqFilterMath
+import io.github.shivytyahoo.glidetube.data.audio.eq.EqLimits
 import io.github.shivytyahoo.glidetube.data.audio.eq.EqProcessingSpec
 import java.nio.ByteBuffer
 import kotlin.math.abs
+import kotlin.math.exp
+import kotlin.math.log10
 import kotlin.math.pow
 import kotlin.math.tanh
 
@@ -40,6 +43,27 @@ class EqualizerAudioProcessor : BaseAudioProcessor() {
     private var idleAfterRamp = false
     private var processing = false
 
+    // Stereo stage: width (mid/side) and balance (per-channel gains) glide to their targets over
+    // the same ramp as the filters, so a dragged slider never clicks; night mode is a compressor
+    // whose own attack/release smooths it. The stage is skipped entirely at neutral settings.
+    private var frameSamples = DoubleArray(0)
+    private var spatialActive = false
+    private var widthCurrent = 1.0
+    private var widthTarget = 1.0
+    private var widthStep = 0.0
+    private var balanceLeftCurrent = 1.0
+    private var balanceLeftTarget = 1.0
+    private var balanceLeftStep = 0.0
+    private var balanceRightCurrent = 1.0
+    private var balanceRightTarget = 1.0
+    private var balanceRightStep = 0.0
+    private var spatialGlideFramesLeft = 0
+    private var nightOn = false
+    private var compEnvelope = 0.0
+    private var compGain = 1.0
+    private var attackCoef = 0.0
+    private var releaseCoef = 0.0
+
     fun setSpec(spec: EqProcessingSpec) {
         pendingSpec = spec
     }
@@ -58,8 +82,17 @@ class EqualizerAudioProcessor : BaseAudioProcessor() {
             channelCount = format.channelCount
             encoding = format.encoding
             appliedSpec = null
+            attackCoef = 1.0 - exp(-1.0 / (sampleRate.coerceAtLeast(1) * NIGHT_ATTACK_SECONDS))
+            releaseCoef = 1.0 - exp(-1.0 / (sampleRate.coerceAtLeast(1) * NIGHT_RELEASE_SECONDS))
         }
         sections.forEach { it.clearHistory() }
+        // A seek restarts the sound from silence: snap the stereo glide and the compressor there.
+        widthCurrent = widthTarget
+        balanceLeftCurrent = balanceLeftTarget
+        balanceRightCurrent = balanceRightTarget
+        spatialGlideFramesLeft = 0
+        compEnvelope = 0.0
+        compGain = 1.0
     }
 
     override fun onReset() {
@@ -71,6 +104,18 @@ class EqualizerAudioProcessor : BaseAudioProcessor() {
         rampFramesLeft = 0
         idleAfterRamp = false
         processing = false
+        frameSamples = DoubleArray(0)
+        spatialActive = false
+        widthCurrent = 1.0
+        widthTarget = 1.0
+        balanceLeftCurrent = 1.0
+        balanceLeftTarget = 1.0
+        balanceRightCurrent = 1.0
+        balanceRightTarget = 1.0
+        spatialGlideFramesLeft = 0
+        nightOn = false
+        compEnvelope = 0.0
+        compGain = 1.0
     }
 
     override fun queueInput(inputBuffer: ByteBuffer) {
@@ -91,9 +136,12 @@ class EqualizerAudioProcessor : BaseAudioProcessor() {
         if (spec === appliedSpec || sampleRate <= 0 || channelCount <= 0) return
         val firstDesign = appliedSpec == null
         appliedSpec = spec
+        if (frameSamples.size != channelCount) frameSamples = DoubleArray(channelCount)
 
         val bands = if (spec.enabled) spec.bands.filterNot { EqFilterMath.isBypassed(it, sampleRate) } else emptyList()
         val newGain = if (spec.enabled) 10.0.pow(spec.preampDb / 20.0) else 1.0
+        updateSpatialTargets(spec, firstDesign)
+
         val design = DoubleArray(bands.size * EqFilterMath.COEFFICIENTS_PER_SECTION)
         bands.forEachIndexed { index, band ->
             EqFilterMath.design(band, sampleRate, design, index * EqFilterMath.COEFFICIENTS_PER_SECTION)
@@ -103,7 +151,7 @@ class EqualizerAudioProcessor : BaseAudioProcessor() {
             firstDesign || (!processing && bands.isEmpty()) -> {
                 install(design)
                 gain = newGain
-                processing = bands.isNotEmpty() || newGain != 1.0
+                processing = bands.isNotEmpty() || newGain != 1.0 || spatialActive
             }
 
             bands.size == sections.size -> {
@@ -125,6 +173,52 @@ class EqualizerAudioProcessor : BaseAudioProcessor() {
                 gain = newGain
                 processing = true
             }
+        }
+    }
+
+    /**
+     * The stereo stage's targets from [spec]. Width and balance glide there over the ramp; night
+     * mode's own attack/release does its smoothing. The stage stays live while the compressor is
+     * still recovering to unity after night mode turns off, so that switch-off never clicks either.
+     */
+    private fun updateSpatialTargets(
+        spec: EqProcessingSpec,
+        snap: Boolean,
+    ) {
+        val width = if (spec.enabled) (spec.widthPercent / EqLimits.NEUTRAL_STEREO_WIDTH).coerceIn(0.0, 2.0) else 1.0
+        val balance = if (spec.enabled) spec.balance.coerceIn(EqLimits.MIN_BALANCE, EqLimits.MAX_BALANCE) else 0.0
+        val left = if (balance > 0) 1.0 - balance / EqLimits.MAX_BALANCE else 1.0
+        val right = if (balance < 0) 1.0 + balance / EqLimits.MAX_BALANCE else 1.0
+        nightOn = spec.enabled && spec.nightMode
+        val offNeutral = spec.widthPercent != EqLimits.NEUTRAL_STEREO_WIDTH || spec.balance != 0.0 || spec.nightMode
+        spatialActive = (spec.enabled && offNeutral) || compGain != 1.0
+        if (snap) {
+            widthCurrent = width
+            balanceLeftCurrent = left
+            balanceRightCurrent = right
+            spatialGlideFramesLeft = 0
+        } else if (width != widthTarget || left != balanceLeftTarget || right != balanceRightTarget) {
+            val frames = (sampleRate * RAMP_SECONDS).toInt().coerceAtLeast(1)
+            widthStep = (width - widthCurrent) / frames
+            balanceLeftStep = (left - balanceLeftCurrent) / frames
+            balanceRightStep = (right - balanceRightCurrent) / frames
+            spatialGlideFramesLeft = frames
+        }
+        widthTarget = width
+        balanceLeftTarget = left
+        balanceRightTarget = right
+    }
+
+    private fun stepSpatialGlide() {
+        spatialGlideFramesLeft--
+        if (spatialGlideFramesLeft == 0) {
+            widthCurrent = widthTarget
+            balanceLeftCurrent = balanceLeftTarget
+            balanceRightCurrent = balanceRightTarget
+        } else {
+            widthCurrent += widthStep
+            balanceLeftCurrent += balanceLeftStep
+            balanceRightCurrent += balanceRightStep
         }
     }
 
@@ -170,7 +264,7 @@ class EqualizerAudioProcessor : BaseAudioProcessor() {
             if (idleAfterRamp) {
                 idleAfterRamp = false
                 sections = emptyArray()
-                processing = gain != 1.0
+                processing = gain != 1.0 || spatialActive
             }
         } else {
             sections.forEach { it.stepRamp() }
@@ -184,15 +278,19 @@ class EqualizerAudioProcessor : BaseAudioProcessor() {
     ) {
         val channels = channelCount
         val frames = input.remaining() / (2 * channels)
+        val samples = frameSamples
         for (i in 0 until frames) {
             if (rampFramesLeft > 0) stepRamp()
+            if (spatialGlideFramesLeft > 0) stepSpatialGlide()
             val stages = sections
             val g = gain
             for (channel in 0 until channels) {
                 var x = input.getShort() / SHORT_SCALE
                 for (stage in stages) x = stage.process(x, channel)
-                output.putShort(toShort(softClip(x * g)))
+                samples[channel] = x * g
             }
+            applySpatial(samples, channels)
+            for (channel in 0 until channels) output.putShort(toShort(softClip(samples[channel])))
         }
     }
 
@@ -202,21 +300,77 @@ class EqualizerAudioProcessor : BaseAudioProcessor() {
     ) {
         val channels = channelCount
         val frames = input.remaining() / (4 * channels)
+        val samples = frameSamples
         for (i in 0 until frames) {
             if (rampFramesLeft > 0) stepRamp()
+            if (spatialGlideFramesLeft > 0) stepSpatialGlide()
             val stages = sections
             val g = gain
             for (channel in 0 until channels) {
                 var x = input.getFloat().toDouble()
                 for (stage in stages) x = stage.process(x, channel)
-                output.putFloat(softClip(x * g).toFloat())
+                samples[channel] = x * g
             }
+            applySpatial(samples, channels)
+            for (channel in 0 until channels) output.putFloat(softClip(samples[channel]).toFloat())
         }
+    }
+
+    /**
+     * Stereo width (mid/side), balance (per-channel gains) and night mode (compressor) on one
+     * frame, after the filters and preamp. Mono hears only the compressor; surround keeps its
+     * extra channels untouched. At neutral settings this is skipped outright by [spatialActive].
+     */
+    private fun applySpatial(
+        samples: DoubleArray,
+        channels: Int,
+    ) {
+        if (!spatialActive) return
+        if (channels >= 2) {
+            val mid = (samples[0] + samples[1]) / 2.0
+            val side = (samples[0] - samples[1]) / 2.0 * widthCurrent
+            samples[0] = (mid + side) * balanceLeftCurrent
+            samples[1] = (mid - side) * balanceRightCurrent
+        }
+        val level =
+            if (channels >= 2) maxOf(abs(samples[0]), abs(samples[1])) else abs(samples[0])
+        val envelopeCoef = if (level > compEnvelope) attackCoef else releaseCoef
+        compEnvelope += (level - compEnvelope) * envelopeCoef
+        val target =
+            if (nightOn) {
+                compressorTargetGain(compEnvelope)
+            } else {
+                1.0
+            }
+        val gainCoef = if (target < compGain) attackCoef else releaseCoef
+        compGain += (target - compGain) * gainCoef
+        if (abs(compGain - 1.0) < COMP_GAIN_EPSILON) compGain = 1.0
+        if (compGain != 1.0) {
+            for (channel in 0 until channels) samples[channel] *= compGain
+        }
+    }
+
+    /** Night mode's static curve: unity below the threshold, 4:1 above it, plus 7 dB make-up. */
+    private fun compressorTargetGain(envelope: Double): Double {
+        if (envelope <= 0.0) return NIGHT_MAKEUP_GAIN
+        val envelopeDb = 20.0 * log10(envelope)
+        if (envelopeDb <= NIGHT_THRESHOLD_DB) return NIGHT_MAKEUP_GAIN
+        val reductionDb = -(1.0 - 1.0 / NIGHT_RATIO) * (envelopeDb - NIGHT_THRESHOLD_DB)
+        return 10.0.pow((reductionDb + NIGHT_MAKEUP_DB) / 20.0)
     }
 
     private companion object {
         const val RAMP_SECONDS = 0.02
         const val SHORT_SCALE = 32768.0
+
+        /** Night mode: a 5 ms attack so loud peaks are caught, a 250 ms release so it breathes. */
+        const val NIGHT_ATTACK_SECONDS = 0.005
+        const val NIGHT_RELEASE_SECONDS = 0.25
+        const val NIGHT_THRESHOLD_DB = -28.0
+        const val NIGHT_RATIO = 4.0
+        const val NIGHT_MAKEUP_DB = 7.0
+        val NIGHT_MAKEUP_GAIN = 10.0.pow(NIGHT_MAKEUP_DB / 20.0)
+        const val COMP_GAIN_EPSILON = 0.001
 
         /** About −0.45 dBFS: below it samples pass untouched; above it they bend towards full scale instead of clipping. */
         const val KNEE = 0.95

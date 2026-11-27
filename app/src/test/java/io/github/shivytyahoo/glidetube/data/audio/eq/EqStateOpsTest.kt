@@ -208,4 +208,26 @@ class EqStateOpsTest {
     fun `fitting flat gives flat and never writes a negative zero`() {
         assertThat(GraphicEq.fit(EqCurve())).isEqualTo(GraphicEq.flatCurve())
     }
+
+    @Test
+    fun `width, balance and night mode reach the processing spec and change the sound`() {
+        val state = EqState().withStereoWidth(150.0).withBalance(-40.0).withNightMode(true)
+
+        assertThat(state.changesSound).isTrue()
+        val spec = state.processingSpec(bypass = false)
+        assertThat(spec.widthPercent).isWithin(0.001).of(150.0)
+        assertThat(spec.balance).isWithin(0.001).of(-40.0)
+        assertThat(spec.nightMode).isTrue()
+    }
+
+    @Test
+    fun `width and balance clamp to their ranges when sanitised`() {
+        val state = EqState(stereoWidth = 400.0, balance = -250.0).sanitized()
+
+        assertThat(state.stereoWidth).isWithin(0.001).of(EqLimits.MAX_STEREO_WIDTH)
+        assertThat(state.balance).isWithin(0.001).of(EqLimits.MIN_BALANCE)
+        assertThat(EqState().withStereoWidth(Double.NaN).stereoWidth)
+            .isWithin(0.001)
+            .of(EqLimits.NEUTRAL_STEREO_WIDTH)
+    }
 }

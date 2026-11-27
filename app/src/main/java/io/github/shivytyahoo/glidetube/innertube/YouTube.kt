@@ -141,6 +141,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonDecodingException
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -3065,9 +3066,25 @@ object YouTube {
         localeOverride: YouTubeLocale? = null,
         apiUrl: String? = null,
     ): Result<PlayerResponse> =
-        runCatching {
+        playerResponse {
             innerTube.player(client, videoId, playlistId, signatureTimestamp, poToken, localeOverride, apiUrl).body<PlayerResponse>()
         }
+
+    /**
+     * Re-asks once when the response body is cut short: a truncated player response fails to
+     * decode at the end of the input, and the retry usually comes back whole. Any other failure
+     * is returned as-is — retrying a real decode error only repeats it.
+     */
+    private suspend fun playerResponse(block: suspend () -> PlayerResponse): Result<PlayerResponse> {
+        val first = runCatching { block() }
+        if (first.isSuccess) return first
+        val message = (first.exceptionOrNull() as? JsonDecodingException)?.message.orEmpty()
+        val truncated =
+            message.contains("end of input", ignoreCase = true) ||
+                message.contains("EOF", ignoreCase = true)
+        if (!truncated) return first
+        return runCatching { block() }
+    }
 
     suspend fun playerWeb(
         videoId: String,
@@ -3080,7 +3097,7 @@ object YouTube {
         client: YouTubeClient = YouTubeClient.WEB,
         withAuth: Boolean = false,
     ): Result<PlayerResponse> =
-        runCatching {
+        playerResponse {
             innerTube
                 .playerWeb(
                     videoId,

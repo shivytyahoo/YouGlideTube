@@ -13,6 +13,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlin.math.log10
+import kotlin.math.pow
 
 /**
  * Manages audio-related features like skip silence and playback speed.
@@ -56,12 +57,19 @@ class AudioFeaturesManager(
     private var stableVolumeGainMb: Int = 0
     private var boostGainMb: Int = 0
 
+    // The user's volume slider and the per-video loudness attenuation compose on the player
+    // volume: the attenuation is <= 0 dB, so it can never push the volume above the slider.
+    // LoudnessEnhancer cannot carry it — its target gain is boost-only.
+    private var userVolume: Float = 1f
+    private var perVideoGainDb: Float? = null
+
     /**
      * Set the player reference. Must be called after ExoPlayer is created.
      * Applies any pending skip-silence state that was set before the player was ready.
      */
     fun setPlayer(player: ExoPlayer) {
         this.playerRef = player
+        applyVolume(player)
         if (desiredPlaybackSpeed != 1.0f) {
             player.setPlaybackParameters(PlaybackParameters(desiredPlaybackSpeed))
             // Published as well as applied. Releasing the player resets the state flow to its
@@ -98,7 +106,23 @@ class AudioFeaturesManager(
     fun clearPlayer() {
         loudnessEnhancer?.release()
         loudnessEnhancer = null
+        perVideoGainDb = null
         playerRef = null
+    }
+
+    /**
+     * The per-video loudness attenuation (<= 0 dB) from the player response. Null for local
+     * files, which carry no loudness figure. Applies on top of the user's volume, so a
+     * loud video plays quieter without moving the slider.
+     */
+    fun setPerVideoLoudnessGainDb(gainDb: Float?) {
+        perVideoGainDb = gainDb
+        playerRef?.let { applyVolume(it) }
+    }
+
+    private fun applyVolume(player: ExoPlayer) {
+        val scale = perVideoGainDb?.let { 10f.pow(it / 20f) } ?: 1f
+        player.volume = userVolume.coerceIn(0f, 1f) * scale
     }
 
     /**
@@ -162,7 +186,8 @@ class AudioFeaturesManager(
         volume: Float,
     ) {
         val exoPlayer = player ?: return
-        exoPlayer.volume = volume.coerceIn(0f, 1f)
+        userVolume = volume
+        applyVolume(exoPlayer)
         boostGainMb = boostGainMillibels(volume)
         applyLoudnessGain(exoPlayer)
         Log.d(TAG, "Volume set to: $volume (player=${exoPlayer.volume}, boost=${boostGainMb}mB)")

@@ -107,6 +107,7 @@ fun DownloadsScreen(
         }
     }
     LaunchedEffect(viewModel) { viewModel.recovered.collect { snackbarHostState.showSnackbar(recoveredMessage(it)) } }
+    LaunchedEffect(viewModel) { viewModel.exported.collect { snackbarHostState.showSnackbar(it) } }
     val deletePrompt = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { }
     LaunchedEffect(viewModel) { viewModel.deleteConsent.collect { deletePrompt.launch(IntentSenderRequest.Builder(it).build()) } }
     var selectedKind by rememberSaveable { mutableStateOf(MediaKind.Videos) }
@@ -247,6 +248,7 @@ fun DownloadsScreen(
                                 onRefresh = viewModel::rescan,
                                 onVideoClick = onVideoClick,
                                 onDelete = { id, title -> pendingDeletion = PendingDeletion(setOf(id), title) },
+                                onSaveAsOneFile = viewModel::exportSingleFile,
                                 onHomeClick = onHomeClick,
                             )
                         }

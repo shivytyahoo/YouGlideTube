@@ -306,6 +306,9 @@ object VideoCodecUtils {
             "av1" to "video/av01",
         )
 
+    /** The Media3 mime type for a codec key, or null when the key is not one the app knows. */
+    fun mimeTypeForCodecKey(codecKey: String): String? = MIME_TYPE_BY_CODEC_KEY[codecKey]
+
     @JvmOverloads
     fun preferredVideoMimeTypes(preferredCodecKey: String? = null): Array<String> {
         val preferred =

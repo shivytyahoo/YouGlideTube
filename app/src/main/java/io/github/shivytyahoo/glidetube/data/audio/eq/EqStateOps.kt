@@ -42,6 +42,9 @@ val EqState.changesSound: Boolean
         enabled &&
             (
                 bassBoost > 0.0 ||
+                    stereoWidth != EqLimits.NEUTRAL_STEREO_WIDTH ||
+                    balance != 0.0 ||
+                    nightMode ||
                     active.curve.bands.any { !EqFilterMath.isBypassed(it, EqFilterMath.REFERENCE_SAMPLE_RATE) } ||
                     (!autoPreamp && active.curve.preamp != 0.0)
             )
@@ -137,6 +140,16 @@ fun EqState.importPreset(
 
 fun EqState.withBassBoost(db: Double): EqState = copy(bassBoost = db.coerceIn(0.0, EqLimits.MAX_BASS_BOOST))
 
+fun EqState.withStereoWidth(percent: Double): EqState {
+    val sanitized = if (percent.isFinite()) percent else EqLimits.NEUTRAL_STEREO_WIDTH
+    return copy(stereoWidth = sanitized.coerceIn(EqLimits.MIN_STEREO_WIDTH, EqLimits.MAX_STEREO_WIDTH))
+}
+
+fun EqState.withBalance(percent: Double): EqState =
+    copy(balance = percent.takeIf { it.isFinite() }?.coerceIn(EqLimits.MIN_BALANCE, EqLimits.MAX_BALANCE) ?: 0.0)
+
+fun EqState.withNightMode(enabled: Boolean): EqState = copy(nightMode = enabled)
+
 fun EqState.withManualPreamp(db: Double): EqState = withActiveCurve(active.curve.copy(preamp = db))
 
 fun EqState.withBand(
@@ -201,7 +214,14 @@ fun EqState.processingSpec(
             }
         }
     val preamp = if (autoPreamp) EqFilterMath.autoPreampDb(bands) else curve.preamp
-    return EqProcessingSpec(enabled = true, preampDb = preamp, bands = bands)
+    return EqProcessingSpec(
+        enabled = true,
+        preampDb = preamp,
+        bands = bands,
+        widthPercent = stereoWidth,
+        balance = balance,
+        nightMode = nightMode,
+    )
 }
 
 /** Clamps every value and repairs anything a hand-edited backup or an old version could hold. */
@@ -210,6 +230,10 @@ fun EqState.sanitized(): EqState =
         parametric = parametric.copy(curve = parametric.curve.sanitized()),
         graphic = graphic.copy(curve = sanitizedFor(EqMode.GRAPHIC, graphic.curve)),
         bassBoost = bassBoost.takeIf { it.isFinite() }?.coerceIn(0.0, EqLimits.MAX_BASS_BOOST) ?: 0.0,
+        stereoWidth =
+            stereoWidth.takeIf { it.isFinite() }?.coerceIn(EqLimits.MIN_STEREO_WIDTH, EqLimits.MAX_STEREO_WIDTH)
+                ?: EqLimits.NEUTRAL_STEREO_WIDTH,
+        balance = balance.takeIf { it.isFinite() }?.coerceIn(EqLimits.MIN_BALANCE, EqLimits.MAX_BALANCE) ?: 0.0,
         userPresets =
             userPresets
                 .filter { it.id.isNotBlank() && it.name.isNotBlank() }

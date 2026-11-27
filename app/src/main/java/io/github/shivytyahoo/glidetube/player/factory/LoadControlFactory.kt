@@ -64,10 +64,15 @@ object LoadControlFactory {
                 isLowMemoryDevice -> PlayerConfig.LOW_MEMORY_MAX_SAFE_MAIN_BUFFER_MS
                 else -> PlayerConfig.MAX_SAFE_MAIN_BUFFER_MS
             }
+        // The long buffer's 400 MB budget is a wish, not a promise: on a device whose heap is
+        // smaller than three times the budget, a full buffer is an OOM, so the long-buffer
+        // budget is capped at a third of the heap. The normal 144 MB budget is untouched.
+        val heapThirdBytes =
+            minOf(Runtime.getRuntime().maxMemory() / 3, Int.MAX_VALUE.toLong()).toInt()
         val targetBufferBytes =
             when {
-                longBufferActive && isTv -> PlayerConfig.LONG_BUFFER_TARGET_BUFFER_BYTES_TV
-                longBufferActive -> PlayerConfig.LONG_BUFFER_TARGET_BUFFER_BYTES
+                longBufferActive && isTv -> minOf(PlayerConfig.LONG_BUFFER_TARGET_BUFFER_BYTES_TV, heapThirdBytes)
+                longBufferActive -> minOf(PlayerConfig.LONG_BUFFER_TARGET_BUFFER_BYTES, heapThirdBytes)
                 isLowMemoryDevice -> PlayerConfig.LOW_MEMORY_MAIN_TARGET_BUFFER_BYTES
                 isConstrainedHeap -> PlayerConfig.MID_MEMORY_MAIN_TARGET_BUFFER_BYTES
                 else -> PlayerConfig.MAIN_TARGET_BUFFER_BYTES

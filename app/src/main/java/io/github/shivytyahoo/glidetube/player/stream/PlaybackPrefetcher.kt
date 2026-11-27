@@ -11,7 +11,8 @@ import kotlinx.coroutines.launch
 /**
  * Starts stream extraction the moment a video is tapped — or long-pressed on its card, which
  * opens the quick actions and may lead straight into playback — ahead of the player screen
- * composing and the ViewModel running its load.
+ * composing and the ViewModel running its load. A press held still for 90 ms warms the same way,
+ * so dwelling on a card while scrolling pays the extraction cost before the tap lands.
  *
  * This buys latency without buying network: the player's load path calls
  * [InnerTubeVideoStreamExtractor.extract] with the same arguments, so [InFlightRequestCoalescer]
@@ -29,6 +30,21 @@ object PlaybackPrefetcher {
 
     private var inFlight: Job? = null
     private var inFlightVideoId: String? = null
+
+    /**
+     * Warms the watch response (description, chapters, related) the player screen reads through
+     * the repository's cache. Bound once from the Application, so this object stays free of the
+     * repository; unbound it is a no-op and only stream extraction warms.
+     */
+    @Volatile
+    private var detailsWarmer: (suspend (String) -> Unit)? = null
+
+    fun bindDetailsWarmer(warmer: suspend (String) -> Unit) {
+        detailsWarmer = warmer
+    }
+
+    private var detailsInFlight: Job? = null
+    private var detailsInFlightVideoId: String? = null
 
     /**
      * Warms extraction for [videoId]. Safe to call from the main thread; returns immediately.
@@ -53,6 +69,26 @@ object PlaybackPrefetcher {
                 scope.launch {
                     runCatching { InnerTubeVideoStreamExtractor.extract(videoId, skipSabrUpgrade = true) }
                         .onFailure { Log.d(TAG, "prefetch for $videoId ended: ${it.javaClass.simpleName}") }
+                }
+        }
+    }
+
+    /**
+     * Warms the watch response for [videoId] through the repository, so the description,
+     * chapters and related list the player screen fetches join this request instead of opening
+     * their own. Same most-recent-only rule as [prefetch]: a newer card replaces the old warm.
+     */
+    fun prefetchDetails(videoId: String) {
+        val warmer = detailsWarmer ?: return
+        if (videoId.isBlank() || LocalMediaIds.isLocal(videoId)) return
+        synchronized(lock) {
+            if (detailsInFlightVideoId == videoId && detailsInFlight?.isActive == true) return
+            detailsInFlight?.cancel()
+            detailsInFlightVideoId = videoId
+            detailsInFlight =
+                scope.launch {
+                    runCatching { warmer(videoId) }
+                        .onFailure { Log.d(TAG, "details prefetch for $videoId ended: ${it.javaClass.simpleName}") }
                 }
         }
     }

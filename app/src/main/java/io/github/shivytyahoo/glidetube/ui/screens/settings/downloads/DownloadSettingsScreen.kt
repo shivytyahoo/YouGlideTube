@@ -28,6 +28,7 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -55,6 +56,7 @@ import io.github.shivytyahoo.glidetube.data.local.VideoCodec
 import io.github.shivytyahoo.glidetube.data.repository.MediaCacheType
 import io.github.shivytyahoo.glidetube.data.video.downloader.work.RetagStatus
 import io.github.shivytyahoo.glidetube.data.video.storage.DownloadFiles
+import io.github.shivytyahoo.glidetube.data.video.storage.DownloadFolderMover
 import io.github.shivytyahoo.glidetube.data.video.storage.DownloadLocation
 import io.github.shivytyahoo.glidetube.data.video.storage.StorageAccess
 import io.github.shivytyahoo.glidetube.ui.components.settings.SettingsDestination
@@ -66,8 +68,10 @@ import io.github.shivytyahoo.glidetube.ui.components.settings.nav
 import io.github.shivytyahoo.glidetube.ui.components.settings.slider
 import io.github.shivytyahoo.glidetube.ui.components.settings.switch
 import io.github.shivytyahoo.glidetube.ui.components.settings.toggleGroup
+import io.github.shivytyahoo.glidetube.ui.components.shared.GlideAlertDialog
 import io.github.shivytyahoo.glidetube.ui.components.shared.GlideChoice
 import io.github.shivytyahoo.glidetube.ui.components.shared.GlideChoiceDialog
+import io.github.shivytyahoo.glidetube.ui.components.shared.GlideSwitchRow
 import io.github.shivytyahoo.glidetube.ui.components.shared.GlideToggleOption
 import io.github.shivytyahoo.glidetube.ui.screens.settings.index.DestinationIndex
 import io.github.shivytyahoo.glidetube.ui.screens.settings.index.DownloadsIndex
@@ -104,9 +108,12 @@ internal fun DownloadSettingsScreen(
     val threads by viewModel.threads.collectAsStateWithLifecycle()
     val concurrentDownloads by viewModel.concurrentDownloads.collectAsStateWithLifecycle()
     val autoDownloadOpened by viewModel.autoDownloadOpened.collectAsStateWithLifecycle()
+    val autoDownloadChannels by viewModel.autoDownloadChannels.collectAsStateWithLifecycle()
 
     var picker by rememberSaveable { mutableStateOf<DownloadPicker?>(null) }
     var locationTarget by rememberSaveable { mutableStateOf<DownloadTarget?>(null) }
+    var moveTarget by rememberSaveable { mutableStateOf<DownloadTarget?>(null) }
+    var moveOutcome by remember { mutableStateOf<MoveFolderOutcome?>(null) }
     var cacheLimit by rememberSaveable { mutableStateOf<MediaCacheType?>(null) }
     LaunchedEffect(Unit) { cacheViewModel.measure() }
     var access by remember { mutableStateOf(StorageAccess.read(context)) }
@@ -118,6 +125,19 @@ internal fun DownloadSettingsScreen(
 
     val folderPicker =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
+            val move = moveTarget
+            if (uri != null && move != null) {
+                runCatching {
+                    context.contentResolver.takePersistableUriPermission(
+                        uri,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+                    )
+                }
+                val tree = uri.toString()
+                viewModel.moveFolder(move, DownloadLocation(path = DownloadFiles.treePath(tree), treeUri = tree))
+                moveTarget = null
+                return@rememberLauncherForActivityResult
+            }
             val target = locationTarget
             if (uri != null && target != null) {
                 runCatching {
@@ -174,7 +194,28 @@ internal fun DownloadSettingsScreen(
             nav(DownloadsIndex.musicLocation, value = musicPath, icon = Icons.Outlined.AudioFile, showChevron = false, onClick = {
                 locationTarget = DownloadTarget.MUSIC
             })
+            nav(DownloadsIndex.moveVideoFolder, icon = Icons.Outlined.Folder, onClick = { moveTarget = DownloadTarget.VIDEO })
+            nav(DownloadsIndex.moveMusicFolder, icon = Icons.Outlined.Folder, onClick = { moveTarget = DownloadTarget.MUSIC })
             row(DownloadsIndex.usage.key) { shape -> StorageUsageRow(usage, storage?.usedFraction, shape) }
+        }
+        group(key = "downloads.channels", header = R.string.settings_auto_download_channels_title) {
+            if (autoDownloadChannels.isEmpty()) {
+                info(
+                    DownloadsIndex.autoDownloadChannels,
+                    value = stringResource(R.string.settings_auto_download_channels_empty),
+                )
+            } else {
+                autoDownloadChannels.forEach { channel ->
+                    row("downloads.channel_${channel.channelId}") { shape ->
+                        GlideSwitchRow(
+                            title = channel.name,
+                            checked = true,
+                            onCheckedChange = { viewModel.setChannelAutoDownload(channel.channelId, channel.name, it) },
+                            shape = shape,
+                        )
+                    }
+                }
+            }
         }
         downloadCacheSection(cacheViewModel, onEditLimit = { cacheLimit = it })
         group(key = "downloads.defaults", header = R.string.settings_section_download_defaults) {
@@ -280,6 +321,59 @@ internal fun DownloadSettingsScreen(
             onSelect = { path -> viewModel.setLocation(dialogTarget, path?.let { DownloadLocation(path = it) }) },
             onBrowse = { folderPicker.launch(null) },
             onDismiss = { locationTarget = null },
+        )
+    }
+
+    val moveDialogTarget = moveTarget
+    val moveDialogLocation =
+        when (moveDialogTarget) {
+            DownloadTarget.VIDEO -> locations?.video
+            DownloadTarget.MUSIC -> locations?.music
+            null -> null
+        }
+    if (moveDialogTarget != null && moveDialogLocation != null) {
+        DownloadLocationDialog(
+            target = moveDialogTarget,
+            current = moveDialogLocation.chosen,
+            defaultPath = moveDialogLocation.defaultFolder,
+            downloadsPath = viewModel.downloadsPath(),
+            internalPath = viewModel.internalPath(),
+            onSelect = { path ->
+                viewModel.moveFolder(moveDialogTarget, path?.let { DownloadLocation(path = it) } ?: DownloadLocation.DEFAULT)
+                moveTarget = null
+            },
+            onBrowse = { folderPicker.launch(null) },
+            onDismiss = { moveTarget = null },
+        )
+    }
+
+    LaunchedEffect(viewModel) { viewModel.moveResult.collect { moveOutcome = it } }
+    moveOutcome?.let { outcome ->
+        val message =
+            when (val result = outcome.result) {
+                is DownloadFolderMover.Result.Done -> {
+                    context.getString(R.string.move_folder_done, result.moved, result.total)
+                }
+
+                DownloadFolderMover.Result.Failed -> {
+                    context.getString(R.string.move_folder_failed)
+                }
+
+                DownloadFolderMover.Result.ActiveDownloads -> {
+                    context.getString(R.string.move_folder_active)
+                }
+            }
+        GlideAlertDialog(
+            onDismissRequest = { moveOutcome = null },
+            title = {
+                Text(
+                    stringResource(
+                        if (outcome.target == DownloadTarget.MUSIC) R.string.move_music_folder else R.string.move_video_folder,
+                    ),
+                )
+            },
+            text = { Text(message) },
+            confirmButton = { TextButton(onClick = { moveOutcome = null }) { Text(stringResource(R.string.close)) } },
         )
     }
 

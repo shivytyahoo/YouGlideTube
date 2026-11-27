@@ -51,10 +51,13 @@ internal class GaplessPreloadController(
     private val log: (String) -> Unit,
     private val isGone: (String) -> Boolean = InnerTubeVideoStreamExtractor::isGone,
 ) {
-    private companion object {
-        const val TAG = "GaplessPreload"
-        const val RETRY_DELAY_MS = 10_000L
-        const val MAX_RETRIES = 3
+    companion object {
+        private const val TAG = "GaplessPreload"
+        private const val RETRY_DELAY_MS = 10_000L
+        private const val MAX_RETRIES = 3
+
+        /** How close to the end of a video the next one is resolved (position trigger). */
+        const val NEAR_END_TRIGGER_MS = 20_000L
     }
 
     @Volatile

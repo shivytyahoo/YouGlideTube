@@ -678,11 +678,12 @@ class ShortsPlayerPool private constructor() {
     }
 
     /**
-     * Warms the first [maxBytes] of a progressive stream into the shared cache, so a swipe onto
-     * it starts from disk instead of the network. No-op while the cache is not attached, and
-     * never for DASH: a generated manifest's segments are not addressable from its URL alone.
-     * Callers resolve first (which the stream cache reuses at prepare time), so the warmed URL
-     * is the same one playback will read.
+     * Warms the first [maxBytes] of a stream into the shared cache, so a swipe onto it
+     * starts from disk instead of the network. No-op while the cache is not attached.
+     * Works for DASH reels too: the generated manifest's segments are byte ranges of the
+     * same URL, which the player reads through this same cache. Callers resolve first
+     * (which the stream cache reuses at prepare time), so the warmed URL is the same one
+     * playback will read.
      */
     suspend fun warmAhead(
         videoUrl: String,

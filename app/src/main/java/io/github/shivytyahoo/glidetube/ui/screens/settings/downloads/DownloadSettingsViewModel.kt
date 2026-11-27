@@ -15,16 +15,21 @@ import io.github.shivytyahoo.glidetube.data.local.PlayerPreferences
 import io.github.shivytyahoo.glidetube.data.local.VideoCodec
 import io.github.shivytyahoo.glidetube.data.local.VideoQuality
 import io.github.shivytyahoo.glidetube.data.local.entity.DownloadFileType
+import io.github.shivytyahoo.glidetube.data.video.ChannelAutoDownloadStore
 import io.github.shivytyahoo.glidetube.data.video.DownloadRecoveryScanner
 import io.github.shivytyahoo.glidetube.data.video.VideoDownloadManager
 import io.github.shivytyahoo.glidetube.data.video.downloader.work.DownloadController
 import io.github.shivytyahoo.glidetube.data.video.storage.DownloadDestination
 import io.github.shivytyahoo.glidetube.data.video.storage.DownloadFiles
+import io.github.shivytyahoo.glidetube.data.video.storage.DownloadFolderMover
 import io.github.shivytyahoo.glidetube.data.video.storage.DownloadLocation
 import io.github.shivytyahoo.glidetube.ui.screens.settings.SettingsViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
@@ -37,6 +42,13 @@ import javax.inject.Inject
 
 /** Where downloads go: video or music. */
 enum class DownloadTarget { VIDEO, MUSIC }
+
+/** The outcome of a folder move, with which folder was moved for the dialog title. */
+@Immutable
+data class MoveFolderOutcome(
+    val target: DownloadTarget,
+    val result: DownloadFolderMover.Result,
+)
 
 /** Free and total bytes on the volume a download location lives on. */
 @Immutable
@@ -85,6 +97,8 @@ class DownloadSettingsViewModel
         private val downloadManager: VideoDownloadManager,
         private val downloadController: DownloadController,
         private val recoveryScanner: DownloadRecoveryScanner,
+        private val channelAutoDownloadStore: ChannelAutoDownloadStore,
+        private val folderMover: DownloadFolderMover,
     ) : SettingsViewModel() {
         private val refreshTick = MutableStateFlow(0)
 
@@ -99,6 +113,15 @@ class DownloadSettingsViewModel
         val threads = preferences.downloadThreads.asState(DEFAULT_THREADS)
         val concurrentDownloads = preferences.concurrentDownloads.asState(DEFAULT_CONCURRENT_DOWNLOADS)
         val retagStatus = downloadController.retagStatus.asState(null)
+
+        /** Channels opted into "Save new videos", for the list that manages them. */
+        val autoDownloadChannels = channelAutoDownloadStore.channels.asState(emptyList())
+
+        fun setChannelAutoDownload(
+            channelId: String,
+            channelName: String,
+            enabled: Boolean,
+        ) = write { channelAutoDownloadStore.setOptedIn(channelId, channelName, enabled) }
 
         init {
             downloadController.scheduleRetagOnce()
@@ -124,6 +147,29 @@ class DownloadSettingsViewModel
             if (_earlierDownloads.value == EarlierDownloadsSearch.Running) return
             _earlierDownloads.value = EarlierDownloadsSearch.Running
             viewModelScope.launch { _earlierDownloads.value = EarlierDownloadsSearch.Found(recoveryScanner.scanAndRecoverDownloads()) }
+        }
+
+        /** The outcome of a folder move, with which folder was moved for the dialog title. */
+        private val _moveResult = MutableSharedFlow<MoveFolderOutcome>(extraBufferCapacity = 1)
+        val moveResult: SharedFlow<MoveFolderOutcome> = _moveResult.asSharedFlow()
+
+        /**
+         * Moves the finished downloads of [target] into [location]. The new folder becomes the
+         * saved location only when the move itself succeeded, so a failed move never strands
+         * future downloads in a folder the files never reached.
+         */
+        fun moveFolder(
+            target: DownloadTarget,
+            location: DownloadLocation,
+        ) {
+            viewModelScope.launch {
+                val result = folderMover.move(isMusic = target == DownloadTarget.MUSIC, location = location)
+                if (result is DownloadFolderMover.Result.Done) {
+                    setLocation(target, location)
+                    refresh()
+                }
+                _moveResult.tryEmit(MoveFolderOutcome(target, result))
+            }
         }
 
         /** Reads the folders again, as storage access may have changed while the page was away. */

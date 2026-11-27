@@ -85,15 +85,29 @@ object MusicPlayerUtils {
         Log.d(TAG, "Cleared all cached playback results")
     }
 
-    fun cachedLoudnessGainDb(videoId: String): Float? {
-        val data = resultCache[videoId]?.result?.getOrNull() ?: return null
-        val audioConfig = data.audioConfig
+    /**
+     * Per-video loudness gain in dB, from the player response's audio config and the selected
+     * audio format: the track's measured loudness against the −14 LKFS target, else the
+     * config's loudness figure, else the format's own. An attenuation only, never a boost,
+     * so a quiet master stays quiet and a loud one is brought down to the target.
+     */
+    fun loudnessGainDb(
+        audioConfig: PlayerResponse.PlayerConfig.AudioConfig?,
+        formatLoudnessDb: Double?,
+        formatTrackAbsoluteLoudnessLkfs: Double? = null,
+    ): Float? {
         val gainDb =
-            audioConfig?.perceptualLoudnessDb?.let { (audioConfig.loudnessTargetLkfs ?: LOUDNESS_TARGET_LKFS) - it }
+            (audioConfig?.perceptualLoudnessDb ?: formatTrackAbsoluteLoudnessLkfs)
+                ?.let { (audioConfig?.loudnessTargetLkfs ?: LOUDNESS_TARGET_LKFS) - it }
                 ?: audioConfig?.loudnessDb?.let { -it }
-                ?: data.format.loudnessDb?.let { -it }
+                ?: formatLoudnessDb?.let { -it }
                 ?: return null
         return gainDb.toFloat().coerceIn(MIN_LOUDNESS_GAIN_DB, 0f)
+    }
+
+    fun cachedLoudnessGainDb(videoId: String): Float? {
+        val data = resultCache[videoId]?.result?.getOrNull() ?: return null
+        return loudnessGainDb(data.audioConfig, data.format.loudnessDb, data.format.trackAbsoluteLoudnessLkfs)
     }
 
     /** The resolved playback of [videoId] while it is still fresh, without waiting on a request. */

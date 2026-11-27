@@ -21,6 +21,7 @@ import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.Tracks
 import androidx.media3.common.VideoSize
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.common.util.Util
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.SeekParameters
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
@@ -86,6 +87,7 @@ import io.github.shivytyahoo.glidetube.player.subtitle.SubtitleTracks
 import io.github.shivytyahoo.glidetube.player.surface.SurfaceManager
 import io.github.shivytyahoo.glidetube.player.surface.VideoSurfacePolicy
 import io.github.shivytyahoo.glidetube.player.tracker.PlaybackTracker
+import io.github.shivytyahoo.glidetube.utils.MusicPlayerUtils
 import io.github.shivytyahoo.glidetube.utils.NetworkState
 import io.github.shivytyahoo.glidetube.utils.ThumbnailUrlResolver
 import kotlinx.coroutines.CancellationException
@@ -173,6 +175,7 @@ class EnhancedPlayerManager private constructor() {
     private var currentDashManifestUrl: String? = null
     private var currentHlsUrl: String? = null
     private var currentIsLiveStream = false
+    private var currentLiveLatencyClass: String? = null
     private var liveQualityHeights: List<Int> = emptyList()
     private var liveIsPortrait = false
     private var liveQualityPick: LiveQualityPick? = null
@@ -186,6 +189,10 @@ class EnhancedPlayerManager private constructor() {
     private var weakDevice = false
     private var tvCodecOrder: List<String>? = null
     private var tvMimeTypes: Array<String>? = null
+
+    // The ladder filter for Auto: a rung the hardware cannot decode is not a rung at all.
+    // Built once at initialisation, next to the weak-device flag it shares a probe with.
+    private var decodesRung: ((VideoStream) -> Boolean)? = null
 
     private var pendingLiveQualityHeight: Int = 0
 
@@ -262,6 +269,10 @@ class EnhancedPlayerManager private constructor() {
         )
     val autoplayCountdown: StateFlow<AutoplayCountdownState> = autoplayCountdownController.state
 
+    // The video the near-end prefetch already fired for; compared against the current video
+    // so the trigger fires once per video without an explicit reset.
+    private var nearEndPreloadFiredFor: String? = null
+
     private val preload =
         GaplessPreloadController(
             scope = scope,
@@ -296,7 +307,9 @@ class EnhancedPlayerManager private constructor() {
                             bandwidthMeter?.bitrateEstimate,
                             weakDevice = weakDevice,
                             familyOrder = tvCodecOrder,
+                            decodes = decodesRung,
                         ),
+                    availableAudioStreams = resolved.audioStreams,
                 )
             },
             log = { autoNextLog(it) },
@@ -625,6 +638,38 @@ class EnhancedPlayerManager private constructor() {
         withContext(Dispatchers.Main) { initialize(applicationContext) }
     }
 
+    /**
+     * The ladder filter for Auto: a rung is out when its short side is taller than the
+     * screen's short side, or when no hardware decoder plays it at its size and frame rate.
+     * A rung without dimensions to judge by is kept — the manifest builder drops it anyway
+     * when it cannot be described.
+     */
+    private fun buildDecodesPredicate(context: Context): (VideoStream) -> Boolean {
+        val displaySize =
+            runCatching { Util.getCurrentDisplayModeSize(context) }
+                .getOrNull()
+        val screenShortSide =
+            if (displaySize != null && displaySize.x > 0 && displaySize.y > 0) {
+                minOf(displaySize.x, displaySize.y)
+            } else {
+                0
+            }
+        return { stream ->
+            val itag = stream.itagItem
+            val width = itag?.width ?: 0
+            val height = itag?.height ?: 0
+            if (width <= 0 || height <= 0) {
+                true
+            } else if (screenShortSide > 0 && minOf(width, height) > screenShortSide) {
+                false
+            } else {
+                val mime = VideoCodecUtils.mimeTypeForCodecKey(VideoCodecUtils.codecKeyFromStream(stream))
+                mime == null ||
+                    DeviceCapabilities.decodes(mime, width, height, VideoCodecUtils.frameRateFromStream(stream))
+            }
+        }
+    }
+
     private fun initializeComponents(context: Context) {
         // Initialize cache manager
         cacheManager = PlayerCacheManager(context) { currentVideoId }.also { it.initialize() }
@@ -642,6 +687,7 @@ class EnhancedPlayerManager private constructor() {
         bandwidthMeter = playerFactory.createBandwidthMeter(context)
         videoSizeCap = VideoSizeCap.forDevice(context)
         weakDevice = DeviceCapabilities.isWeakDevice(context)
+        decodesRung = buildDecodesPredicate(context)
         if (isTelevision()) {
             tvCodecOrder = VideoCodecUtils.codecFamilyOrderByDecodableHeight()
             tvMimeTypes = VideoCodecUtils.tvOrderedVideoMimeTypes()
@@ -692,6 +738,10 @@ class EnhancedPlayerManager private constructor() {
                 familyOrder = tvCodecOrder,
                 tvMimeTypes = tvMimeTypes,
             )
+
+        // A rung the hardware cannot decode is not a rung at all: Auto's ladder is filtered
+        // to what a hardware decoder plays at the screen's size. Manual pins escape it.
+        qualityManager?.decodesRung = decodesRung
 
         // Initialize error handler
         errorHandler =
@@ -777,6 +827,7 @@ class EnhancedPlayerManager private constructor() {
                         setPlaybackSpeed(1.0f)
                     }
                 },
+                onNearEndTick = { positionMs, durationMs -> maybePrefetchNearEnd(positionMs, durationMs) },
             )
     }
 
@@ -1176,6 +1227,8 @@ class EnhancedPlayerManager private constructor() {
         keepAudioOnly: Boolean = false,
         preferSabr: Boolean = false,
         preferredLiveQualityHeight: Int = 0,
+        liveLatencyClass: String? = null,
+        perVideoLoudnessGainDb: Float? = null,
     ) {
         if (!isOnMainThread()) {
             autoNextLog("setStreams switching to main id=$videoId from=${Thread.currentThread().name}")
@@ -1200,6 +1253,8 @@ class EnhancedPlayerManager private constructor() {
                     keepAudioOnly = keepAudioOnly,
                     preferSabr = preferSabr,
                     preferredLiveQualityHeight = preferredLiveQualityHeight,
+                    liveLatencyClass = liveLatencyClass,
+                    perVideoLoudnessGainDb = perVideoLoudnessGainDb,
                 )
             }
             return
@@ -1250,6 +1305,7 @@ class EnhancedPlayerManager private constructor() {
             if (isLiveStream) LiveQualitySelection.targetHeight(videoId, liveQualityPick, preferredLiveQualityHeight) else 0
         if (isLiveStream) applyLiveCodecPreference()
         updateLivePlaybackMode(isLive = isLiveStream, forceLiveSpeedReset = true)
+        currentLiveLatencyClass = liveLatencyClass
         pendingInitialLiveEdgeSeek = streamType == StreamType.LIVE_STREAM
         currentVideoId = videoId
 
@@ -1326,6 +1382,9 @@ class EnhancedPlayerManager private constructor() {
         if (!isAutoMode && !isLiveStream && localFilePath == null) {
             qualityManager?.applyPinConstraint()
         }
+        // The per-video loudness attenuation goes on before the media loads, so the first
+        // frame already plays at the normalised level.
+        audioFeaturesManager?.setPerVideoLoudnessGainDb(perVideoLoudnessGainDb)
         when {
             localFilePath != null -> loadMediaInternal(null, audioStream, localFilePath = localFilePath, preservePosition = resumePos)
             currentVideoStream != null -> loadMediaInternal(currentVideoStream, currentAudioStream, preservePosition = resumePos)
@@ -1565,6 +1624,8 @@ class EnhancedPlayerManager private constructor() {
                 mediaId = sessionMetadata?.mediaId.orEmpty(),
                 mediaMetadata = sessionMetadata?.toMedia3Metadata() ?: MediaMetadata.EMPTY,
                 adaptiveLadder = ladder,
+                liveLatencyClass = currentLiveLatencyClass,
+                availableAudioStreams = availableAudioStreams,
             ) ?: false
         qualityManager?.isAdaptiveLadderActive = result && mediaLoader?.lastSourceWasAdaptiveLadder == true
         if (qualityManager?.isAdaptiveLadderActive == true) {
@@ -2310,6 +2371,16 @@ class EnhancedPlayerManager private constructor() {
             itAudioFormats = extraction.audioFormats,
             preferredVideoCodec = preferredCodecKey,
             keepAudioOnly = keepAudioOnly,
+            liveLatencyClass =
+                extraction.playerResponse.playabilityStatus.liveStreamability
+                    ?.liveStreamabilityRenderer
+                    ?.latencyClass,
+            perVideoLoudnessGainDb =
+                MusicPlayerUtils.loudnessGainDb(
+                    extraction.playerResponse.playerConfig?.audioConfig,
+                    extraction.audioFormats.firstOrNull()?.loudnessDb,
+                    extraction.audioFormats.firstOrNull()?.trackAbsoluteLoudnessLkfs,
+                ),
         )
         return true
     }
@@ -2420,6 +2491,25 @@ class EnhancedPlayerManager private constructor() {
             )
         }
 
+    /**
+     * Resolves the autoplay-next video once, 20 s from the end, so advancing needs no network
+     * round trip. The 5 s up-next countdown already handles the last seconds; this fires
+     * earlier, while there is still time to resolve. Skipped on metered connections unless
+     * the next video comes from the queue or is audio-only.
+     */
+    private fun maybePrefetchNearEnd(
+        positionMs: Long,
+        durationMs: Long,
+    ) {
+        if (durationMs <= 0 || positionMs <= durationMs - GaplessPreloadController.NEAR_END_TRIGGER_MS) return
+        val videoId = currentVideoId ?: return
+        if (nearEndPreloadFiredFor == videoId) return
+        val target = nextPreloadTarget() ?: return
+        if (NetworkState.isMetered(appContext) && !target.fromQueue && !audioOnlyMode.isActive) return
+        nearEndPreloadFiredFor = videoId
+        preload.request("near-end")
+    }
+
     private fun nextPreloadTarget(): PreloadTarget? {
         if (autoplayCountdownSeconds > 0) return null
         val fromQueue = hasNext()
@@ -2470,10 +2560,27 @@ class EnhancedPlayerManager private constructor() {
                 bandwidthMeter?.bitrateEstimate,
                 weakDevice = weakDevice,
                 familyOrder = tvCodecOrder,
+                decodes = decodesRung,
             )
         currentVideoStream = data.videoStream ?: ladder.lastOrNull() ?: availableVideoStreams.firstOrNull()
         currentAudioStream = data.audioStream
         applySubtitleTrackSelection()
+        // The promoted window's ladder carries every audio track; point the selector at the
+        // one this video resolved, or it may pick the global preference instead.
+        if (qualityManager?.isAdaptiveLadderActive == true &&
+            data.audioStream != null &&
+            AdaptiveDashManifest.canDescribeAudio(data.audioStream)
+        ) {
+            data.audioStream.audioLocale?.toLanguageTag()?.let { language ->
+                player?.let { exoPlayer ->
+                    exoPlayer.trackSelectionParameters =
+                        exoPlayer.trackSelectionParameters
+                            .buildUpon()
+                            .setPreferredAudioLanguage(language)
+                            .build()
+                }
+            }
+        }
 
         qualityManager?.resetForNewVideo()
         qualityManager?.setAvailableStreams(availableVideoStreams)

@@ -10,6 +10,7 @@ import io.github.shivytyahoo.glidetube.innertube.models.YouTubeClient
 import io.github.shivytyahoo.glidetube.innertube.models.YouTubeLocale
 import io.github.shivytyahoo.glidetube.innertube.models.response.PlayerResponse
 import io.github.shivytyahoo.glidetube.player.error.PlayerDiagnostics
+import io.github.shivytyahoo.glidetube.player.sabr.SabrPrewarm
 import io.github.shivytyahoo.glidetube.player.sabr.SabrRoutingPolicy
 import io.github.shivytyahoo.glidetube.player.sabr.core.SabrCpn
 import io.github.shivytyahoo.glidetube.player.sabr.integration.SabrClientIdentity
@@ -406,6 +407,9 @@ object InnerTubeVideoStreamExtractor {
         walledGeneration: Int,
     ): VideoExtractionResult? {
         val liveDetected = booleanArrayOf(false)
+        // Warm the streaming engine while the fast-client race runs, so the fallback step
+        // finds a warm session instead of paying the cold attestation cost on demand.
+        SabrPrewarm.warmInBackground()
         // The first gated client step 1 raced (ANDROID_VR_1_65_10 while ungated); step 3
         // must not fetch it a second time. Null when no race ran.
         var racedGatedClient: YouTubeClient? = null
@@ -1152,7 +1156,8 @@ object InnerTubeVideoStreamExtractor {
                     val deciphered = adaptiveFormats.decipherWhilePossible(videoId)
                     primeRemoteNsigIfNeeded(videoId, deciphered)
 
-                    val formatsWithUrl = deciphered.mapNotNull { it.withPlayableUrl(videoId, allowUntransformedN) }
+                    val batchedN = CipherDeobfuscator.transformNBatch(deciphered.mapNotNull { it.url })
+                    val formatsWithUrl = deciphered.mapNotNull { it.withPlayableUrl(videoId, allowUntransformedN, batchedN) }
                     // Capability probe : logs, per client,
                     // how many adaptive formats carried a direct URL vs how many resolved to a playable
                     // stream, plus whether the response is SABR-capable. Makes "why was this client skipped"
@@ -1440,9 +1445,10 @@ object InnerTubeVideoStreamExtractor {
             val decipheredFormats = rawFormats.decipherWhilePossible(videoId)
             primeRemoteNsigIfNeeded(videoId, decipheredFormats)
             val streamingPot = poToken.streamingDataPoToken.takeIf { it.isNotEmpty() }
+            val batchedN = CipherDeobfuscator.transformNBatch(decipheredFormats.mapNotNull { it.url })
             val playableFormats =
                 decipheredFormats
-                    .mapNotNull { it.withPlayableUrl(videoId, allowUntransformedN = false) }
+                    .mapNotNull { it.withPlayableUrl(videoId, allowUntransformedN = false, batchedN) }
                     .let { formats ->
                         if (streamingPot == null) formats else formats.map { it.withUrlPoToken(streamingPot) }
                     }
@@ -1611,8 +1617,8 @@ object InnerTubeVideoStreamExtractor {
     /**
      * The player script's own signature function first, then one remote batch for whatever it
      * left. Whether the local function works is a property of the script, not of the format, so
-     * the first local failure sends the rest remote instead of retrying each (measured 2026-09-22:
-     * ~30 failing WebView round trips blew the extraction budget).
+     * the local solve is one batched call for the whole ladder instead of one bridge round trip
+     * per signature.
      *
      * The remote decoder is asked for the local script's hash: a signature only matches the
      * timestamp the `/player` request carried, which is the local script's. When there is no
@@ -1625,8 +1631,8 @@ object InnerTubeVideoStreamExtractor {
     ): Map<String, String> {
         val wanted = signatures.distinct()
         val solved = mutableMapOf<String, String>()
-        for (signature in wanted) {
-            solved[signature] = CipherDeobfuscator.deobfuscateSignature(signature) ?: break
+        CipherDeobfuscator.solveBatch(nValues = emptyList(), signatures = wanted)?.let { answers ->
+            wanted.forEach { signature -> answers["sig:$signature"]?.let { solved[signature] = it } }
         }
         val missing = wanted.filterNot { it in solved }
         if (missing.isEmpty()) return solved
@@ -1662,9 +1668,10 @@ object InnerTubeVideoStreamExtractor {
     private suspend fun PlayerResponse.StreamingData.Format.withPlayableUrl(
         videoId: String,
         allowUntransformedN: Boolean,
+        batchedN: Map<String, String> = emptyMap(),
     ): PlayerResponse.StreamingData.Format? {
         val rawUrl = url ?: return this
-        val transformed = transformNParamInUrlOrNull(videoId, rawUrl, "itag=$itag")
+        val transformed = transformNParamInUrlOrNull(videoId, rawUrl, "itag=$itag", batchedN)
         return when {
             transformed != null -> {
                 copy(url = transformed)
@@ -1686,8 +1693,10 @@ object InnerTubeVideoStreamExtractor {
         videoId: String,
         rawUrl: String,
         label: String,
+        batchedN: Map<String, String> = emptyMap(),
     ): String? {
         val rawN = extractNParameter(rawUrl) ?: return rawUrl
+        batchedN[rawUrl]?.let { return it }
         return try {
             val transformed =
                 localNTransformOrNull(rawUrl, rawN)

@@ -4,6 +4,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -24,11 +25,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
@@ -45,7 +48,14 @@ import io.github.shivytyahoo.glidetube.ui.components.shared.focusLift
 import io.github.shivytyahoo.glidetube.ui.components.shared.onMenuKey
 import io.github.shivytyahoo.glidetube.ui.components.shared.pressScale
 import io.github.shivytyahoo.glidetube.ui.theme.extendedColors
+import io.github.shivytyahoo.glidetube.utils.NetworkState
 import io.github.shivytyahoo.glidetube.utils.avatarImageIdentityKey
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+
+/** How long a press must be held still before the card warms the video behind it. */
+private const val STILL_PRESS_WARM_MS = 90L
 
 internal fun Video.channelAvatarUrls(collaborators: List<VideoCollaborator> = emptyList()): List<String> {
     if (collaborators.size <= 1) {
@@ -117,6 +127,35 @@ internal fun Modifier.videoCardClickable(
 ): Modifier {
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
+    val context = LocalContext.current
+    val videoId = state.video.id
+    // A press held still warms the video before the tap lands: a scroll cancels the press, and a
+    // tap shorter than the hold releases first, so only a real dwell pays for the prefetch — and
+    // only off a metered connection, where a warm the viewer never opens would cost data.
+    LaunchedEffect(interactionSource, videoId) {
+        var pendingWarm: Job? = null
+        interactionSource.interactions.collect { interaction ->
+            when (interaction) {
+                is PressInteraction.Press -> {
+                    pendingWarm?.cancel()
+                    pendingWarm =
+                        launch {
+                            delay(STILL_PRESS_WARM_MS)
+                            if (!NetworkState.isMetered(context)) {
+                                PlaybackPrefetcher.prefetch(videoId)
+                                PlaybackPrefetcher.prefetchDetails(videoId)
+                            }
+                        }
+                }
+
+                is PressInteraction.Release,
+                is PressInteraction.Cancel,
+                -> {
+                    pendingWarm?.cancel()
+                }
+            }
+        }
+    }
     return pressScale(interactionSource)
         .focusLift(interactionSource)
         // The lift alone is too quiet across a room: on TV the focused card also gets a
@@ -131,6 +170,7 @@ internal fun Modifier.videoCardClickable(
             },
         ).onMenuKey {
             PlaybackPrefetcher.prefetch(state.video.id)
+            if (!NetworkState.isMetered(context)) PlaybackPrefetcher.prefetchDetails(state.video.id)
             state.sheets.showQuickActions = true
         }.combinedClickable(
             interactionSource = interactionSource,
@@ -139,6 +179,7 @@ internal fun Modifier.videoCardClickable(
             onLongClickLabel = stringResource(R.string.more_options),
             onLongClick = {
                 PlaybackPrefetcher.prefetch(state.video.id)
+                if (!NetworkState.isMetered(context)) PlaybackPrefetcher.prefetchDetails(state.video.id)
                 state.sheets.showQuickActions = true
             },
             onClick = onClick,

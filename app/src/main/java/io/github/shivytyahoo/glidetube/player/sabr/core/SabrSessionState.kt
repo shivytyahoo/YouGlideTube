@@ -87,6 +87,10 @@ class SabrSessionState {
     val initSegments = mutableMapOf<Int, ByteArray>()
     val formatMetadata = mutableMapOf<Int, FormatInitializationMetadata>()
 
+    // Byte<->time index per format, parsed from its init data; empty for formats whose header
+    // carries none (WebM Cues usually sit at the end of the file, not in the init segment).
+    val formatIndexes = mutableMapOf<Int, SabrIndex>()
+
     // Itags the server has acknowledged via FORMAT_INITIALIZATION_METADATA
     val initializedFormats = mutableSetOf<Int>()
 
@@ -207,6 +211,7 @@ class SabrSessionState {
         backoffDeadlineMs = 0
         requestSequence = 0
         clearBufferedRanges()
+        formatIndexes.clear()
         initializedFormats.clear()
     }
 
@@ -251,6 +256,26 @@ class SabrSessionState {
         }
     }
 
+    fun storeFormatIndex(
+        itag: Int,
+        index: SabrIndex,
+    ) {
+        formatIndexes[itag] = index
+    }
+
+    /**
+     * Restarts the session at [positionMs] after a mis-start: the buffered ranges and the
+     * consumed media go, so the re-sent segments pass the dedup, but the format indexes stay —
+     * the formats are the same, and the index still describes them. The init dedup stays too:
+     * the init bytes come back through the format metadata, not the media path.
+     */
+    fun resetForRestart(positionMs: Long) {
+        playheadPositionMs = positionMs
+        lastSeekAtMs = System.currentTimeMillis()
+        clearBufferedRanges()
+        consumedSegments.clear()
+    }
+
     fun reset() {
         playheadPositionMs = 0
         playbackCookie = ByteArray(0)
@@ -263,6 +288,7 @@ class SabrSessionState {
         requestSequence = 0
         initSegments.clear()
         formatMetadata.clear()
+        formatIndexes.clear()
         initializedFormats.clear()
         consumedSegments.clear()
         consumedInitSegments.clear()

@@ -59,6 +59,7 @@ import io.github.shivytyahoo.glidetube.ui.components.shared.GlideSidePanes
 import io.github.shivytyahoo.glidetube.ui.components.shared.GlideSwitchRow
 import io.github.shivytyahoo.glidetube.ui.components.shared.GlideToggleOption
 import io.github.shivytyahoo.glidetube.ui.components.shared.flowRowGroupShape
+import kotlin.math.roundToInt
 
 private val ItemInset = 12.dp
 private val PhoneGraphHeight = 220.dp
@@ -322,7 +323,8 @@ private class EqSections(
             EqFramed {
                 Column {
                     GlideSectionHeader(stringResource(R.string.eq_settings_section))
-                    val rows = if (state.autoPreamp) 2 else 3
+                    val bassIndex = if (state.autoPreamp) 1 else 2
+                    val rows = bassIndex + 4
                     GlideRowGroup {
                         GlideSwitchRow(
                             title = stringResource(R.string.eq_auto_preamp),
@@ -336,13 +338,34 @@ private class EqSections(
                                 ManualPreamp(value = state.active.curve.preamp, onValueChange = viewModel::setPreamp)
                             }
                         }
-                        PanelRow(shape = flowRowGroupShape(rows - 1, rows)) {
+                        PanelRow(shape = flowRowGroupShape(bassIndex, rows)) {
                             EqBassBoostSlider(
                                 value = state.bassBoost,
                                 onValueChange = viewModel::setBassBoost,
                                 modifier = Modifier.padding(PanelPadding),
                             )
                         }
+                        PanelRow(shape = flowRowGroupShape(bassIndex + 1, rows)) {
+                            StereoWidthSlider(
+                                value = state.stereoWidth,
+                                onValueChange = viewModel::setStereoWidth,
+                                modifier = Modifier.padding(PanelPadding),
+                            )
+                        }
+                        PanelRow(shape = flowRowGroupShape(bassIndex + 2, rows)) {
+                            BalanceSlider(
+                                value = state.balance,
+                                onValueChange = viewModel::setBalance,
+                                modifier = Modifier.padding(PanelPadding),
+                            )
+                        }
+                        GlideSwitchRow(
+                            title = stringResource(R.string.eq_night_mode),
+                            supportingText = stringResource(R.string.eq_night_mode_desc),
+                            checked = state.nightMode,
+                            onCheckedChange = viewModel::setNightMode,
+                            shape = flowRowGroupShape(bassIndex + 3, rows),
+                        )
                     }
                 }
             }
@@ -395,6 +418,57 @@ private fun ManualPreamp(
             value = value.toFloat(),
             onValueChange = { onValueChange(it.toDouble()) },
             valueRange = EqLimits.MIN_PREAMP.toFloat()..EqLimits.MAX_PREAMP.toFloat(),
+        )
+    }
+}
+
+@Composable
+private fun StereoWidthSlider(
+    value: Double,
+    onValueChange: (Double) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(R.string.eq_stereo_width), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+            Text(
+                text = "${value.roundToInt()}%",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Slider(
+            value = value.toFloat(),
+            onValueChange = { onValueChange(it.toDouble()) },
+            valueRange = EqLimits.MIN_STEREO_WIDTH.toFloat()..EqLimits.MAX_STEREO_WIDTH.toFloat(),
+        )
+    }
+}
+
+@Composable
+private fun BalanceSlider(
+    value: Double,
+    onValueChange: (Double) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(R.string.eq_balance), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+            Text(
+                text =
+                    when {
+                        value == 0.0 -> stringResource(R.string.eq_balance_center)
+                        value < 0 -> stringResource(R.string.eq_balance_left, -value.roundToInt())
+                        else -> stringResource(R.string.eq_balance_right, value.roundToInt())
+                    },
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Slider(
+            value = value.toFloat(),
+            onValueChange = { onValueChange(it.toDouble()) },
+            valueRange = EqLimits.MIN_BALANCE.toFloat()..EqLimits.MAX_BALANCE.toFloat(),
         )
     }
 }

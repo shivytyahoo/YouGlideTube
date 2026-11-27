@@ -25,6 +25,7 @@ import io.github.shivytyahoo.glidetube.R
 import io.github.shivytyahoo.glidetube.player.cache.PlayerCacheManager
 import io.github.shivytyahoo.glidetube.player.config.PlayerConfig
 import io.github.shivytyahoo.glidetube.player.renderer.subtitle.Srv3SubtitleParser
+import io.github.shivytyahoo.glidetube.player.resolver.AdaptiveDashManifest
 import io.github.shivytyahoo.glidetube.player.resolver.VideoPlaybackResolver
 import io.github.shivytyahoo.glidetube.player.sabr.integration.SabrMediaSourceFactory
 import io.github.shivytyahoo.glidetube.player.sabr.integration.SabrMediaSourceResult
@@ -140,6 +141,8 @@ class MediaLoader(
         mediaId: String = "",
         mediaMetadata: MediaMetadata = MediaMetadata.EMPTY,
         adaptiveLadder: List<VideoStream> = emptyList(),
+        liveLatencyClass: String? = null,
+        availableAudioStreams: List<AudioStream> = emptyList(),
     ): Boolean {
         val finalDuration =
             when {
@@ -200,10 +203,26 @@ class MediaLoader(
                         mediaId = mediaId,
                         mediaMetadata = mediaMetadata,
                         adaptiveLadder = adaptiveLadder,
+                        liveLatencyClass = liveLatencyClass,
+                        availableAudioStreams = availableAudioStreams,
                         onAdaptiveLadder = { lastSourceWasAdaptiveLadder = it },
                     )
 
                 if (mediaSource != null) {
+                    // The ladder manifest carries every audio track; point the selector at the
+                    // one this video resolved, or it may pick the global preference instead.
+                    if (lastSourceWasAdaptiveLadder &&
+                        audioStream != null &&
+                        AdaptiveDashManifest.canDescribeAudio(audioStream)
+                    ) {
+                        audioStream.audioLocale?.toLanguageTag()?.let { language ->
+                            exoPlayer.trackSelectionParameters =
+                                exoPlayer.trackSelectionParameters
+                                    .buildUpon()
+                                    .setPreferredAudioLanguage(language)
+                                    .build()
+                        }
+                    }
                     exoPlayer.setMediaSource(mediaSource)
                     exoPlayer.prepare()
                     stateFlow.value = stateFlow.value.copy(isPrepared = true)
@@ -245,6 +264,7 @@ class MediaLoader(
         mediaId: String = "",
         mediaMetadata: MediaMetadata = MediaMetadata.EMPTY,
         adaptiveLadder: List<VideoStream> = emptyList(),
+        availableAudioStreams: List<AudioStream> = emptyList(),
     ): MediaSource? {
         val ctx = context ?: return null
         val dataSourceFactory = cacheManager?.getDataSourceFactory() ?: DefaultDataSource.Factory(ctx)
@@ -266,6 +286,7 @@ class MediaLoader(
                 mediaId = mediaId,
                 mediaMetadata = mediaMetadata,
                 adaptiveLadder = adaptiveLadder,
+                availableAudioStreams = availableAudioStreams,
             )
         } catch (e: Exception) {
             Log.w(TAG, "buildPreloadMediaSource failed", e)
@@ -314,6 +335,8 @@ class MediaLoader(
         mediaId: String = "",
         mediaMetadata: MediaMetadata = MediaMetadata.EMPTY,
         adaptiveLadder: List<VideoStream> = emptyList(),
+        liveLatencyClass: String? = null,
+        availableAudioStreams: List<AudioStream> = emptyList(),
         onAdaptiveLadder: (Boolean) -> Unit = {},
     ): MediaSource? {
         cacheManager?.registerStreams(
@@ -410,6 +433,8 @@ class MediaLoader(
                         durationSeconds = finalDuration,
                         isLiveStream = isLiveStream && !audioOnly,
                         asAdaptiveLadder = useLadder,
+                        liveLatencyClass = liveLatencyClass,
+                        audioStreams = availableAudioStreams,
                     ).also {
                         onAdaptiveLadder(resolver.resolvedAdaptiveLadder)
                         lastSourceWasMultiRungDash = resolver.resolvedMultiRungDash

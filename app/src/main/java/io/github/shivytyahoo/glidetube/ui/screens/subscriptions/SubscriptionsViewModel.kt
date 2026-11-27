@@ -79,6 +79,10 @@ class SubscriptionsViewModel
         private var hasPendingVisibleEnrichment = false
         private var hasStarted = false
 
+        // Bulk lengths per channel, once per run: the Videos tab answers every on-screen video
+        // of a channel in one request, so a channel is never fetched twice for the same feed.
+        private val channelLengthsStore = SubscriptionChannelLengthsStore()
+
         /**
          * Starts the preference/feed collectors. Deliberately not run from `init`: the TV shell
          * hoists this ViewModel at launch (see `GlideTvApp`), so constructing it would kick off the
@@ -419,8 +423,19 @@ class SubscriptionsViewModel
                 viewModelScope.launch(PerformanceDispatcher.networkIO) {
                     val runningJob = coroutineContext[Job]
                     try {
+                        val bulkLengthsById =
+                            channelLengthsStore.fetch(candidates, nowMillis, DURATION_RETRY_AFTER_MS)
+                        if (bulkLengthsById.isNotEmpty()) {
+                            val bulkedVideos = latestFeedVideos.withChannelLengths(bulkLengthsById)
+                            latestFeedVideos = bulkedVideos
+                            updateVideos(bulkedVideos)
+                            Log.d(TAG, "Channel bulk lengths applied to ${bulkLengthsById.size} subscription videos")
+                        }
+                        val remaining = candidates.filter { it.id !in bulkLengthsById }
+                        if (remaining.isEmpty()) return@launch
+
                         val enrichedById = mutableMapOf<String, Video>()
-                        candidates.chunked(DURATION_ENRICHMENT_BATCH_SIZE).forEach { batch ->
+                        remaining.chunked(DURATION_ENRICHMENT_BATCH_SIZE).forEach { batch ->
                             val enrichedBatch =
                                 supervisorScope {
                                     batch

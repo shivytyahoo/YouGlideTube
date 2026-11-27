@@ -64,6 +64,8 @@ class VideoPlaybackResolver(
         durationSeconds: Long,
         isLiveStream: Boolean = false,
         asAdaptiveLadder: Boolean = false,
+        liveLatencyClass: String? = null,
+        audioStreams: List<AudioStream> = emptyList(),
     ): MediaSource? {
         resolvedAdaptiveLadder = false
         resolvedMultiRungDash = false
@@ -83,7 +85,10 @@ class VideoPlaybackResolver(
                         .setLiveConfiguration(
                             androidx.media3.common.MediaItem.LiveConfiguration
                                 .Builder()
-                                .setTargetOffsetMs(PlayerConfig.LIVE_EDGE_GAP_MS)
+                                .setTargetOffsetMs(PlayerConfig.liveTargetOffsetMs(liveLatencyClass))
+                                .setMinOffsetMs(PlayerConfig.liveMinOffsetMs(liveLatencyClass))
+                                .setMinPlaybackSpeed(PlayerConfig.LIVE_MIN_PLAYBACK_SPEED)
+                                .setMaxPlaybackSpeed(PlayerConfig.LIVE_MAX_PLAYBACK_SPEED)
                                 .build(),
                         ).build()
 
@@ -121,7 +126,10 @@ class VideoPlaybackResolver(
                         .setLiveConfiguration(
                             androidx.media3.common.MediaItem.LiveConfiguration
                                 .Builder()
-                                .setTargetOffsetMs(PlayerConfig.LIVE_EDGE_GAP_MS)
+                                .setTargetOffsetMs(PlayerConfig.liveTargetOffsetMs(liveLatencyClass))
+                                .setMinOffsetMs(PlayerConfig.liveMinOffsetMs(liveLatencyClass))
+                                .setMinPlaybackSpeed(PlayerConfig.LIVE_MIN_PLAYBACK_SPEED)
+                                .setMaxPlaybackSpeed(PlayerConfig.LIVE_MAX_PLAYBACK_SPEED)
                                 .build(),
                         ).build()
 
@@ -171,7 +179,10 @@ class VideoPlaybackResolver(
 
         // 3. Generate DASH manifests from progressive streams (NewPipe approach)
         // This avoids YouTube's progressive throttling (~50-100 KB/s limit)
-        val ladderSource = if (asAdaptiveLadder) createLadderSource(videoStreams, durationSeconds) else null
+        val ladderCarriesSelectedAudio =
+            audioStream != null && AdaptiveDashManifest.canDescribeAudio(audioStream)
+        val ladderSource =
+            if (asAdaptiveLadder) createLadderSource(videoStreams, durationSeconds, audioStreams) else null
         resolvedAdaptiveLadder = ladderSource != null
         resolvedMultiRungDash = ladderSource != null
         // A ladder that cannot be built starts on its lowest rung; Auto's own checks step up from there.
@@ -181,7 +192,16 @@ class VideoPlaybackResolver(
                 durationSeconds = durationSeconds,
                 preferMuxed = audioStream == null,
             )
-        val audioSource = createAudioSource(audioStream, durationSeconds)
+        // The ladder's audio sets already carry the selected track; a second audio source
+        // would play over it. When the selected track is not describable, the ladder is
+        // video-only and the separate source is still needed.
+        val audioSource =
+            if (ladderSource != null && ladderCarriesSelectedAudio) {
+                Log.d(TAG, "Adaptive ladder carries the selected audio track; skipping separate audio source")
+                null
+            } else {
+                createAudioSource(audioStream, durationSeconds)
+            }
 
         return when {
             videoSource != null && audioSource != null -> {
@@ -209,10 +229,11 @@ class VideoPlaybackResolver(
     private fun createLadderSource(
         videoStreams: List<VideoStream>,
         durationSeconds: Long,
+        audioStreams: List<AudioStream>,
     ): MediaSource? {
         val manifest =
             try {
-                AdaptiveDashManifest.build(videoStreams, durationSeconds)
+                AdaptiveDashManifest.build(videoStreams, durationSeconds, audioStreams)
             } catch (e: Exception) {
                 Log.w(TAG, "Adaptive ladder manifest failed, using a single stream", e)
                 null

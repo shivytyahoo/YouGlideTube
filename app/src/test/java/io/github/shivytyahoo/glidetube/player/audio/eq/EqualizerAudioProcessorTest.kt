@@ -149,4 +149,72 @@ class EqualizerAudioProcessorTest {
         assertThat(output.count { it == Short.MAX_VALUE || it == Short.MIN_VALUE }).isEqualTo(0)
         assertThat(output.max().toInt()).isGreaterThan((0.95 * 32767).toInt())
     }
+
+    @Test
+    fun `neutral width, balance and night pass audio through untouched`() {
+        val neutral =
+            EqProcessingSpec(
+                enabled = true,
+                preampDb = 0.0,
+                bands = emptyList(),
+                widthPercent = 100.0,
+                balance = 0.0,
+                nightMode = false,
+            )
+        val input = sine(440.0, 1_024)
+        assertThat(processor(spec = neutral).run(input)).isEqualTo(input)
+    }
+
+    @Test
+    fun `width zero folds stereo to mono and width two doubles the difference`() {
+        val input = oneSidedSine(440.0, 4_800)
+        val mono = processor(spec = EqProcessingSpec(enabled = true, preampDb = 0.0, bands = emptyList(), widthPercent = 0.0)).run(input)
+        val left = mono.filterIndexed { i, _ -> i % 2 == 0 }
+        val right = mono.filterIndexed { i, _ -> i % 2 == 1 }
+        assertThat(left).containsExactlyElementsIn(right)
+        assertThat(rms(mono)).isWithin(0.02).of(rms(input) / sqrt(2.0))
+
+        val wide = processor(spec = EqProcessingSpec(enabled = true, preampDb = 0.0, bands = emptyList(), widthPercent = 200.0)).run(input)
+        val wideSpread = spreadRms(wide)
+        assertThat(wideSpread).isWithin(0.02).of(2.0 * spreadRms(input))
+    }
+
+    @Test
+    fun `balance fully left silences the right channel`() {
+        val input = sine(440.0, 4_800)
+        val output = processor(spec = EqProcessingSpec(enabled = true, preampDb = 0.0, bands = emptyList(), balance = -100.0)).run(input)
+        val left = output.filterIndexed { i, _ -> i % 2 == 0 }.toShortArray()
+        val right = output.filterIndexed { i, _ -> i % 2 == 1 }.toShortArray()
+        assertThat(right.maxOf { abs(it.toInt()) }).isEqualTo(0)
+        assertThat(gainDb(input.filterIndexed { i, _ -> i % 2 == 0 }.toShortArray(), left)).isWithin(0.05).of(0.0)
+    }
+
+    @Test
+    fun `night mode pulls loud peaks down and quiet parts up`() {
+        val night = EqProcessingSpec(enabled = true, preampDb = 0.0, bands = emptyList(), nightMode = true)
+        val eq = processor(spec = night)
+        val loud = sine(440.0, 4_800, amplitude = 0.9)
+        val loudOut = eq.run(loud)
+        assertThat(gainDb(loud.takeLast(2_400).toShortArray(), loudOut.takeLast(2_400).toShortArray())).isLessThan(-6.0)
+
+        val quiet = sine(440.0, 96_000, amplitude = 0.05, start = 4_800)
+        val quietOut = eq.run(quiet)
+        assertThat(gainDb(quiet.takeLast(9_600).toShortArray(), quietOut.takeLast(9_600).toShortArray())).isGreaterThan(3.0)
+    }
+
+    /** A sine on the left channel only, so width and balance have something to work on. */
+    private fun oneSidedSine(
+        frequency: Double,
+        frames: Int,
+        amplitude: Double = 0.1,
+    ): ShortArray {
+        val one = sine(frequency, frames, channels = 1, amplitude = amplitude)
+        return ShortArray(frames * 2) { i -> if (i % 2 == 0) one[i / 2] else 0 }
+    }
+
+    /** RMS of the left-minus-right difference, i.e. how wide the stereo image is. */
+    private fun spreadRms(samples: ShortArray): Double {
+        val diff = ShortArray(samples.size / 2) { i -> (samples[2 * i] - samples[2 * i + 1]).toShort() }
+        return rms(diff)
+    }
 }

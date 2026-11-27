@@ -8,6 +8,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import java.util.Collections
 
 /**
  * This is based and ported from Metrolist,
@@ -20,6 +21,9 @@ import kotlinx.coroutines.withContext
  */
 object CipherDeobfuscator {
     private const val TAG = "Flow_CipherDeobfusc"
+
+    /** Player versions whose extracted functions are kept in memory. */
+    private const val MAX_CACHED_ANALYSES = 3
 
     lateinit var appContext: Context
         private set
@@ -41,6 +45,9 @@ object CipherDeobfuscator {
     private var cachedSignatureTimestamp: Int? = null
 
     @Volatile
+    private var cachedSignatureTimestampHash: String? = null
+
+    @Volatile
     private var lastAnalyzedHash: String? = null
 
     @Volatile
@@ -56,9 +63,20 @@ object CipherDeobfuscator {
     var unparseablePlayerHash: String? = null
         private set
 
+    // The extracted functions per player version, newest three: a player that rolls back to a
+    // version seen recently rebuilds its WebView without re-running the extractors over the
+    // 3 MB script. The script itself is cached on disk the same way (see PlayerJsFetcher).
+    private val analysisCache =
+        Collections.synchronizedMap(
+            object : LinkedHashMap<String, FunctionNameExtractor.PlayerAnalysis>(16, 0.75f, true) {
+                override fun removeEldestEntry(eldest: Map.Entry<String, FunctionNameExtractor.PlayerAnalysis>): Boolean =
+                    size > MAX_CACHED_ANALYSES
+            },
+        )
+
     /**
      * The signature timestamp the WEB/MWEB `/player` request has to send. Cached after the first
-     * read; the player script itself is cached by [PlayerJsFetcher].
+     * read, per player version; the player script itself is cached by [PlayerJsFetcher].
      *
      * Reads the script and runs one regex rather than standing up the cipher WebView: the timestamp
      * is a plain number in the script and needs none of the machinery a decipher does. That also
@@ -66,10 +84,13 @@ object CipherDeobfuscator {
      * the timestamp still resolves on players whose cipher cannot be read at all.
      */
     suspend fun ensureSignatureTimestamp(): Int? {
-        cachedSignatureTimestamp?.let { return it }
+        val (playerJs, hash) = runCatching { PlayerJsFetcher.getPlayerJs() }.getOrNull() ?: return cachedSignatureTimestamp
+        if (hash == cachedSignatureTimestampHash) return cachedSignatureTimestamp
         return try {
-            val playerJs = PlayerJsFetcher.getPlayerJs()?.first ?: return null
-            FunctionNameExtractor.extractSignatureTimestamp(playerJs)?.also { cachedSignatureTimestamp = it }
+            FunctionNameExtractor.extractSignatureTimestamp(playerJs)?.also {
+                cachedSignatureTimestamp = it
+                cachedSignatureTimestampHash = hash
+            }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -79,19 +100,48 @@ object CipherDeobfuscator {
     }
 
     /**
-     * [signature] run through the player script's own signature function, or null when the script
-     * has none this build can find or the function failed.
+     * Every distinct n and signature challenge in one script evaluation, for a whole ladder at
+     * once. Null when no script is loaded; unanswered challenges are absent from the map, so
+     * the caller falls back per challenge instead of losing the whole batch.
      */
-    suspend fun deobfuscateSignature(signature: String): String? =
+    suspend fun solveBatch(
+        nValues: List<String>,
+        signatures: List<String>,
+    ): Map<String, String>? =
         try {
-            val webView = webViewMutex.withLock { getOrCreateWebView(forceRefresh = false) }
-            webView?.takeIf { it.sigFunctionAvailable }?.decipherSignature(signature)?.takeIf { it != signature }
+            val webView = webViewMutex.withLock { getOrCreateWebView(forceRefresh = false) } ?: return null
+            webView.solveBatch(nValues, signatures)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            Log.w(TAG, "Signature decipher failed: ${e.message}")
+            Log.w(TAG, "Batched solve failed: ${e.message}")
             null
         }
+
+    /**
+     * The distinct n values of [urls] in one script evaluation; the map is url -> url with its
+     * n swapped. URLs whose n the script cannot answer are absent — the caller falls back to
+     * the remote decoder for those, one at a time.
+     */
+    suspend fun transformNBatch(urls: List<String>): Map<String, String> {
+        val byN = mutableMapOf<String, MutableList<String>>()
+        urls.forEach { url ->
+            Regex("[?&]n=([^&]+)").find(url)?.groupValues?.get(1)?.let { encoded ->
+                val decoded = runCatching { Uri.decode(encoded) }.getOrNull() ?: encoded
+                byN.getOrPut(decoded) { mutableListOf() }.add(url)
+            }
+        }
+        if (byN.isEmpty()) return emptyMap()
+        val answers = solveBatch(nValues = byN.keys.toList(), signatures = emptyList()) ?: return emptyMap()
+        val out = mutableMapOf<String, String>()
+        byN.forEach { (n, urlList) ->
+            val transformed = answers["n:$n"]?.takeIf { it != n } ?: return@forEach
+            urlList.forEach { url ->
+                out[url] = url.replaceFirst(Regex("([?&])n=[^&]+"), "$1n=${Uri.encode(transformed)}")
+            }
+        }
+        return out
+    }
 
     /** The hash of the player script whose signature timestamp the web `/player` requests carry. */
     suspend fun playerHash(): String? = PlayerJsFetcher.getPlayerJs()?.second
@@ -99,6 +149,7 @@ object CipherDeobfuscator {
     fun invalidateSignatureTimestamp() {
         Log.d(TAG, "Invalidating signature timestamp")
         cachedSignatureTimestamp = null
+        cachedSignatureTimestampHash = null
     }
 
     /**
@@ -182,8 +233,12 @@ object CipherDeobfuscator {
         val (playerJs, hash) = result
         Log.d(TAG, "Got player JS: hash=$hash, length=${playerJs.length}")
 
-        val analysis = FunctionNameExtractor.analyzePlayerJs(playerJs, knownHash = hash)
+        // The n-function is extracted once per player version: a rebuild for a version seen
+        // recently reuses the analysis instead of re-running the extractors over the script.
+        val analysis =
+            analysisCache[hash] ?: FunctionNameExtractor.analyzePlayerJs(playerJs, knownHash = hash).also { analysisCache[hash] = it }
         cachedSignatureTimestamp = analysis.signatureTimestamp
+        cachedSignatureTimestampHash = hash
         Log.d(TAG, "Extracted signatureTimestamp: $cachedSignatureTimestamp")
         lastAnalyzedHash = hash
 

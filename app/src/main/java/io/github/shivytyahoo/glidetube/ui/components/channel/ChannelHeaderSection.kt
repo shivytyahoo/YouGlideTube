@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -52,6 +53,8 @@ internal fun ChannelHeaderSection(
     onSubscribeClick: () -> Unit,
     onUnsubscribeClick: () -> Unit,
     onNotificationChange: (Boolean) -> Unit,
+    autoDownloadEnabled: Boolean? = null,
+    onAutoDownloadChange: ((Boolean) -> Unit)? = null,
 ) {
     val bannerUrl = remember(header.bannerUrl) { ThumbnailUrlResolver.resolveChannelBanner(header.bannerUrl, targetWidth = 2048) }
     var showFullSizeAvatar by remember(header.id) { mutableStateOf(false) }
@@ -129,7 +132,33 @@ internal fun ChannelHeaderSection(
                     }
                 }
             }
+        }
 
+        // Per-channel auto-download lives here, next to Subscribe: the opt-in is about this
+        // channel's future uploads, not about the app's download defaults.
+        if (autoDownloadEnabled != null && onAutoDownloadChange != null) {
+            Row(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.channel_save_new_videos),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Text(
+                        text = stringResource(R.string.channel_save_new_videos_summary),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(checked = autoDownloadEnabled, onCheckedChange = onAutoDownloadChange)
+            }
         }
     }
 }

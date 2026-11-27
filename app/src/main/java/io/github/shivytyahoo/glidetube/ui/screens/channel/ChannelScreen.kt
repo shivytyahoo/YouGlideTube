@@ -139,6 +139,7 @@ fun ChannelScreen(
         }
     val isGridView by preferences.channelIsGridView.collectAsState(initial = false)
     val uiState by viewModel.uiState.collectAsState()
+    val autoDownloadEnabled by viewModel.autoDownloadEnabled.collectAsStateWithLifecycle()
     val communityUiState by viewModel.communityUiState.collectAsState()
     val tabStates by viewModel.tabStates.collectAsStateWithLifecycle()
     val subscribedChannelIds by viewModel.subscribedChannelIds.collectAsStateWithLifecycle()
@@ -250,6 +251,8 @@ fun ChannelScreen(
                             onSubscribeClick = { viewModel.toggleSubscription() },
                             onUnsubscribeClick = { viewModel.unsubscribe() },
                             onNotificationChange = { viewModel.setNotificationState(it) },
+                            autoDownloadEnabled = autoDownloadEnabled,
+                            onAutoDownloadChange = viewModel::setAutoDownload,
                             onTabSelected = { viewModel.selectTab(it) },
                             onSearchToggle = { viewModel.setSearchActive(!uiState.searchActive) },
                             onSearchQueryChange = { viewModel.searchInChannel(it) },

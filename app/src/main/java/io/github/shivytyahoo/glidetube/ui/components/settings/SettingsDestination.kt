@@ -36,6 +36,8 @@ enum class SettingsDestination(
     SCROBBLING("scrobbling", R.string.scrobbling_title, INTEGRATIONS),
     HISTORY("history", R.string.settings_history_title),
     DOWNLOADS("downloads", R.string.settings_downloads_title),
+    BACKUP("backup", R.string.settings_backup_title),
+    PROFILES("profiles", R.string.settings_profiles_title),
     LOCAL_MEDIA("local_media", R.string.settings_local_media_title, DOWNLOADS),
     NOTIFICATIONS("notifications", R.string.settings_header_notifications),
     NETWORK("network", R.string.settings_network_title),

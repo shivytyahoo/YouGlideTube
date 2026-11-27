@@ -14,6 +14,7 @@ import io.github.shivytyahoo.glidetube.ui.screens.settings.appearance.player.Pla
 import io.github.shivytyahoo.glidetube.ui.screens.settings.appearance.theme.CustomThemeEditorScreen
 import io.github.shivytyahoo.glidetube.ui.screens.settings.appearance.theme.CustomThemesScreen
 import io.github.shivytyahoo.glidetube.ui.screens.settings.appearance.theme.ThemeScreen
+import io.github.shivytyahoo.glidetube.ui.screens.settings.backup.SettingsBackupScreen
 import io.github.shivytyahoo.glidetube.ui.screens.settings.content.ContentSettingsScreen
 import io.github.shivytyahoo.glidetube.ui.screens.settings.downloads.DownloadSettingsScreen
 import io.github.shivytyahoo.glidetube.ui.screens.settings.content.LibrarySettingsScreen
@@ -26,6 +27,7 @@ import io.github.shivytyahoo.glidetube.ui.screens.settings.network.NetworkSettin
 import io.github.shivytyahoo.glidetube.ui.screens.settings.notifications.NotificationSettingsScreen
 import io.github.shivytyahoo.glidetube.ui.screens.settings.playback.BufferSettingsScreen
 import io.github.shivytyahoo.glidetube.ui.screens.settings.playback.PlaybackSettingsScreen
+import io.github.shivytyahoo.glidetube.ui.screens.settings.profiles.PersonProfilesScreen
 import io.github.shivytyahoo.glidetube.ui.screens.settings.quality.QualitySettingsScreen
 import io.github.shivytyahoo.glidetube.ui.screens.settings.region.LanguageRegionScreen
 import io.github.shivytyahoo.glidetube.ui.screens.settings.scrobbling.ScrobblingScreen
@@ -133,6 +135,14 @@ internal fun SettingsDetail(
 
         SettingsDestination.DOWNLOADS -> {
             DownloadSettingsScreen(onBack = onBack, highlight = target.highlight, onNavigate = onNavigate)
+        }
+
+        SettingsDestination.BACKUP -> {
+            SettingsBackupScreen(onBack = onBack, highlight = target.highlight)
+        }
+
+        SettingsDestination.PROFILES -> {
+            PersonProfilesScreen(onBack = onBack, highlight = target.highlight)
         }
 
         SettingsDestination.LOCAL_MEDIA -> {

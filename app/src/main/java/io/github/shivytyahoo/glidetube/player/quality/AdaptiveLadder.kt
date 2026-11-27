@@ -16,6 +16,7 @@ internal object AdaptiveLadder {
     fun rungs(
         anchor: VideoStream?,
         streams: List<VideoStream>,
+        decodes: ((VideoStream) -> Boolean)? = null,
     ): List<VideoStream> {
         anchor ?: return emptyList()
         val codec = VideoCodecUtils.codecKeyFromStream(anchor)
@@ -25,7 +26,8 @@ internal object AdaptiveLadder {
                 AdaptiveDashManifest.canDescribe(it) &&
                     VideoCodecUtils.codecKeyFromStream(it) == codec &&
                     isHighBitDepth(it) == deep &&
-                    it.format == anchor.format
+                    it.format == anchor.format &&
+                    (decodes == null || decodes(it))
             }.groupBy(VideoCodecUtils::qualityHeightFromStream)
             .values
             .map { sameHeight -> sameHeight.maxBy { it.bitrate } }
@@ -47,11 +49,14 @@ internal object AdaptiveLadder {
         bandwidthEstimateBps: Long? = null,
         weakDevice: Boolean = false,
         familyOrder: List<String>? = null,
+        decodes: ((VideoStream) -> Boolean)? = null,
     ): List<VideoStream> =
         if (pinned != null) {
+            // A pinned quality is the viewer's explicit choice: it escapes the decoder gate
+            // the way it escapes the size cap, and plays alone if its ladder comes out empty.
             rungs(pinned, streams)
         } else {
-            rungs(anchorFor(streams, preferredCodec, bandwidthEstimateBps, weakDevice, familyOrder), streams)
+            rungs(anchorFor(streams, preferredCodec, bandwidthEstimateBps, weakDevice, familyOrder, decodes), streams, decodes)
         }
 
     /**
@@ -66,14 +71,19 @@ internal object AdaptiveLadder {
         bandwidthEstimateBps: Long? = null,
         weakDevice: Boolean = false,
         familyOrder: List<String>? = null,
-    ): VideoStream? =
-        bandwidthEstimateBps?.let { AutoQualityPolicy.cappedInitialPick(streams, it, preferredCodec, weakDevice, familyOrder) }
-            ?: streams
-                .filter(AdaptiveDashManifest::canDescribe)
+        decodes: ((VideoStream) -> Boolean)? = null,
+    ): VideoStream? {
+        // The anchor itself must be decodable, or the ladder is built in a family whose top
+        // rung the device cannot play.
+        val candidates =
+            streams.filter { AdaptiveDashManifest.canDescribe(it) && (decodes == null || decodes(it)) }
+        return bandwidthEstimateBps?.let { AutoQualityPolicy.cappedInitialPick(candidates, it, preferredCodec, weakDevice, familyOrder) }
+            ?: candidates
                 .minWithOrNull(
                     compareBy<VideoStream> { VideoCodecUtils.codecRankWithPreference(it, preferredCodec, weakDevice, familyOrder) }
                         .thenByDescending(VideoCodecUtils::qualityHeightFromStream),
                 )
+    }
 
     /** HDR and 10-bit SDR: VP9 profile 2, AV1 at 10 bits, HEVC Main 10. */
     internal fun isHighBitDepth(stream: VideoStream): Boolean {

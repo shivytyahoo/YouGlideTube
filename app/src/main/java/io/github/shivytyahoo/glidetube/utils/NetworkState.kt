@@ -35,6 +35,15 @@ object NetworkState {
     /** Whether the active network can actually reach the internet. */
     fun isOnline(context: Context): Boolean = capabilities(context).hasInternet()
 
+    /** Whether the active network is metered (cellular, or a metered hotspot). */
+    fun isMetered(context: Context): Boolean =
+        try {
+            val manager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+            manager?.isActiveNetworkMetered == true
+        } catch (e: SecurityException) {
+            false
+        }
+
     private fun capabilities(context: Context): NetworkCapabilities? =
         try {
             val manager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager

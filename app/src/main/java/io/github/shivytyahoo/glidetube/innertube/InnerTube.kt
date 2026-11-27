@@ -245,6 +245,9 @@ class InnerTube {
      * Simple retry wrapper for transient IO errors (socket aborts, timeouts).
      * Retries the given block up to [maxAttempts] times with exponential backoff.
      * Cancellation is respected since [delay] will throw if the coroutine is cancelled.
+     *
+     * A rate limit (429/503) is retried separately, up to [Backoff.MAX_RETRIES] times with a
+     * jittered pause, and every attempt first waits out the global hold another request set.
      */
     private suspend fun <T> withRetry(
         maxAttempts: Int = 3,
@@ -254,9 +257,15 @@ class InnerTube {
     ): T {
         var currentDelay = initialDelay
         var attempt = 0
+        var rateLimitRetries = 0
         while (true) {
             try {
+                Backoff.cool()
                 return block()
+            } catch (e: RateLimitedException) {
+                rateLimitRetries++
+                if (rateLimitRetries > Backoff.MAX_RETRIES) throw e
+                Backoff.pause(rateLimitRetries - 1)
             } catch (e: IOException) {
                 attempt++
                 if (attempt >= maxAttempts) throw e
@@ -580,6 +589,8 @@ class InnerTube {
                     serviceIntegrityDimensions = poToken?.let { PlayerBody.ServiceIntegrityDimensions(it) },
                 ),
             )
+        }.also { response ->
+            if (Backoff.isBusy(response.status.value)) throw RateLimitedException(response.status.value)
         }
     }
 
@@ -670,6 +681,8 @@ class InnerTube {
                     cpn = cpn,
                 ),
             )
+        }.also { response ->
+            if (Backoff.isBusy(response.status.value)) throw RateLimitedException(response.status.value)
         }
     }
 

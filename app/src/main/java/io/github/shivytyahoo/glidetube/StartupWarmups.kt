@@ -5,12 +5,14 @@ import android.app.Application
 import android.os.Bundle
 import android.util.Log
 import io.github.shivytyahoo.glidetube.innertube.YouTube
+import io.github.shivytyahoo.glidetube.player.sabr.SabrPrewarm
 import io.github.shivytyahoo.glidetube.utils.cipher.CipherDeobfuscator
 import io.github.shivytyahoo.glidetube.utils.cipher.PipePipeNsigDecoder
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
@@ -85,6 +87,14 @@ internal class StartupWarmups(
             // playback visitor through a bot challenge before any video was asked for.
             // A cold player script is a 3 MB download the first web-client extraction would wait on.
             CipherDeobfuscator.ensureSignatureTimestamp()
+        }
+        scope.launch {
+            identityRestored.await()
+            // The streaming engine starts cold on demand, and its first attestation builds the
+            // WebView session — so warm it a few seconds after start, while the user is still
+            // looking at the home feed, instead of on the first video that needs it.
+            delay(5_000)
+            SabrPrewarm.warmInBackground()
         }
     }
 

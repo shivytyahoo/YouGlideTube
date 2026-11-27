@@ -4,6 +4,7 @@ import java.io.IOException
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
 
 class SabrSegmentBuffer {
     private val queue = LinkedBlockingQueue<ByteArray>()
@@ -12,12 +13,21 @@ class SabrSegmentBuffer {
     private val closed = AtomicBoolean(false)
     private val endOfStream = AtomicBoolean(false)
 
+    // Bytes the session appended vs bytes the player read: the difference is what the fetch
+    // has run ahead of consumption, and what the byte allow-gate measures.
+    private val bytesAppended = AtomicLong(0)
+    private val bytesRead = AtomicLong(0)
+
     fun appendSegment(data: ByteArray) {
         if (closed.get()) return
         if (data.isNotEmpty()) {
+            bytesAppended.addAndGet(data.size.toLong())
             queue.put(data)
         }
     }
+
+    /** Bytes appended but not yet read: how far the fetch has run ahead of the player. */
+    fun bytesBuffered(): Long = bytesAppended.get() - bytesRead.get()
 
     fun signalEndOfStream() {
         endOfStream.set(true)
@@ -68,6 +78,7 @@ class SabrSegmentBuffer {
             System.arraycopy(chunk, currentOffset, buffer, offset + totalRead, toRead)
             currentOffset += toRead
             totalRead += toRead
+            bytesRead.addAndGet(toRead.toLong())
         }
         return totalRead
     }
@@ -85,5 +96,7 @@ class SabrSegmentBuffer {
         currentOffset = 0
         closed.set(false)
         endOfStream.set(false)
+        bytesAppended.set(0)
+        bytesRead.set(0)
     }
 }

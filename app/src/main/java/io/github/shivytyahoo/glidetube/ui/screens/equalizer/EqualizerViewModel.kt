@@ -38,9 +38,12 @@ import io.github.shivytyahoo.glidetube.data.audio.eq.saveActive
 import io.github.shivytyahoo.glidetube.data.audio.eq.saveActiveAs
 import io.github.shivytyahoo.glidetube.data.audio.eq.selectPreset
 import io.github.shivytyahoo.glidetube.data.audio.eq.withActiveCurve
+import io.github.shivytyahoo.glidetube.data.audio.eq.withBalance
 import io.github.shivytyahoo.glidetube.data.audio.eq.withBand
 import io.github.shivytyahoo.glidetube.data.audio.eq.withBassBoost
 import io.github.shivytyahoo.glidetube.data.audio.eq.withManualPreamp
+import io.github.shivytyahoo.glidetube.data.audio.eq.withNightMode
+import io.github.shivytyahoo.glidetube.data.audio.eq.withStereoWidth
 import io.github.shivytyahoo.glidetube.player.audio.AudioSessionRegistry
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -197,6 +200,12 @@ class EqualizerViewModel
         }
 
         fun setBassBoost(db: Double) = edit { it.withBassBoost(db.roundToDecimals(0)) }
+
+        fun setStereoWidth(percent: Double) = edit { it.withStereoWidth(percent.roundToDecimals(0)) }
+
+        fun setBalance(percent: Double) = edit { it.withBalance(percent.roundToDecimals(0)) }
+
+        fun setNightMode(enabled: Boolean) = edit { it.withNightMode(enabled) }
 
         fun setAutoPreamp(enabled: Boolean) = edit { it.copy(autoPreamp = enabled) }
 

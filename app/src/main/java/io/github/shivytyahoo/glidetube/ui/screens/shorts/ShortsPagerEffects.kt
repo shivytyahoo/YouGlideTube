@@ -21,6 +21,9 @@ private const val TAG = "ShortsPagerEffects"
 /** A reel the user swiped past in under a second was never really shown. */
 private const val SHOWN_DWELL_MS = 1_000L
 
+/** The audio track's first bytes warmed alongside the video: enough for the first second. */
+private const val AUDIO_WARM_BYTES = 1_000_000L
+
 /**
  * Prepares the settled reel and its neighbours whenever the pager rests, and re-resolves them when
  * the quality preference changes underneath a running reel.
@@ -69,7 +72,25 @@ internal fun ShortsPagerPlaybackEffects(
     val preloadShortId3 = shorts.getOrNull(settledPage + 3)?.id
     val preloadShortId4 = shorts.getOrNull(settledPage + 4)?.id
     val preloadShortId5 = shorts.getOrNull(settledPage + 5)?.id
-    LaunchedEffect(settledPage, settledShortId, previousShortId, nextShortId, preloadShortId, preloadShortId3, preloadShortId4, preloadShortId5, targetHeight) {
+    val preloadBehindId2 = shorts.getOrNull(settledPage - 2)?.id
+    val preloadBehindId3 = shorts.getOrNull(settledPage - 3)?.id
+    val preloadBehindId4 = shorts.getOrNull(settledPage - 4)?.id
+    val preloadBehindId5 = shorts.getOrNull(settledPage - 5)?.id
+    LaunchedEffect(
+        settledPage,
+        settledShortId,
+        previousShortId,
+        nextShortId,
+        preloadShortId,
+        preloadShortId3,
+        preloadShortId4,
+        preloadShortId5,
+        preloadBehindId2,
+        preloadBehindId3,
+        preloadBehindId4,
+        preloadBehindId5,
+        targetHeight,
+    ) {
         val height = targetHeight ?: return@LaunchedEffect
         val currentId = settledShortId ?: return@LaunchedEffect
         val settled = settledPage
@@ -85,19 +106,22 @@ internal fun ShortsPagerPlaybackEffects(
         shorts.getOrNull(settled - 1)?.let { previous ->
             launch { prepareReel(playerPool, viewModel, settled - 1, previous, height, preferredLang, shouldPlay = false) }
         }
-        // Two to five ahead: resolved, and the progressive ones' first bytes warmed into the
-        // shared cache — never handed to a player (the 3 slots already hold current, next and
-        // previous). Sequential and last, so warming never competes with the visible short; the
-        // effect's cancellation on the next settle stops the queue mid-flight. Battery saver:
+        // Two to five ahead and behind: resolved, and their first bytes warmed into the
+        // shared cache — never handed to a player (the 3 slots already hold current, next
+        // and previous). DASH reels warm too: the generated manifest's segments are byte
+        // ranges of the same video URL the player reads through the same cache. Sequential
+        // and last, so warming never competes with the visible short; the effect's
+        // cancellation on the next settle stops the queue mid-flight. Battery saver:
         // speculative warming is the first thing to go — current, next and previous are the
         // pool's own slots and stay, so swiping never stalls.
         if (!batterySaver) {
             launch {
-                for (offset in 2..5) {
-                    val ahead = shorts.getOrNull(settled + offset) ?: continue
-                    val streams = runCatching { viewModel.getPlaybackStreams(ahead.id, height, preferredLang) }.getOrNull() ?: continue
-                    if (streams.videoDashManifest == null) {
-                        runCatching { playerPool.warmAhead(streams.videoUrl) }
+                for (offset in listOf(2, 3, 4, 5, -2, -3, -4, -5)) {
+                    val reel = shorts.getOrNull(settled + offset) ?: continue
+                    val streams = runCatching { viewModel.getPlaybackStreams(reel.id, height, preferredLang) }.getOrNull() ?: continue
+                    runCatching { playerPool.warmAhead(streams.videoUrl) }
+                    streams.audioUrl?.let { audioUrl ->
+                        runCatching { playerPool.warmAhead(audioUrl, AUDIO_WARM_BYTES) }
                     }
                 }
             }

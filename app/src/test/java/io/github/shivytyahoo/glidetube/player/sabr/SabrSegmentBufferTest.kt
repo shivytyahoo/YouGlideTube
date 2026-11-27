@@ -42,4 +42,27 @@ class SabrSegmentBufferTest {
             executor.shutdownNow()
         }
     }
+
+    @Test
+    fun bytesBufferedCountsAppendedMinusRead() {
+        val buffer = SabrSegmentBuffer()
+        buffer.appendSegment(byteArrayOf(1, 2, 3, 4))
+
+        assertEquals(4, buffer.bytesBuffered())
+        assertEquals(2, buffer.read(ByteArray(2), 0, 2))
+        assertEquals(2, buffer.bytesBuffered())
+        assertEquals(2, buffer.read(ByteArray(2), 0, 2))
+        assertEquals(0, buffer.bytesBuffered())
+    }
+
+    @Test
+    fun resetClearsTheByteCounters() {
+        val buffer = SabrSegmentBuffer()
+        buffer.appendSegment(byteArrayOf(1, 2, 3))
+        buffer.read(ByteArray(1), 0, 1)
+
+        buffer.reset()
+
+        assertEquals(0, buffer.bytesBuffered())
+    }
 }

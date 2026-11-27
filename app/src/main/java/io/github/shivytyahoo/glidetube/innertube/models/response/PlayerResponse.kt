@@ -125,6 +125,12 @@ data class PlayerResponse(
             data class LiveStreamabilityRenderer(
                 val videoId: String? = null,
                 val offlineSlate: OfflineSlate? = null,
+                /**
+                 * The stream's latency class when YouTube reports one (ULTRA_LOW, LOW, NORMAL,
+                 * sometimes prefixed, e.g. MWEB_LATENCY_CLASS_LOW). Absent on most clients, so
+                 * the player treats a missing value as NORMAL.
+                 */
+                val latencyClass: String? = null,
             ) {
                 @Serializable
                 data class OfflineSlate(

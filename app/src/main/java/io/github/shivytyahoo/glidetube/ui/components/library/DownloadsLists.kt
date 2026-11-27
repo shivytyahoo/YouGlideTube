@@ -94,6 +94,7 @@ internal fun VideosDownloadsList(
     onRefresh: () -> Unit,
     onVideoClick: (List<DownloadedVideo>, Int) -> Unit,
     onDelete: (id: String, title: String) -> Unit,
+    onSaveAsOneFile: (String) -> Unit,
     onHomeClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -142,6 +143,7 @@ internal fun VideosDownloadsList(
                         onClick = { if (selection.active) selection.onToggle(video.video.id) else onVideoClick(videos, index) },
                         onDeleteClick = { onDelete(video.video.id, video.video.title) },
                         rowThumbnailWidth = grid.rowThumbnailWidth,
+                        onSaveAsOneFile = { onSaveAsOneFile(video.video.id) },
                         modifier = animateMediaGridItem().padding(bottom = if (asCard) GridSpacing else 0.dp),
                     )
                 }

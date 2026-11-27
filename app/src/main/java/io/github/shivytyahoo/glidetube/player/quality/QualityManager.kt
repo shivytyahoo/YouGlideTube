@@ -197,7 +197,17 @@ class QualityManager(
 
     /** The rungs around [anchor] whether a quality is pinned or not. A pinned load plays the
      * same ladder with the pin as a track-selector constraint, so switches within it need no reload. */
-    fun pinnedLadder(anchor: VideoStream?): List<VideoStream> = AdaptiveLadder.rungs(anchor, getWorkingStreams())
+    fun pinnedLadder(anchor: VideoStream?): List<VideoStream> =
+        AdaptiveLadder.rungs(
+            anchor,
+            getWorkingStreams(),
+            // A pinned quality is the viewer's explicit choice: it escapes the decoder gate
+            // the way it escapes the size cap.
+            decodes = if (manualQualityHeight == null) decodesRung else null,
+        )
+
+    /** The decoder gate for Auto ladders; null keeps every rung, which is also what tests see. */
+    var decodesRung: ((VideoStream) -> Boolean)? = null
 
     /** The qualities Auto hands to Media3 around [anchor], or none while a quality is pinned. */
     fun adaptiveLadder(anchor: VideoStream?): List<VideoStream> = if (isAdaptiveQualityEnabled) pinnedLadder(anchor) else emptyList()

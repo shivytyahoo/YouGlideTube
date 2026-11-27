@@ -89,6 +89,7 @@ internal fun VideoDownloadItem(
     onDeleteClick: () -> Unit,
     modifier: Modifier = Modifier,
     rowThumbnailWidth: Dp = MediaThumbnailDefaults.VideoWidth,
+    onSaveAsOneFile: (() -> Unit)? = null,
 ) {
     var showMenu by remember { mutableStateOf(false) }
     val supporting = downloadSupportingLine(video.quality, video.fileSize, video.downloadedAt)
@@ -141,6 +142,7 @@ internal fun VideoDownloadItem(
             onRemoveFromCollection = onDeleteClick,
             removeFromCollectionLabel = stringResource(R.string.delete),
             removeFromCollectionIcon = Icons.Outlined.Delete,
+            onSaveAsOneFile = onSaveAsOneFile,
         )
     }
 }

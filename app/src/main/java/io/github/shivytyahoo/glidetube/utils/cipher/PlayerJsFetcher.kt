@@ -22,8 +22,12 @@ import java.io.File
 object PlayerJsFetcher {
     private const val TAG = "Flow_CipherFetcher"
     private const val IFRAME_API_URL = "https://www.youtube.com/iframe_api"
-    private const val PLAYER_JS_URL_TEMPLATE = "https://www.youtube.com/s/player/%s/player_ias.vflset/en_GB/base.js"
+    private const val PLAYER_JS_URL_TEMPLATE_IAS = "https://www.youtube.com/s/player/%s/player_ias.vflset/en_GB/base.js"
+    private const val PLAYER_JS_URL_TEMPLATE = "https://www.youtube.com/s/player/%s/player.vflset/en_GB/base.js"
     private const val CACHE_TTL_MS = 6 * 60 * 60 * 1000L // 6 hours
+
+    /** Player versions kept on disk, newest first: a rollback reuses one instead of re-downloading. */
+    private const val MAX_CACHED_PLAYERS = 3
 
     private val httpClient = ProxyAwareClient()
 
@@ -69,6 +73,8 @@ object PlayerJsFetcher {
                 null
             } else {
                 Log.d(TAG, "Player hash: $hash")
+                // A rollback to a version kept on disk needs no download.
+                readCachedPlayer(hash)?.let { return it }
                 val playerJs = downloadPlayerJs(hash)
                 if (playerJs == null) {
                     Log.e(TAG, "Failed to download player JS for hash=$hash")
@@ -134,14 +140,29 @@ object PlayerJsFetcher {
     ) {
         try {
             val cacheDir = getCacheDir()
-            // Clean old cache files
-            cacheDir.listFiles()?.filter { it.name.startsWith("player_") }?.forEach { it.delete() }
+            // Keep the newest few versions: a rollback to one of them needs no download.
+            cacheDir
+                .listFiles()
+                ?.filter { it.name.startsWith("player_") && it.name != getCacheFile(hash).name }
+                ?.sortedByDescending { it.lastModified() }
+                ?.drop(MAX_CACHED_PLAYERS - 1)
+                ?.forEach { it.delete() }
             getCacheFile(hash).writeText(playerJs)
             getHashFile().writeText("$hash\n${System.currentTimeMillis()}")
             Log.d(TAG, "Cache written: hash=$hash")
         } catch (e: Exception) {
             Log.e(TAG, "Error writing cache: ${e.message}", e)
         }
+    }
+
+    /** The cached script for [hash], whatever the current hash is; null when it is not on disk. */
+    private fun readCachedPlayer(hash: String): Pair<String, String>? {
+        val cacheFile = getCacheFile(hash)
+        if (!cacheFile.exists()) return null
+        val playerJs = runCatching { cacheFile.readText() }.getOrNull()?.takeIf { it.isNotEmpty() } ?: return null
+        runCatching { getHashFile().writeText("$hash\n${System.currentTimeMillis()}") }
+        Log.d(TAG, "Cache hit for rolled-back player: hash=$hash, length=${playerJs.length}")
+        return Pair(playerJs, hash)
     }
 
     private fun fetchPlayerHash(): String? {
@@ -165,7 +186,15 @@ object PlayerJsFetcher {
     }
 
     private fun downloadPlayerJs(hash: String): String? {
-        val url = PLAYER_JS_URL_TEMPLATE.format(hash)
+        // The TV-player script first: the main web player cannot be solved outside a browser,
+        // the TV one can. The plain player is the fallback when the TV one fails to fetch.
+        val ias = downloadPlayerJsFrom(PLAYER_JS_URL_TEMPLATE_IAS.format(hash))
+        if (ias != null) return ias
+        Log.w(TAG, "TV-player script failed for hash=$hash; trying the plain player script")
+        return downloadPlayerJsFrom(PLAYER_JS_URL_TEMPLATE.format(hash))
+    }
+
+    private fun downloadPlayerJsFrom(url: String): String? {
         Log.d(TAG, "Downloading player.js from: $url")
         val request =
             Request

@@ -15,6 +15,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
@@ -56,6 +57,9 @@ import io.github.shivytyahoo.glidetube.ui.components.shared.card.ProvideVideoCar
 import io.github.shivytyahoo.glidetube.ui.linkTextOf
 import io.github.shivytyahoo.glidetube.ui.musicCollectionRoute
 import io.github.shivytyahoo.glidetube.ui.screens.crash.CrashReportScreen
+import io.github.shivytyahoo.glidetube.ui.screens.crash.StartupRecoveryDialog
+import io.github.shivytyahoo.glidetube.ui.screens.settings.profiles.PersonGateDialog
+import io.github.shivytyahoo.glidetube.ui.screens.settings.profiles.PersonProfilesViewModel
 import io.github.shivytyahoo.glidetube.ui.screens.update.UPDATE_ROUTE
 import io.github.shivytyahoo.glidetube.ui.startup.GlideTheme
 import io.github.shivytyahoo.glidetube.ui.startup.SplashController
@@ -70,6 +74,7 @@ import io.github.shivytyahoo.glidetube.ui.tv.GlideTvApp
 import io.github.shivytyahoo.glidetube.ui.utils.ProvideWindowSizeClass
 import io.github.shivytyahoo.glidetube.utils.AppLanguageManager
 import io.github.shivytyahoo.glidetube.utils.GlideCrashHandler
+import io.github.shivytyahoo.glidetube.utils.StartupSentinel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -83,6 +88,8 @@ private const val PORTRAIT_REEL_ASPECT_RATIO = 9f / 16f
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     private val links = IncomingLinks()
+
+    private val personProfilesViewModel: PersonProfilesViewModel by viewModels()
 
     @Inject
     lateinit var originalTitles: OriginalTitleRepository
@@ -156,6 +163,13 @@ class MainActivity : ComponentActivity() {
         splashController.install(installSplashScreen())
 
         super.onCreate(savedInstanceState)
+
+        // The startup-crash escape hatch: a mark set here and cleared when the first screen
+        // mounts, so a launch that dies before that shows the recovery dialog next time. A
+        // recreation (rotation, or the system restoring state) is not a fresh launch.
+        val previousLaunchCrashed =
+            savedInstanceState == null && StartupSentinel.previousLaunchCrashed(applicationContext)
+        StartupSentinel.markLaunchStarted(applicationContext)
 
         window.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING)
 
@@ -241,12 +255,69 @@ class MainActivity : ComponentActivity() {
                 )
             }
 
+            // A launch that died during startup offers the escape hatch instead of the crash
+            // report: the report was already consumed above, so continuing here skips it.
+            var showRecovery by remember { mutableStateOf(previousLaunchCrashed) }
+            if (showRecovery) {
+                // The dialog mounting is proof the app can draw UI, so this launch is not a
+                // startup crash even if it goes on to crash later.
+                SideEffect { StartupSentinel.markReady(applicationContext) }
+                GlideTheme(rootTheme.copy(fontFamily = GlideFontFamily)) {
+                    StartupRecoveryDialog(
+                        onContinue = {
+                            pendingCrashLog = null
+                            showRecovery = false
+                        },
+                        onSafeMode = {
+                            StartupSentinel.setSafeMode(applicationContext, true)
+                            StartupSentinel.restart(applicationContext)
+                        },
+                        onResetSettings = {
+                            lifecycleScope.launch {
+                                StartupSentinel.resetSettings(applicationContext)
+                                // A reset starts clean: defaults, normal mode, no recovery dialog.
+                                StartupSentinel.markReady(applicationContext)
+                                StartupSentinel.restart(applicationContext)
+                            }
+                        },
+                    )
+                }
+                return@setContent
+            }
+
             if (pendingCrashLog != null) {
-                SideEffect { splashController.contentReady = true }
+                SideEffect {
+                    splashController.contentReady = true
+                    StartupSentinel.markReady(applicationContext)
+                }
                 GlideTheme(rootTheme.copy(fontFamily = GlideFontFamily)) {
                     CrashReportScreen(
                         report = pendingCrashLog!!,
                         onContinue = { pendingCrashLog = null },
+                    )
+                }
+                return@setContent
+            }
+
+            // More than one person and the gate on: ask who's watching before the home loads.
+            // The gate is not content, so it does not clear the startup sentinel — a crash
+            // after this still offers the recovery dialog next launch. A person switch
+            // restarts the process, so the gate only ever shows once per launch.
+            var gatePassed by remember { mutableStateOf(false) }
+            if (!gatePassed && personProfilesViewModel.shouldShowGate()) {
+                val profilesState by personProfilesViewModel.state.collectAsState()
+                GlideTheme(rootTheme.copy(fontFamily = GlideFontFamily)) {
+                    PersonGateDialog(
+                        state = profilesState,
+                        onPick = {
+                            gatePassed = true
+                            personProfilesViewModel.pickPerson(it)
+                        },
+                        onContinue = {
+                            gatePassed = true
+                            personProfilesViewModel.passGate()
+                        },
+                        checkPin = personProfilesViewModel::checkPin,
                     )
                 }
                 return@setContent
@@ -280,7 +351,10 @@ class MainActivity : ComponentActivity() {
                                 val pendingRoute by links.route
 
                                 if (appUiRoot == AppUiRoot.TV) {
-                                    SideEffect { splashController.contentReady = true }
+                                    SideEffect {
+                                        splashController.contentReady = true
+                                        StartupSentinel.markReady(applicationContext)
+                                    }
                                     GlideTvApp(
                                         deeplinkVideoId = deeplinkVideoId,
                                         isShort = isDeeplinkShort,
@@ -299,7 +373,10 @@ class MainActivity : ComponentActivity() {
                                         onDeeplinkConsumed = links::consumeVideo,
                                         pendingRoute = pendingRoute,
                                         onPendingRouteConsumed = links::consumeRoute,
-                                        onStartDestinationKnown = { splashController.contentReady = true },
+                                        onStartDestinationKnown = {
+                                            splashController.contentReady = true
+                                            StartupSentinel.markReady(applicationContext)
+                                        },
                                     )
                                 }
                             }
@@ -312,6 +389,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
+        // Safe mode skips the startup network calls along with the warm-ups.
+        if (StartupSentinel.isSafeMode(applicationContext)) return
         // Opening the app checks for new subscription videos (throttled), so the bell badge
         // is live on open instead of only after a manual pull-to-refresh in the panel.
         lifecycleScope.launch(Dispatchers.IO) {

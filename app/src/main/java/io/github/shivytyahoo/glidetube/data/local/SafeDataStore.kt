@@ -11,7 +11,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.retryWhen
+import java.io.File
 import java.io.IOException
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KProperty
 
@@ -19,13 +22,35 @@ private const val SAFE_DATA_STORE_TAG = "SafeDataStore"
 private const val READ_RETRY_ATTEMPTS = 3
 private const val READ_RETRY_DELAY_MS = 100L
 
+/**
+ * Every preferences store the app has opened, by file name. Backup, import and reset walk this
+ * instead of a hardcoded list, so a store added later is covered without a second edit. A store
+ * that was never opened is not here — and has nothing to back up.
+ */
+object DataStoreRegistry {
+    private val stores = ConcurrentHashMap<String, DataStore<Preferences>>()
+
+    internal fun register(
+        name: String,
+        store: DataStore<Preferences>,
+    ) {
+        stores.putIfAbsent(name, store)
+    }
+
+    fun snapshot(): Map<String, DataStore<Preferences>> = stores.toMap()
+}
+
 fun safePreferencesDataStore(name: String): ReadOnlyProperty<Context, DataStore<Preferences>> {
+    // The corruption handler runs without a Context; the first read happens after getValue, so the
+    // context it needs is waiting here by then.
+    val contextRef = AtomicReference<Context?>(null)
     val delegate =
         preferencesDataStore(
             name = name,
             corruptionHandler =
                 ReplaceFileCorruptionHandler { corruption ->
                     Log.w(SAFE_DATA_STORE_TAG, "Resetting corrupted preferences DataStore: $name", corruption)
+                    preserveCorruptedFile(contextRef.get(), name)
                     emptyPreferences()
                 },
         )
@@ -36,9 +61,33 @@ fun safePreferencesDataStore(name: String): ReadOnlyProperty<Context, DataStore<
             property: KProperty<*>,
         ): DataStore<Preferences> =
             wrapped ?: synchronized(this) {
-                wrapped ?: ReadSafeDataStore(name, delegate.getValue(thisRef, property)).also { wrapped = it }
+                wrapped ?: ReadSafeDataStore(name, delegate.getValue(thisRef, property)).also {
+                    contextRef.set(thisRef.applicationContext)
+                    DataStoreRegistry.register(name, it)
+                    wrapped = it
+                }
             }
     }
+}
+
+/**
+ * A corrupt file is still the user's data: keep a timestamped copy beside it before the handler
+ * replaces it with empty preferences, so the loss is diagnosable instead of silent. Best effort —
+ * a copy that fails must never turn a recoverable reset into a crash.
+ */
+private fun preserveCorruptedFile(
+    context: Context?,
+    name: String,
+) {
+    if (context == null) return
+    runCatching {
+        val dir = File(context.filesDir, "datastore")
+        val corrupt = File(dir, "$name.preferences_pb")
+        if (!corrupt.isFile) return
+        val preserved = File(dir, "$name.broken-${System.currentTimeMillis()}")
+        if (!preserved.exists()) corrupt.copyTo(preserved)
+        Log.w(SAFE_DATA_STORE_TAG, "Preserved corrupted preferences DataStore: $name -> ${preserved.name}")
+    }.onFailure { Log.w(SAFE_DATA_STORE_TAG, "Could not preserve corrupted preferences DataStore: $name", it) }
 }
 
 internal class ReadSafeDataStore(

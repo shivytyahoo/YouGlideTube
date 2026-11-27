@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import io.github.shivytyahoo.glidetube.R
 import io.github.shivytyahoo.glidetube.data.local.dao.DownloadCollectionSummary
 import io.github.shivytyahoo.glidetube.data.local.entity.DownloadFileType
 import io.github.shivytyahoo.glidetube.data.local.entity.DownloadItemStatus
@@ -18,6 +19,7 @@ import io.github.shivytyahoo.glidetube.data.video.DownloadedVideo
 import io.github.shivytyahoo.glidetube.data.video.VideoDownloadManager
 import io.github.shivytyahoo.glidetube.data.video.downloader.collection.DownloadedCollections
 import io.github.shivytyahoo.glidetube.data.video.downloader.work.DownloadController
+import io.github.shivytyahoo.glidetube.data.video.storage.SingleFileExport
 import io.github.shivytyahoo.glidetube.data.video.storage.deleteRequestFor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -49,6 +51,7 @@ class DownloadsViewModel
         private val musicDownloadManager: MusicDownloadManager,
         private val downloadController: DownloadController,
         private val collections: DownloadedCollections,
+        private val singleFileExport: SingleFileExport,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(DownloadsUiState())
         val uiState: StateFlow<DownloadsUiState> = _uiState.asStateFlow()
@@ -228,6 +231,28 @@ class DownloadsViewModel
         /** How many earlier downloads a scan brought back; sent when there were some, or when the viewer asked. */
         private val _recovered = MutableSharedFlow<Int>(extraBufferCapacity = 1)
         val recovered: SharedFlow<Int> = _recovered.asSharedFlow()
+
+        /** The result of a "Save as one file" export, as the message the screen shows. */
+        private val _exported = MutableSharedFlow<String>(extraBufferCapacity = 1)
+        val exported: SharedFlow<String> = _exported.asSharedFlow()
+
+        /** Copies a finished download out as one file; the library's own copy stays where it is. */
+        fun exportSingleFile(videoId: String) {
+            viewModelScope.launch {
+                val download = videoDownloadManager.getDownloadWithItems(videoId) ?: return@launch
+                val message =
+                    when (val result = singleFileExport.export(download)) {
+                        is SingleFileExport.Result.Success -> {
+                            context.getString(R.string.export_single_file_saved, result.fileName)
+                        }
+
+                        is SingleFileExport.Result.Failure -> {
+                            context.getString(R.string.export_single_file_failed)
+                        }
+                    }
+                _exported.tryEmit(message)
+            }
+        }
 
         fun rescan() = scan(reportNone = false)
 

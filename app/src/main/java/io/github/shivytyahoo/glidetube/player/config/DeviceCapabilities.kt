@@ -2,8 +2,10 @@ package io.github.shivytyahoo.glidetube.player.config
 
 import android.app.ActivityManager
 import android.content.Context
+import android.media.MediaCodecInfo
 import android.media.MediaCodecList
 import android.media.MediaFormat
+import android.os.Build
 import android.util.Log
 
 /**
@@ -54,6 +56,50 @@ object DeviceCapabilities {
     }
 
     private val maxHeightCache = java.util.concurrent.ConcurrentHashMap<String, Int>()
+
+    private val decodesCache = java.util.concurrent.ConcurrentHashMap<String, Boolean>()
+
+    /**
+     * Whether a hardware decoder on this device plays this exact rung: the mime type at its
+     * width, height and frame rate, falling back to a size-only check when the frame rate is
+     * unknown. Software decoders are not counted — a software 8K decode is a slideshow, not
+     * playback. Cached per (mime, width, height, frame rate); the first call happens during
+     * player initialisation, never on a frame.
+     */
+    fun decodes(
+        mimeType: String,
+        width: Int,
+        height: Int,
+        frameRate: Int,
+    ): Boolean =
+        decodesCache.getOrPut("$mimeType|$width|$height|$frameRate") {
+            runCatching {
+                MediaCodecList(MediaCodecList.REGULAR_CODECS).codecInfos.any { info ->
+                    !info.isEncoder &&
+                        isHardwareAccelerated(info) &&
+                        info.supportedTypes.any { it.equals(mimeType, ignoreCase = true) } &&
+                        runCatching {
+                            val capabilities =
+                                info.getCapabilitiesForType(mimeType).videoCapabilities
+                            if (frameRate > 0) {
+                                capabilities?.areSizeAndRateSupported(width, height, frameRate.toDouble()) == true
+                            } else {
+                                capabilities?.isSizeSupported(width, height) == true
+                            }
+                        }.getOrDefault(false)
+                }
+            }.getOrDefault(false)
+        }
+
+    private fun isHardwareAccelerated(info: MediaCodecInfo): Boolean =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            info.isHardwareAccelerated
+        } else {
+            // Pre-29 has no hardware flag: a decoder whose name is not a known software
+            // one is treated as hardware.
+            val name = info.name.lowercase()
+            !name.startsWith("omx.google.") && !name.startsWith("c2.android.") && !name.contains(".sw.")
+        }
 
     /** The tallest standard height this device decodes for [mimeType], or 0 when it decodes none of them. */
     fun maxDecodableHeight(mimeType: String): Int =

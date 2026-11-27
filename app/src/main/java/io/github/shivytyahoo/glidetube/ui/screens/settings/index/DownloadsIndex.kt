@@ -27,6 +27,8 @@ internal object DownloadsIndex {
 
     val videoLocation = entry("video_location", R.string.video_download_location_label, R.string.storage_header)
     val musicLocation = entry("music_location", R.string.music_download_location_label, R.string.storage_header)
+    val moveVideoFolder = entry("move_video_folder", R.string.move_video_folder, R.string.storage_header)
+    val moveMusicFolder = entry("move_music_folder", R.string.move_music_folder, R.string.storage_header)
     val usage = entry("usage", R.string.internal_storage_label, R.string.storage_header)
     val cacheUsage = entry("cache_usage", R.string.cache_group_header, R.string.cache_group_header)
     val videoCache = entry("cache_size", R.string.cache_videos, R.string.cache_group_header)
@@ -68,6 +70,13 @@ internal object DownloadsIndex {
             R.string.settings_auto_download_opened_title,
             R.string.settings_section_download_defaults,
             summary = R.string.settings_auto_download_opened_summary,
+        )
+    val autoDownloadChannels =
+        entry(
+            "channels",
+            R.string.settings_auto_download_channels_title,
+            R.string.settings_auto_download_channels_title,
+            summary = R.string.channel_save_new_videos_summary,
         )
     val wifiOnly =
         entry(
@@ -119,6 +128,8 @@ internal object DownloadsIndex {
         listOf(
             videoLocation,
             musicLocation,
+            moveVideoFolder,
+            moveMusicFolder,
             usage,
             cacheUsage,
             videoCache,
@@ -131,6 +142,7 @@ internal object DownloadsIndex {
             menuStyle,
             autoDownloadLikes,
             autoDownloadOpened,
+            autoDownloadChannels,
             wifiOnly,
             subtitleFile,
             retag,

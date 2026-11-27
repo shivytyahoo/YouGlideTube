@@ -15,6 +15,7 @@ import io.github.shivytyahoo.glidetube.player.sabr.integration.SabrStreamInfo
 import io.github.shivytyahoo.glidetube.player.stream.ResolvedCaption
 import io.github.shivytyahoo.glidetube.player.stream.ResolvedPlayback
 import io.github.shivytyahoo.glidetube.player.stream.VideoCodecUtils
+import io.github.shivytyahoo.glidetube.utils.MusicPlayerUtils
 import io.github.shivytyahoo.glidetube.utils.NetworkState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -172,6 +173,14 @@ internal class PlaybackPreparer(
                     preferredVideoCodec = preferredVideoCodec,
                     preferSabr = preferSabr,
                     preferredLiveQualityHeight = preferredLiveQualityHeight,
+                    // No player response on this path, so only the first audio format's own
+                    // loudness figure is available; the audio config's figures are absent.
+                    perVideoLoudnessGainDb =
+                        MusicPlayerUtils.loudnessGainDb(
+                            audioConfig = null,
+                            formatLoudnessDb = itAudioFormats.firstOrNull()?.loudnessDb,
+                            formatTrackAbsoluteLoudnessLkfs = itAudioFormats.firstOrNull()?.trackAbsoluteLoudnessLkfs,
+                        ),
                 )
             }
         }
