@@ -5,13 +5,19 @@ import android.content.Context
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 
-/** The largest frame the track selector may pick: never above 4K, lower on a small app heap. */
+/**
+ * The largest frame the track selector may pick: never above 4K, lower on a small app heap —
+ * or 8K when a decoder on this device actually plays it.
+ */
 data class VideoSizeCap(
     val maxWidth: Int,
     val maxHeight: Int,
 ) {
     companion object {
         val UHD = VideoSizeCap(PlayerConfig.MAX_VIDEO_WIDTH, PlayerConfig.MAX_VIDEO_HEIGHT)
+
+        /** 8K, offered to Auto only by [forDevice] when the decoder gate passes. */
+        val UHD8K = VideoSizeCap(PlayerConfig.MAX_VIDEO_WIDTH_8K, PlayerConfig.MAX_VIDEO_HEIGHT_8K)
 
         fun forHeap(
             memoryClassMb: Int,
@@ -25,10 +31,16 @@ data class VideoSizeCap(
 
         fun forDevice(context: Context): VideoSizeCap {
             val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
-            return forHeap(
-                memoryClassMb = activityManager?.memoryClass ?: 256,
-                isLowRamDevice = activityManager?.isLowRamDevice == true,
-            )
+            val cap =
+                forHeap(
+                    memoryClassMb = activityManager?.memoryClass ?: 256,
+                    isLowRamDevice = activityManager?.isLowRamDevice == true,
+                )
+            // The heap cap is a floor on ambition, not a decoder claim: lift it to 8K only
+            // when a decoder on this device actually plays 8K, so Auto never climbs to a
+            // size the device cannot decode. A manual 4320p pin already escapes the cap,
+            // as before, and the HDR/10-bit ladder separation is untouched.
+            return if (cap == UHD && DeviceCapabilities.supports8kDecode()) UHD8K else cap
         }
     }
 }
@@ -52,9 +64,10 @@ fun DefaultTrackSelector.Parameters.Builder.resetVideoSizeTo(cap: VideoSizeCap):
 internal fun adaptiveTrackSelectorDefaults(
     builder: DefaultTrackSelector.Parameters.Builder,
     cap: VideoSizeCap,
+    preferredMimeTypes: Array<String>? = null,
 ): DefaultTrackSelector.Parameters.Builder =
     builder
-        .setPreferredVideoMimeTypes(*PlayerConfig.PREFERRED_VIDEO_MIME_TYPES)
+        .setPreferredVideoMimeTypes(*(preferredMimeTypes ?: PlayerConfig.PREFERRED_VIDEO_MIME_TYPES))
         .setAllowVideoMixedMimeTypeAdaptiveness(false)
         .setAllowMultipleAdaptiveSelections(true)
         .resetVideoSizeTo(cap)

@@ -184,4 +184,20 @@ object PlayerConfig {
     const val MAX_VIDEO_WIDTH = 3840
 
     const val MAX_VIDEO_HEIGHT = 2160
+
+    /** 8K: only offered to Auto when a decoder on the device actually plays it (see VideoSizeCap). */
+    const val MAX_VIDEO_WIDTH_8K = 7680
+
+    const val MAX_VIDEO_HEIGHT_8K = 4320
+
+    // ===== Long-buffer mode ("Buffer further ahead") =====
+
+    /** Duration window a long buffer holds ahead, in milliseconds (1200 s). */
+    const val LONG_BUFFER_MAX_MS = 1_200_000
+
+    /** Byte budget a long buffer holds ahead on phones. */
+    const val LONG_BUFFER_TARGET_BUFFER_BYTES = 400 * 1024 * 1024
+
+    /** Byte budget a long buffer holds ahead on TV, where the heap is shared with the leanback UI. */
+    const val LONG_BUFFER_TARGET_BUFFER_BYTES_TV = 150 * 1024 * 1024
 }

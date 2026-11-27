@@ -421,7 +421,7 @@ internal class PlaybackSessionApplier(
         playbackPreparer.beginSession(videoId, identity.title, identity.channel, identity.thumbnail)
         playbackPreparer.applyAutoplayCandidates(videoId = videoId, videos = relatedVideos)
 
-        uiState.update { it.applyLiveStreams(relatedVideos, streams.hlsUrl) }
+        uiState.update { it.applyLiveStreams(relatedVideos, streams.hlsUrl, extractionClientName = result.usedClient.clientName) }
 
         val liveStarted =
             playbackPreparer.prepareLiveStreams(
@@ -506,6 +506,7 @@ internal class PlaybackSessionApplier(
                                 ?.spec,
                         durationMs = streams.durationSeconds * 1000L,
                     ),
+                extractionClientName = result.usedClient.clientName,
             )
         }
 

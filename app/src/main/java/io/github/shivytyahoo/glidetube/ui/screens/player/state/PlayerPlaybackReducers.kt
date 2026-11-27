@@ -84,6 +84,7 @@ internal fun VideoPlayerUiState.applyVodStreams(
     innerTubeAudioFormats: List<PlayerResponse.StreamingData.Format>,
     streamSizes: Map<String, Long>,
     storyboard: List<StoryboardLevel>,
+    extractionClientName: String? = null,
 ): VideoPlayerUiState =
     copy(
         cachedVideo = cachedVideo.keepingLateFieldsOf(this.cachedVideo),
@@ -107,6 +108,7 @@ internal fun VideoPlayerUiState.applyVodStreams(
         innerTubeAudioFormats = innerTubeAudioFormats,
         streamSizes = streamSizes,
         storyboard = storyboard,
+        extractionClientName = extractionClientName,
     )
 
 /**
@@ -129,6 +131,7 @@ internal fun VideoPlayerUiState.applyChapters(chapters: List<VideoChapter>): Vid
 internal fun VideoPlayerUiState.applyLiveStreams(
     relatedVideos: List<Video>,
     hlsUrl: String?,
+    extractionClientName: String? = null,
 ): VideoPlayerUiState =
     copy(
         relatedVideos = relatedVideos,
@@ -142,6 +145,7 @@ internal fun VideoPlayerUiState.applyLiveStreams(
         upcomingReleaseTimeMs = null,
         innerTubeVideoFormats = emptyList(),
         innerTubeAudioFormats = emptyList(),
+        extractionClientName = extractionClientName,
     )
 
 /** The InnerTube VOD path threw: the related lane it had already gathered survives the error. */

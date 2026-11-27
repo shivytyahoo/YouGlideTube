@@ -15,6 +15,8 @@ internal object AutoQualityPolicy {
         streams: List<VideoStream>,
         estimateBps: Long,
         preferredCodec: String?,
+        weakDevice: Boolean = false,
+        familyOrder: List<String>? = null,
     ): VideoStream? {
         if (streams.isEmpty()) return null
         val budget = (estimateBps * PlayerConfig.AUTO_BANDWIDTH_FRACTION).toLong()
@@ -23,7 +25,7 @@ internal object AutoQualityPolicy {
         return streams
             .filter { height(it) == height }
             .minWithOrNull(
-                compareBy<VideoStream> { VideoCodecUtils.codecRankWithPreference(it, preferredCodec) }
+                compareBy<VideoStream> { VideoCodecUtils.codecRankWithPreference(it, preferredCodec, weakDevice, familyOrder) }
                     .thenBy { if (it.bitrate <= budget) 0 else 1 }
                     .thenByDescending { it.bitrate },
             )
@@ -39,13 +41,15 @@ internal object AutoQualityPolicy {
         streams: List<VideoStream>,
         estimateBps: Long,
         preferredCodec: String?,
+        weakDevice: Boolean = false,
+        familyOrder: List<String>? = null,
     ): VideoStream? {
-        val uncapped = initialPick(streams, estimateBps, preferredCodec) ?: return null
+        val uncapped = initialPick(streams, estimateBps, preferredCodec, weakDevice, familyOrder) ?: return null
         val cappedEstimate = minOf(estimateBps, PlayerConfig.INITIAL_PICK_BANDWIDTH_CAP_BPS)
         if (cappedEstimate >= estimateBps) return uncapped
         val codec = VideoCodecUtils.codecKeyFromStream(uncapped)
         val sameCodec = streams.filter { VideoCodecUtils.codecKeyFromStream(it) == codec }
-        return initialPick(sameCodec, cappedEstimate, preferredCodec)
+        return initialPick(sameCodec, cappedEstimate, preferredCodec, weakDevice, familyOrder)
     }
 
     /** One quality up, when the estimate covers its bitrate with [PlayerConfig.QUALITY_UPGRADE_THRESHOLD] to spare. */
@@ -54,8 +58,10 @@ internal object AutoQualityPolicy {
         streams: List<VideoStream>,
         estimateBps: Long,
         preferredCodec: String?,
+        weakDevice: Boolean = false,
+        familyOrder: List<String>? = null,
     ): VideoStream? {
-        val next = neighbour(current, streams, preferredCodec) { height(it) > height(current) } ?: return null
+        val next = neighbour(current, streams, preferredCodec, weakDevice, familyOrder) { height(it) > height(current) } ?: return null
         val required = next.bitrate * PlayerConfig.QUALITY_UPGRADE_THRESHOLD
         return next.takeIf { it.bitrate == 0 || estimateBps > required }
     }
@@ -70,8 +76,10 @@ internal object AutoQualityPolicy {
         streams: List<VideoStream>,
         estimateBps: Long,
         preferredCodec: String?,
+        weakDevice: Boolean = false,
+        familyOrder: List<String>? = null,
     ): VideoStream? {
-        val fitting = initialPick(streams, estimateBps, preferredCodec) ?: return null
+        val fitting = initialPick(streams, estimateBps, preferredCodec, weakDevice, familyOrder) ?: return null
         return fitting.takeIf { height(it) < height(current) }
     }
 
@@ -79,12 +87,17 @@ internal object AutoQualityPolicy {
         current: VideoStream,
         streams: List<VideoStream>,
         preferredCodec: String?,
-    ): VideoStream? = neighbour(current, streams, preferredCodec, nearestFirst = false) { height(it) < height(current) }
+        weakDevice: Boolean = false,
+        familyOrder: List<String>? = null,
+    ): VideoStream? =
+        neighbour(current, streams, preferredCodec, weakDevice, familyOrder, nearestFirst = false) { height(it) < height(current) }
 
     private fun neighbour(
         current: VideoStream,
         streams: List<VideoStream>,
         preferredCodec: String?,
+        weakDevice: Boolean = false,
+        familyOrder: List<String>? = null,
         nearestFirst: Boolean = true,
         side: (VideoStream) -> Boolean,
     ): VideoStream? {
@@ -95,7 +108,7 @@ internal object AutoQualityPolicy {
             .filter { height(it) == height }
             .minWithOrNull(
                 compareBy<VideoStream> { if (VideoCodecUtils.codecKeyFromStream(it) == codec) 0 else 1 }
-                    .thenBy { VideoCodecUtils.codecRankWithPreference(it, preferredCodec) }
+                    .thenBy { VideoCodecUtils.codecRankWithPreference(it, preferredCodec, weakDevice, familyOrder) }
                     .thenByDescending { it.bitrate },
             )
     }

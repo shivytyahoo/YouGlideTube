@@ -21,6 +21,7 @@ import io.github.shivytyahoo.glidetube.data.local.SPEED_SWIPE_STEPS
 import io.github.shivytyahoo.glidetube.data.local.SpeedSwipeSide
 import io.github.shivytyahoo.glidetube.player.crossfade.CrossfadePolicy
 import io.github.shivytyahoo.glidetube.player.stream.CaptionTrackResolver
+import io.github.shivytyahoo.glidetube.player.stream.PlaybackMethod
 import io.github.shivytyahoo.glidetube.ui.components.shared.GlideChoice
 import io.github.shivytyahoo.glidetube.ui.components.shared.GlideChoiceDialog
 import io.github.shivytyahoo.glidetube.utils.LanguageCatalog
@@ -46,6 +47,18 @@ internal fun PlaybackDialogs(
                 options = AutoplayCountdownOptions.map { GlideChoice(it, countdownLabel(it)) },
                 selected = seconds,
                 onSelect = viewModel::setAutoplayCountdown,
+                onDismiss = onDismiss,
+            )
+        }
+
+        PlaybackDialog.PLAYBACK_METHOD -> {
+            val method by viewModel.playbackMethod.collectAsStateWithLifecycle()
+            GlideChoiceDialog(
+                title = stringResource(R.string.player_settings_playback_method_dialog_title),
+                description = stringResource(R.string.player_settings_playback_method_dialog_body),
+                options = PlaybackMethod.menuOrder.map { GlideChoice(it, playbackMethodLabel(it)) },
+                selected = method,
+                onSelect = viewModel::setPlaybackMethod,
                 onDismiss = onDismiss,
             )
         }

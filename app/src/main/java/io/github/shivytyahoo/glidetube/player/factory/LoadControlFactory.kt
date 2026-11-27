@@ -8,6 +8,8 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.upstream.DefaultAllocator
 import io.github.shivytyahoo.glidetube.data.local.BufferDurations
+import io.github.shivytyahoo.glidetube.platform.DeviceFormFactor
+import io.github.shivytyahoo.glidetube.platform.DeviceFormFactorDetector
 import io.github.shivytyahoo.glidetube.player.config.PlayerConfig
 
 /**
@@ -28,6 +30,12 @@ object LoadControlFactory {
      * Main video player: stored user preferences, re-capped against what this device's heap can
      * afford. The caps are applied at read time because a combination saved as valid on one device
      * can exceed the budget on another.
+     *
+     * @param longBuffer "Buffer further ahead": a much longer duration window and byte budget, so
+     *   8K bitrates (~45–100 Mbps) are not bound by the 96 MB default — about 8–17 s of video —
+     *   before the duration window. Ignored on low-memory devices, where the heap cannot afford
+     *   it. The duration window, not the byte budget, is what binds at lower qualities: the
+     *   loader still stops at the video's end.
      */
     fun forVideo(
         context: Context,
@@ -35,11 +43,14 @@ object LoadControlFactory {
         maxMs: Int,
         playbackMs: Int,
         rebufferMs: Int,
+        longBuffer: Boolean = false,
     ): DefaultLoadControl {
         val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
         val memoryClassMb = activityManager?.memoryClass ?: 256
         val isLowMemoryDevice = activityManager?.isLowRamDevice == true || memoryClassMb <= 256
         val isConstrainedHeap = isLowMemoryDevice || memoryClassMb <= 384
+        val isTv = DeviceFormFactorDetector.detect(context) == DeviceFormFactor.TV
+        val longBufferActive = longBuffer && !isLowMemoryDevice
 
         val maxSafeMinBufferMs =
             if (isLowMemoryDevice) {
@@ -48,13 +59,15 @@ object LoadControlFactory {
                 PlayerConfig.MAX_SAFE_MAIN_MIN_BUFFER_MS
             }
         val maxSafeBufferMs =
-            if (isLowMemoryDevice) {
-                PlayerConfig.LOW_MEMORY_MAX_SAFE_MAIN_BUFFER_MS
-            } else {
-                PlayerConfig.MAX_SAFE_MAIN_BUFFER_MS
+            when {
+                longBufferActive -> PlayerConfig.LONG_BUFFER_MAX_MS
+                isLowMemoryDevice -> PlayerConfig.LOW_MEMORY_MAX_SAFE_MAIN_BUFFER_MS
+                else -> PlayerConfig.MAX_SAFE_MAIN_BUFFER_MS
             }
         val targetBufferBytes =
             when {
+                longBufferActive && isTv -> PlayerConfig.LONG_BUFFER_TARGET_BUFFER_BYTES_TV
+                longBufferActive -> PlayerConfig.LONG_BUFFER_TARGET_BUFFER_BYTES
                 isLowMemoryDevice -> PlayerConfig.LOW_MEMORY_MAIN_TARGET_BUFFER_BYTES
                 isConstrainedHeap -> PlayerConfig.MID_MEMORY_MAIN_TARGET_BUFFER_BYTES
                 else -> PlayerConfig.MAIN_TARGET_BUFFER_BYTES
@@ -69,7 +82,9 @@ object LoadControlFactory {
         val buffers =
             BufferDurations.sanitize(
                 minMs = minMs,
-                maxMs = maxMs,
+                // Raising the cap alone would change nothing — the stored max is what binds —
+                // so the long buffer also raises the requested window to the cap.
+                maxMs = if (longBufferActive) maxOf(maxMs, PlayerConfig.LONG_BUFFER_MAX_MS) else maxMs,
                 playbackMs = playbackMs,
                 rebufferMs = rebufferMs,
                 maxSafeMinMs = maxSafeMinBufferMs,
@@ -80,7 +95,7 @@ object LoadControlFactory {
             TAG,
             "Buffer config: min=${buffers.minMs}ms, max=${buffers.maxMs}ms, playback=${buffers.playbackMs}ms, " +
                 "rebuffer=${buffers.rebufferMs}ms, target=${targetBufferBytes / 1024 / 1024}MB, " +
-                "back=${backBufferMs}ms, heap=${memoryClassMb}MB",
+                "back=${backBufferMs}ms, heap=${memoryClassMb}MB, longBuffer=$longBufferActive",
         )
 
         return build(

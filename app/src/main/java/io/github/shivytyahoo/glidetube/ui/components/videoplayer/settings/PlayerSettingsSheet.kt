@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import io.github.shivytyahoo.glidetube.R
 import io.github.shivytyahoo.glidetube.player.EnhancedPlayerState
 import io.github.shivytyahoo.glidetube.player.QualityOption
+import io.github.shivytyahoo.glidetube.player.stream.PlaybackMethod
 import io.github.shivytyahoo.glidetube.ui.components.equalizer.EqQuickPanel
 import io.github.shivytyahoo.glidetube.ui.components.layout.navigation.LocalMediaNavigator
 import io.github.shivytyahoo.glidetube.ui.components.shared.GlideBottomSheet
@@ -40,6 +41,9 @@ fun SettingsMenuDialog(
     onQualitySelected: (QualityOption) -> Unit = {},
     onAudioTrackSelected: (Int) -> Unit = {},
     onSpeedSelected: (Float) -> Unit = {},
+    playbackMethod: PlaybackMethod = PlaybackMethod.AUTO,
+    extractionClientName: String? = null,
+    onPlaybackMethodSelected: (PlaybackMethod) -> Unit = {},
     selectedSubtitleUrl: String? = null,
     onSubtitleSelected: (Int) -> Unit = {},
     onDisableSubtitles: () -> Unit = {},
@@ -73,6 +77,7 @@ fun SettingsMenuDialog(
         when (currentPage) {
             PlayerSettingsPage.Main -> stringResource(R.string.player_settings)
             PlayerSettingsPage.Quality -> stringResource(R.string.video_quality_title)
+            PlayerSettingsPage.Method -> stringResource(R.string.player_settings_playback_method_title)
             PlayerSettingsPage.Speed -> stringResource(R.string.playback_speed)
             PlayerSettingsPage.Audio -> stringResource(R.string.audio_track)
             PlayerSettingsPage.Subtitles -> stringResource(R.string.filter_subtitles)
@@ -138,6 +143,8 @@ fun SettingsMenuDialog(
                         autoplayEnabled = autoplayEnabled,
                         subtitlesEnabled = subtitlesEnabled,
                         ambientModeEnabled = ambientModeEnabled,
+                        playbackMethod = playbackMethod,
+                        extractionClientName = extractionClientName,
                         onNavigateToPage = { currentPage = it },
                         onShowSubtitleStyle = {
                             subtitleStyleReturnPage = PlayerSettingsPage.Main
@@ -165,6 +172,17 @@ fun SettingsMenuDialog(
                         useGroupedQualitySelector = useGroupedQualitySelector,
                         onQualitySelected = {
                             onQualitySelected(it)
+                            sheetState.dismiss()
+                        },
+                    )
+                }
+
+                PlayerSettingsPage.Method -> {
+                    PlayerSettingsMethodPage(
+                        currentMethod = playbackMethod,
+                        extractionClientName = extractionClientName,
+                        onMethodSelected = {
+                            onPlaybackMethodSelected(it)
                             sheetState.dismiss()
                         },
                     )
@@ -235,6 +253,7 @@ fun SettingsMenuDialog(
 enum class PlayerSettingsPage {
     Main,
     Quality,
+    Method,
     Speed,
     Audio,
     Subtitles,

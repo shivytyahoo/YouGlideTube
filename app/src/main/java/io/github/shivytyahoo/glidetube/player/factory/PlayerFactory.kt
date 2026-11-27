@@ -20,10 +20,13 @@ import androidx.media3.exoplayer.upstream.DefaultBandwidthMeter
 import androidx.media3.exoplayer.util.EventLogger
 import io.github.shivytyahoo.glidetube.BuildConfig
 import io.github.shivytyahoo.glidetube.data.local.PlayerPreferences
+import io.github.shivytyahoo.glidetube.platform.DeviceFormFactor
+import io.github.shivytyahoo.glidetube.platform.DeviceFormFactorDetector
 import io.github.shivytyahoo.glidetube.player.audio.shouldHandleAudioFocus
 import io.github.shivytyahoo.glidetube.player.config.PlayerConfig
 import io.github.shivytyahoo.glidetube.player.config.VideoSizeCap
 import io.github.shivytyahoo.glidetube.player.renderer.CustomRenderersFactory
+import io.github.shivytyahoo.glidetube.player.stream.VideoCodecUtils
 import io.github.shivytyahoo.glidetube.player.subtitle.SubtitleDelay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -43,6 +46,7 @@ class PlayerFactory {
         val bufferRebufferMs: Int,
         val playDuringCalls: Boolean,
         val bandwidthEstimateBps: Long?,
+        val longBufferEnabled: Boolean,
     )
 
     private var cachedPrefs: CachedPrefs? = null
@@ -61,6 +65,7 @@ class PlayerFactory {
                     bufferRebufferMs = buffers.rebufferMs,
                     playDuringCalls = prefs.playDuringCalls.first(),
                     bandwidthEstimateBps = prefs.bandwidthEstimateBps.first(),
+                    longBufferEnabled = prefs.longBufferEnabled.first(),
                 )
             }
         cachedPrefs = result
@@ -80,6 +85,7 @@ class PlayerFactory {
                 bufferRebufferMs = buffers.rebufferMs,
                 playDuringCalls = prefs.playDuringCalls.first(),
                 bandwidthEstimateBps = prefs.bandwidthEstimateBps.first(),
+                longBufferEnabled = prefs.longBufferEnabled.first(),
             )
     }
 
@@ -111,9 +117,18 @@ class PlayerFactory {
         val prefs = ensurePrefs(context)
 
         return DefaultTrackSelector(context, trackSelectionFactory).apply {
+            // On TV the codec families run by the tallest height they decode, not the
+            // phone order — a TV whose H.264 tops out at 1080p should not lead with it
+            // while VP9 decodes 2160p.
+            val mimeTypes =
+                if (DeviceFormFactorDetector.detect(context) == DeviceFormFactor.TV) {
+                    VideoCodecUtils.tvOrderedVideoMimeTypes()
+                } else {
+                    PlayerConfig.PREFERRED_VIDEO_MIME_TYPES
+                }
             val builder =
                 buildUponParameters()
-                    .setPreferredVideoMimeTypes(*PlayerConfig.PREFERRED_VIDEO_MIME_TYPES)
+                    .setPreferredVideoMimeTypes(*mimeTypes)
                     .setAllowVideoMixedMimeTypeAdaptiveness(false)
                     .setAllowMultipleAdaptiveSelections(true)
                     .setForceHighestSupportedBitrate(false)
@@ -141,6 +156,9 @@ class PlayerFactory {
             maxMs = prefs.maxBufferMs,
             playbackMs = prefs.bufferForPlaybackMs,
             rebufferMs = prefs.bufferRebufferMs,
+            // Like the other buffer preferences, this is read once per process: flipping the
+            // toggle takes effect when the player is next created.
+            longBuffer = prefs.longBufferEnabled,
         )
     }
 

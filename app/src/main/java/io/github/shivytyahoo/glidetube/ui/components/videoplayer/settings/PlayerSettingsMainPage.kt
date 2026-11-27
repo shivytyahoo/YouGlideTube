@@ -22,6 +22,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
 import io.github.shivytyahoo.glidetube.R
 import io.github.shivytyahoo.glidetube.player.EnhancedPlayerState
+import io.github.shivytyahoo.glidetube.player.stream.PlaybackMethod
 import io.github.shivytyahoo.glidetube.ui.components.equalizer.equalizerSummary
 import io.github.shivytyahoo.glidetube.ui.components.shared.GlideNavRow
 import io.github.shivytyahoo.glidetube.ui.components.shared.GlideRowGroup
@@ -31,7 +32,7 @@ import io.github.shivytyahoo.glidetube.ui.components.shared.flowRowGroupShape
 import io.github.shivytyahoo.glidetube.ui.components.shared.playbackSpeedLabel
 import io.github.shivytyahoo.glidetube.utils.formatDurationMillis
 
-private const val VIDEO_ROWS = 1
+private const val VIDEO_ROWS = 2
 private const val PLAYBACK_ROWS = 3
 private const val AUDIO_ROWS = 1
 private const val CAPTION_ROWS = 2
@@ -45,6 +46,8 @@ internal fun PlayerSettingsMainPage(
     autoplayEnabled: Boolean,
     subtitlesEnabled: Boolean,
     ambientModeEnabled: Boolean,
+    playbackMethod: PlaybackMethod = PlaybackMethod.AUTO,
+    extractionClientName: String? = null,
     onNavigateToPage: (PlayerSettingsPage) -> Unit,
     onShowSubtitleStyle: () -> Unit,
     onCastClick: () -> Unit,
@@ -73,6 +76,13 @@ internal fun PlayerSettingsMainPage(
                 },
             shape = flowRowGroupShape(0, VIDEO_ROWS),
             onClick = { onNavigateToPage(PlayerSettingsPage.Quality) },
+        )
+        GlideNavRow(
+            leadingIcon = Icons.Filled.Tune,
+            title = stringResource(R.string.player_settings_playback_method_title),
+            trailingText = playbackMethodTrailingText(playbackMethod, extractionClientName),
+            shape = flowRowGroupShape(1, VIDEO_ROWS),
+            onClick = { onNavigateToPage(PlayerSettingsPage.Method) },
         )
     }
 

@@ -13,6 +13,7 @@ import io.github.shivytyahoo.glidetube.network.AppProxyConfig
 import io.github.shivytyahoo.glidetube.network.AppProxyType
 import io.github.shivytyahoo.glidetube.notification.InboxNotification
 import io.github.shivytyahoo.glidetube.player.stream.CaptionTrackResolver
+import io.github.shivytyahoo.glidetube.player.stream.PlaybackMethod
 import io.github.shivytyahoo.glidetube.ui.components.videoplayer.subtitle.SubtitleEdgeType
 import io.github.shivytyahoo.glidetube.ui.components.videoplayer.subtitle.SubtitleStyle
 import io.github.shivytyahoo.glidetube.utils.AppLanguageManager
@@ -456,6 +457,13 @@ class PlayerPreferences(
 
         // Read-ahead: write the playing video ahead into the disk cache (default on)
         val DISK_READ_AHEAD_ENABLED = booleanPreferencesKey("disk_read_ahead_enabled")
+
+        // Playback method: "" (Auto, default) or a forced InnerTube client — "VISIONOS",
+        // "ANDROID_VR", "KIDS", "SABR", "TV". See PlaybackMethod.
+        val PLAYBACK_METHOD = stringPreferencesKey("playback_method")
+
+        // Long-buffer mode: hold much more of the video in memory (default off)
+        val LONG_BUFFER_ENABLED = booleanPreferencesKey("long_buffer_enabled")
 
         // Last measured bandwidth estimate in bps, seeded into the player's meter on start
         val BANDWIDTH_ESTIMATE_BPS = longPreferencesKey("bandwidth_estimate_bps")
@@ -3217,6 +3225,38 @@ class PlayerPreferences(
     suspend fun setDiskReadAheadEnabled(enabled: Boolean) {
         context.playerPreferencesDataStore.edit { preferences ->
             preferences[Keys.DISK_READ_AHEAD_ENABLED] = enabled
+        }
+    }
+
+    /**
+     * Which InnerTube client supplies a Watch video's streams. "" is Auto: today's ladder,
+     * unchanged. Music never reads this — it resolves its own audio URL — and Shorts keeps
+     * calling the extractor with the default, so a forced method is Watch-only.
+     */
+    val playbackMethod: Flow<PlaybackMethod> =
+        context.playerPreferencesDataStore.data
+            .map { preferences ->
+                PlaybackMethod.fromStored(preferences[Keys.PLAYBACK_METHOD])
+            }
+
+    suspend fun setPlaybackMethod(method: PlaybackMethod) {
+        context.playerPreferencesDataStore.edit { preferences ->
+            preferences[Keys.PLAYBACK_METHOD] = method.storedValue
+        }
+    }
+
+    /**
+     * Buffer further ahead: a much longer window and byte budget for the main player, so 8K
+     * and slow links stall less. Off is today's behaviour exactly. Only read when the player
+     * is created, like the other buffer preferences.
+     */
+    val longBufferEnabled: Flow<Boolean> =
+        context.playerPreferencesDataStore.data
+            .map { preferences -> preferences[Keys.LONG_BUFFER_ENABLED] ?: false }
+
+    suspend fun setLongBufferEnabled(enabled: Boolean) {
+        context.playerPreferencesDataStore.edit { preferences ->
+            preferences[Keys.LONG_BUFFER_ENABLED] = enabled
         }
     }
 

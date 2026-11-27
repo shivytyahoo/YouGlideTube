@@ -61,6 +61,9 @@ data class VideoPlayerUiState(
     val offlineSponsorBlockSegments: List<SponsorBlockSegment>? = null,
     val innerTubeVideoFormats: List<PlayerResponse.StreamingData.Format> = emptyList(),
     val innerTubeAudioFormats: List<PlayerResponse.StreamingData.Format> = emptyList(),
+    /** The InnerTube client that supplied the playing video's streams ("VISIONOS", "TVHTML5",
+     * …), for the player sheet's method row. Null until a load resolves. */
+    val extractionClientName: String? = null,
     val isLive: Boolean = false,
     val isLiveChatAvailable: Boolean = false,
     val liveChatMessages: List<LiveChatMessage> = emptyList(),
@@ -106,6 +109,7 @@ data class VideoPlayerUiState(
             chapters = emptyList(),
             heatmap = null,
             storyboard = emptyList(),
+            extractionClientName = null,
             serverWatchSession = serverWatchSession.takeIf { video.id == cachedVideo?.id },
         )
 }

@@ -19,6 +19,7 @@ import io.github.shivytyahoo.glidetube.player.AudioTrackOption
 import io.github.shivytyahoo.glidetube.player.QualityOption
 import io.github.shivytyahoo.glidetube.player.SubtitleOption
 import io.github.shivytyahoo.glidetube.player.state.SubtitleOrigin
+import io.github.shivytyahoo.glidetube.player.stream.PlaybackMethod
 import io.github.shivytyahoo.glidetube.player.stream.VideoCodecUtils
 import io.github.shivytyahoo.glidetube.ui.components.shared.GlideNavRow
 import io.github.shivytyahoo.glidetube.ui.components.shared.GlideRowGroup
@@ -73,6 +74,66 @@ private fun QualityOption.isSelected(
     } else {
         streamKey != null && streamKey == currentQualityKey
     }
+
+/**
+ * Which client supplies this video's streams. Picking one saves the preference, clears the
+ * video's cached streams and reloads it at its position — a method change is a re-extraction,
+ * not a track switch. Under Auto the row shows the client that actually served this video.
+ */
+@Composable
+internal fun PlayerSettingsMethodPage(
+    currentMethod: PlaybackMethod,
+    extractionClientName: String?,
+    onMethodSelected: (PlaybackMethod) -> Unit,
+) {
+    GlideRowGroup {
+        PlaybackMethod.menuOrder.forEachIndexed { index, method ->
+            GlideSelectionRow(
+                title = stringResource(method.labelRes),
+                supportingText =
+                    if (method == PlaybackMethod.AUTO) {
+                        extractionClientName?.let { usedClientLabel(it) }
+                    } else {
+                        null
+                    },
+                selected = method == currentMethod,
+                shape = flowRowGroupShape(index, PlaybackMethod.menuOrder.size),
+                onClick = { onMethodSelected(method) },
+            )
+        }
+    }
+}
+
+/** The method row's trailing text: the method, and under Auto the client that served this video. */
+@Composable
+internal fun playbackMethodTrailingText(
+    method: PlaybackMethod,
+    extractionClientName: String?,
+): String {
+    val label = stringResource(method.labelRes)
+    if (method != PlaybackMethod.AUTO) return label
+    val used = extractionClientName?.let { usedClientLabel(it) } ?: return label
+    return stringResource(R.string.settings_value_pair, label, used)
+}
+
+/**
+ * The client that served a video, in the method picker's words. The extractor reports raw
+ * client names; the SABR clients read as the SABR method, and anything unrecognised is shown
+ * as-is rather than hidden.
+ */
+@Composable
+internal fun usedClientLabel(clientName: String): String {
+    val labelRes =
+        when (clientName) {
+            "VISIONOS" -> R.string.player_settings_playback_method_visionos
+            "ANDROID_VR" -> R.string.player_settings_playback_method_android_vr
+            "ANDROID_KIDS" -> R.string.player_settings_playback_method_kids
+            "MWEB", "WEB" -> R.string.player_settings_playback_method_sabr
+            "TVHTML5" -> R.string.player_settings_playback_method_tv
+            else -> null
+        }
+    return labelRes?.let { stringResource(it) } ?: clientName
+}
 
 @Composable
 internal fun PlayerSettingsSpeedPage(

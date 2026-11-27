@@ -27,12 +27,14 @@ import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 
-/** The three preference reads every stream resolution needs. */
+/** The preference reads every stream resolution needs. */
 internal data class StreamPreferences(
     val quality: VideoQuality,
     val audioLanguage: String,
     val codecKey: String,
     val subtitleLanguage: String,
+    /** A forced method is Watch-only: live always plays through the live branch. */
+    val method: PlaybackMethod,
 )
 
 /**
@@ -88,17 +90,24 @@ class PlaybackLoadResolver
                     return
                 }
 
+                // The forced method is read up front: the extraction it launches and the
+                // preferences it reads must agree on one method for this load.
+                val method = withContext(ioDispatcher) { playerPreferences.playbackMethod.first() }
+                // A user-forced SABR load is the same forced-SABR extraction as a 403-expiry
+                // reload, including its fallback to the full ladder below.
+                val forceSabr = request.escalateToSabr || method == PlaybackMethod.SABR
                 val innerTubeDeferred =
                     scope.async(networkDispatcher) {
                         extractInnerTube(
                             videoId,
-                            forceSabr = request.escalateToSabr,
+                            forceSabr = forceSabr,
                             // The SABR upgrade for a quality-incomplete direct ladder must not
                             // hold first frame: extract direct-only here and run the upgrade in
                             // the background once the direct result has shipped (see
                             // maybeStartBackgroundSabrUpgrade). A forced-SABR reload has no
                             // direct result to ship, so it keeps the inline path.
-                            skipSabrUpgrade = !request.escalateToSabr,
+                            skipSabrUpgrade = !forceSabr,
+                            forcedMethod = method,
                         )
                     }
 
@@ -110,14 +119,15 @@ class PlaybackLoadResolver
                             ?: viewHistory.getPlaybackPosition(videoId).first()
                     }
                 val autoplayDeferred = scope.async(ioDispatcher) { playerPreferences.autoplayEnabled.first() }
-                val preferences = withContext(ioDispatcher) { readStreamPreferences(request.isWifi) }
+                val preferences = withContext(ioDispatcher) { readStreamPreferences(request.isWifi, method) }
 
-                val playbackLoadTimeoutMs = if (request.escalateToSabr) SABR_LOAD_TIMEOUT_MS else LOAD_TIMEOUT_MS
+                val playbackLoadTimeoutMs = if (forceSabr) SABR_LOAD_TIMEOUT_MS else LOAD_TIMEOUT_MS
                 withTimeout(playbackLoadTimeoutMs) {
                     resolveStreams(
                         scope = scope,
                         request = request,
                         preferences = preferences,
+                        forceSabr = forceSabr,
                         innerTubeDeferred = innerTubeDeferred,
                         savedPositionDeferred = savedPositionDeferred,
                         autoplayDeferred = autoplayDeferred,
@@ -145,6 +155,7 @@ class PlaybackLoadResolver
             scope: CoroutineScope,
             request: PlaybackResolutionRequest,
             preferences: StreamPreferences,
+            forceSabr: Boolean,
             innerTubeDeferred: Deferred<InnerTubeVideoStreamExtractor.VideoExtractionResult?>,
             savedPositionDeferred: Deferred<Long>,
             autoplayDeferred: Deferred<Boolean>,
@@ -159,12 +170,18 @@ class PlaybackLoadResolver
             currentCoroutineContext().ensureActive()
             if (!isCurrent()) return
 
-            if (request.escalateToSabr && innerTubeResult == null) {
+            if (forceSabr && innerTubeResult == null) {
                 // The blanket refusal below was written when every fast client was session-gated, so
                 // a re-extraction could only hand back the URLs that had just 403'd. The full ladder
                 // now steps over a walled VISIONOS to TV_TIZEN (#921), so one retry is a real second
                 // chance, and the only thing standing between a device that cannot mint a PoToken
                 // (no or broken WebView) and playback that never resumes. Still budgeted per video.
+                //
+                // This is also the forced-SABR deviation from a strict no-fallback rule, and it
+                // is deliberate: a SABR session never receives an init segment, so ExoPlayer
+                // cannot sniff it and a SABR-only load would fail however long the pipeline
+                // waits (measured 2026-09-21). A forced SABR that extracts nothing therefore
+                // falls back to the re-minted direct ladder instead of failing the video.
                 Log.w(TAG, "Forced-SABR reload for $videoId produced no SABR session — retrying the full client ladder")
                 innerTubeResult =
                     withTimeoutOrNull(INNERTUBE_TIMEOUT_MS) {
@@ -174,7 +191,7 @@ class PlaybackLoadResolver
                 if (!isCurrent()) return
             }
 
-            if (request.escalateToSabr && innerTubeResult == null) {
+            if (forceSabr && innerTubeResult == null) {
                 Log.e(TAG, "Forced-SABR reload for $videoId produced no playable session — giving up on this attempt")
                 if (isCurrent()) {
                     onStep(ResolvedPlayback.Failed(PlaybackFailure.EXTRACTION, extractionFailureCause(videoId), relatedVideos = null))
@@ -203,14 +220,18 @@ class PlaybackLoadResolver
                         preferredCodecKey = preferences.codecKey,
                         preferredSubtitleLanguage = preferences.subtitleLanguage,
                         resumePositionOverrideMs = request.resumePositionOverrideMs,
+                        // Only the user's own SABR choice prefers SABR rendering: a 403-expiry
+                        // reload keeps the measured behaviour of playing its direct formats.
+                        sabrPreferred = preferences.method == PlaybackMethod.SABR,
                     ),
                 )
                 // First frame is already on its way: the <720p SABR upgrade runs in the
                 // background now and only its outcome is recorded. A late win is never swapped
                 // into playback — Media3 owns the prepared source and there is no safe
                 // mid-playback ladder swap. The forced-SABR reload already ran its upgrade
-                // inline, so it never starts a second one here.
-                if (!request.escalateToSabr) {
+                // inline, so it never starts a second one here. A forced method never starts
+                // one either: its outcome could never be used under the forced client.
+                if (!forceSabr && preferences.method == PlaybackMethod.AUTO) {
                     maybeStartBackgroundSabrUpgrade(scope, videoId, innerTubeResult, isCurrent)
                 }
             } else {
@@ -289,13 +310,19 @@ class PlaybackLoadResolver
             videoId: String,
             forceSabr: Boolean,
             skipSabrUpgrade: Boolean = false,
+            forcedMethod: PlaybackMethod = PlaybackMethod.AUTO,
         ): InnerTubeVideoStreamExtractor.VideoExtractionResult? =
             try {
                 if (forceSabr) {
-                    InnerTubeVideoStreamExtractor.extract(videoId, forceSabr = true)
+                    InnerTubeVideoStreamExtractor.extract(videoId, forceSabr = true, forcedMethod = forcedMethod)
                 } else {
                     withTimeoutOrNull(INNERTUBE_TIMEOUT_MS) {
-                        InnerTubeVideoStreamExtractor.extract(videoId, forceSabr = false, skipSabrUpgrade = skipSabrUpgrade)
+                        InnerTubeVideoStreamExtractor.extract(
+                            videoId,
+                            forceSabr = false,
+                            skipSabrUpgrade = skipSabrUpgrade,
+                            forcedMethod = forcedMethod,
+                        )
                     }
                 }
             } catch (e: CancellationException) {
@@ -305,7 +332,10 @@ class PlaybackLoadResolver
                 null
             }
 
-        private suspend fun readStreamPreferences(isWifi: Boolean): StreamPreferences =
+        private suspend fun readStreamPreferences(
+            isWifi: Boolean,
+            method: PlaybackMethod,
+        ): StreamPreferences =
             StreamPreferences(
                 quality =
                     if (isWifi) {
@@ -316,6 +346,7 @@ class PlaybackLoadResolver
                 audioLanguage = playerPreferences.preferredAudioLanguage.first(),
                 codecKey = playerPreferences.videoCodecPriority.first(),
                 subtitleLanguage = playerPreferences.preferredSubtitleLanguage.first(),
+                method = method,
             )
 
         private suspend fun localCopyOf(videoId: String): DownloadedVideo? =

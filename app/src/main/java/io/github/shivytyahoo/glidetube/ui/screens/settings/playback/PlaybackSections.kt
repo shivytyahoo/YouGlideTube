@@ -31,6 +31,10 @@ internal fun SettingsListScope.playbackSections(
 ) {
     group(key = "playback.general", header = R.string.playback_header) {
         switch(PlaybackIndex.backgroundPlay, viewModel.backgroundPlay, viewModel::setBackgroundPlay)
+        choice(PlaybackIndex.playbackMethod, onClick = { openDialog(PlaybackDialog.PLAYBACK_METHOD) }) {
+            val method by viewModel.playbackMethod.collectAsStateWithLifecycle()
+            playbackMethodLabel(method)
+        }
         switch(PlaybackIndex.startPaused, viewModel.startPaused, viewModel::setStartPaused)
         switch(PlaybackIndex.autoplay, viewModel.autoplay, viewModel::setAutoplay, enabled = !state.loopAll)
         switch(PlaybackIndex.queueAutoplay, viewModel.queueAutoplay, viewModel::setQueueAutoplay, enabled = !state.loopAll)

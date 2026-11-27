@@ -44,11 +44,13 @@ internal object AdaptiveLadder {
         streams: List<VideoStream>,
         preferredCodec: String?,
         bandwidthEstimateBps: Long? = null,
+        weakDevice: Boolean = false,
+        familyOrder: List<String>? = null,
     ): List<VideoStream> =
         if (pinned != null) {
             emptyList()
         } else {
-            rungs(anchorFor(streams, preferredCodec, bandwidthEstimateBps), streams)
+            rungs(anchorFor(streams, preferredCodec, bandwidthEstimateBps, weakDevice, familyOrder), streams)
         }
 
     /**
@@ -61,12 +63,14 @@ internal object AdaptiveLadder {
         streams: List<VideoStream>,
         preferredCodec: String?,
         bandwidthEstimateBps: Long? = null,
+        weakDevice: Boolean = false,
+        familyOrder: List<String>? = null,
     ): VideoStream? =
-        bandwidthEstimateBps?.let { AutoQualityPolicy.cappedInitialPick(streams, it, preferredCodec) }
+        bandwidthEstimateBps?.let { AutoQualityPolicy.cappedInitialPick(streams, it, preferredCodec, weakDevice, familyOrder) }
             ?: streams
                 .filter(AdaptiveDashManifest::canDescribe)
                 .minWithOrNull(
-                    compareBy<VideoStream> { VideoCodecUtils.codecRankWithPreference(it, preferredCodec) }
+                    compareBy<VideoStream> { VideoCodecUtils.codecRankWithPreference(it, preferredCodec, weakDevice, familyOrder) }
                         .thenByDescending(VideoCodecUtils::qualityHeightFromStream),
                 )
 

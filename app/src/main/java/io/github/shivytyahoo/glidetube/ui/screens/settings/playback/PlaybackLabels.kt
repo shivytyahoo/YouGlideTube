@@ -6,6 +6,7 @@ import androidx.compose.ui.res.stringResource
 import io.github.shivytyahoo.glidetube.R
 import io.github.shivytyahoo.glidetube.data.local.SpeedSwipeSide
 import io.github.shivytyahoo.glidetube.player.stream.CaptionTrackResolver
+import io.github.shivytyahoo.glidetube.player.stream.PlaybackMethod
 import io.github.shivytyahoo.glidetube.ui.components.shared.playbackSpeedLabel
 import io.github.shivytyahoo.glidetube.utils.LanguageCatalog
 import io.github.shivytyahoo.glidetube.utils.formatMultiplierLabel
@@ -59,6 +60,9 @@ internal fun subtitleLanguageLabel(code: String): String =
     } else {
         LanguageCatalog.displayName(code)
     }
+
+@Composable
+internal fun playbackMethodLabel(method: PlaybackMethod): String = stringResource(method.labelRes)
 
 @Composable
 internal fun shortsModeLabel(

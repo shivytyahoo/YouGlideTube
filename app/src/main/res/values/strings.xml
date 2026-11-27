@@ -1340,6 +1340,16 @@
     </plurals>
     <string name="player_settings_shorts_playback_mode_dialog_title">Shorts Playback Mode</string>
     <string name="player_settings_shorts_playback_mode_dialog_body">What happens when a Short ends:</string>
+    <string name="player_settings_playback_method_title">Playback method</string>
+    <string name="player_settings_playback_method_summary">Which source supplies the video’s streams</string>
+    <string name="player_settings_playback_method_dialog_title">Playback method</string>
+    <string name="player_settings_playback_method_dialog_body">Which source supplies this video’s streams. Auto chooses the fastest one that works; a forced method only tries that source. Live streams always use Auto.</string>
+    <string name="player_settings_playback_method_auto">Auto</string>
+    <string name="player_settings_playback_method_visionos">visionOS</string>
+    <string name="player_settings_playback_method_android_vr">Android VR</string>
+    <string name="player_settings_playback_method_kids">YouTube Kids</string>
+    <string name="player_settings_playback_method_sabr">SABR (web)</string>
+    <string name="player_settings_playback_method_tv">TV</string>
     <plurals name="player_settings_shorts_auto_scroll_seconds_template">
         <item quantity="one">%1$d second</item>
         <item quantity="other">%1$d seconds</item>
@@ -1541,6 +1551,9 @@
     <string name="disk_read_ahead_title">Read ahead on disk</string>
     <string name="disk_read_ahead_summary">Writes the video ahead into the cache while you watch</string>
     <string name="disk_read_ahead_footer">Keeps a video playing when the connection drops. Not used for live streams.</string>
+    <string name="buffer_further_ahead_title">Buffer further ahead</string>
+    <string name="buffer_further_ahead_summary">Holds much more of the video in memory, so 8K and slow links stall less. Uses more memory and data; applies when the player restarts. Not used on low-memory devices.</string>
+    <string name="settings_keywords_buffer_further_ahead">buffer further ahead, long buffer, 8K, smooth, stall</string>
     <string name="settings_keywords_read_ahead">read ahead, prefetch, pre-download, buffering, cache</string>
     <string name="buffer_custom_mode_desc">Larger buffers stall less but take longer to start.</string>
     <string name="buffer_switch_to_custom">Switch to \'Custom\' to enable sliders.</string>

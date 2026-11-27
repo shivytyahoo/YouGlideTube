@@ -12,6 +12,7 @@ import io.github.shivytyahoo.glidetube.data.local.PlayerRelatedCardStyle
 import io.github.shivytyahoo.glidetube.data.local.SpeedSwipeSide
 import io.github.shivytyahoo.glidetube.data.lyrics.LyricsProviderOrder
 import io.github.shivytyahoo.glidetube.player.stream.CaptionTrackResolver
+import io.github.shivytyahoo.glidetube.player.stream.PlaybackMethod
 import io.github.shivytyahoo.glidetube.ui.screens.settings.SettingsViewModel
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
@@ -34,6 +35,7 @@ class PlaybackSettingsViewModel
 
         val backgroundPlay = preferences.backgroundPlayEnabled.asState(DEFAULT_BACKGROUND_PLAY_ENABLED)
         val autoplay = preferences.autoplayEnabled.asState(true)
+        val playbackMethod = preferences.playbackMethod.asState(PlaybackMethod.AUTO)
         val startPaused = preferences.startVideosPaused.asState(false)
         val queueAutoplay = preferences.queueAutoplayEnabled.asState(true)
         val autoplayCountdown = preferences.autoplayCountdownSeconds.asState(0)
@@ -119,6 +121,8 @@ class PlaybackSettingsViewModel
         val lyricsOnDemand = preferences.lyricsOnDemand.asState(false)
 
         fun setBackgroundPlay(value: Boolean) = write { preferences.setBackgroundPlayEnabled(value) }
+
+        fun setPlaybackMethod(value: PlaybackMethod) = write { preferences.setPlaybackMethod(value) }
 
         fun setStartPaused(value: Boolean) = write { preferences.setStartVideosPaused(value) }
 

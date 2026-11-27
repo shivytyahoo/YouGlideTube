@@ -148,6 +148,11 @@ object InnerTubeVideoStreamExtractor {
         val forceSabr: Boolean,
         val audioOnly: Boolean,
         val skipSabrUpgrade: Boolean,
+        // A forced method is a different question from Auto for the same video: without it
+        // a cached direct result would be served for a SABR-mode request, and vice versa.
+        // It also keeps the in-flight coalescer from joining a load started under another
+        // method — the key is the coalescer's key too.
+        val forcedMethod: String,
     )
 
     // The token-free direct client. VISIONOS alone: it serves direct adaptive URLs with no PO Token
@@ -221,6 +226,18 @@ object InnerTubeVideoStreamExtractor {
     )
 
     /**
+     * Drops every cached extraction for [videoId], so a playback-method change re-extracts
+     * instead of replaying the old method's URLs. In-flight requests need no eviction: they
+     * are keyed by the full [ExtractionKey], so a load under the new method never joins one
+     * started under the old.
+     */
+    fun clearCachedExtractions(videoId: String) {
+        synchronized(extractionCache) {
+            extractionCache.keys.removeAll { it.videoId == videoId }
+        }
+    }
+
+    /**
      * @param audioOnly the caller plays only [VideoExtractionResult.audioFormats], so a capped
      *   video ladder is not worth the SABR quality upgrade's wait.
      * @param skipSabrUpgrade when true, the direct ladder is returned as resolved and the
@@ -228,6 +245,8 @@ object InnerTubeVideoStreamExtractor {
      *   result immediately and runs the upgrade in the background via [upgradeToSabr] instead,
      *   so the upgrade's token mint never delays first frame. Part of the key, so a
      *   direct-only extraction never shares a coalesced result with a full one.
+     * @param forcedMethod a single client to try on its own (Auto walks the ladder). SABR
+     *   here means the same forced-SABR path as [forceSabr].
      */
     @OptIn(UnstableApi::class)
     // allowLowTrust: a cold token is fine for a Short (over before GVS enforcement bites ~60s
@@ -238,24 +257,30 @@ object InnerTubeVideoStreamExtractor {
         audioOnly: Boolean = false,
         allowLowTrust: Boolean = false,
         skipSabrUpgrade: Boolean = false,
+        forcedMethod: PlaybackMethod = PlaybackMethod.AUTO,
     ): VideoExtractionResult? {
-        val key = ExtractionKey(videoId, forceSabr, audioOnly, skipSabrUpgrade)
+        val sabr = forceSabr || forcedMethod == PlaybackMethod.SABR
+        val key = ExtractionKey(videoId, sabr, audioOnly, skipSabrUpgrade, forcedMethod.storedValue)
         // A walled visitor's cached result hands back the URLs that just 403'd, and the
         // re-roll the denial report fired races the reload that needs it. Await a fresh
         // visitor while the fast path is demoted: the generation bump invalidates the
-        // cache below, so the ladder runs again under the new identity.
-        if (FAST_CLIENTS.ungated().isEmpty()) {
+        // cache below, so the ladder runs again under the new identity. Auto only: a
+        // forced method retries the same client under the new identity inside its own
+        // path instead.
+        if (forcedMethod == PlaybackMethod.AUTO && FAST_CLIENTS.ungated().isEmpty()) {
             WebPoTokenSession.rerollAfterWallNow(FAST_CLIENTS.first().clientName)
         }
         // Only the plain calls are cached. A forced-SABR result is a recovery path that
         // must always re-run the ladder, an audio-only result answers a different
         // question, and a low-trust Shorts result was minted under a trust exception the
-        // full player must not inherit — those callers re-extract as before.
-        val cacheable = !forceSabr && !audioOnly && !allowLowTrust
+        // full player must not inherit — those callers re-extract as before. A forced
+        // method is never cached either: it is an explicit per-video choice, and caching
+        // it would let a stale forced result outlive the setting that asked for it.
+        val cacheable = !sabr && !audioOnly && !allowLowTrust && forcedMethod == PlaybackMethod.AUTO
         if (cacheable) cachedExtraction(key)?.let { return it }
         val result =
             extractionCoalescer.run(key) {
-                selectStreams(videoId, forceSabr, audioOnly, allowLowTrust, skipSabrUpgrade)
+                selectStreams(videoId, sabr, audioOnly, allowLowTrust, skipSabrUpgrade, forcedMethod)
             }
         if (cacheable && result != null) storeExtraction(key, result)
         return result
@@ -279,10 +304,11 @@ object InnerTubeVideoStreamExtractor {
         audioOnly: Boolean,
         allowLowTrust: Boolean = false,
         skipSabrUpgrade: Boolean = false,
+        forcedMethod: PlaybackMethod = PlaybackMethod.AUTO,
     ): VideoExtractionResult? =
         withContext(Dispatchers.IO) {
-            Log.w(TAG, "Extraction start for $videoId (forceSabr=$forceSabr)")
-            PlayerDiagnostics.logWarning(TAG, "extract start $videoId forceSabr=$forceSabr")
+            Log.w(TAG, "Extraction start for $videoId (forceSabr=$forceSabr, method=${forcedMethod.name})")
+            PlayerDiagnostics.logWarning(TAG, "extract start $videoId forceSabr=$forceSabr method=${forcedMethod.name}")
             dropGatesOnIdentityChange()
             blockedVideoIds.remove(videoId)
             goneVideoIds.remove(videoId)
@@ -295,6 +321,38 @@ object InnerTubeVideoStreamExtractor {
                 }
                 Log.e(TAG, "Forced SABR extraction failed for $videoId. Reasons: ${failureReasons.joinToString(" | ")}")
                 PlayerDiagnostics.logError(TAG, "forced SABR FAILED $videoId: ${failureReasons.joinToString(" | ")}")
+                recordBlock(videoId, failureReasons)
+                return@withContext null
+            }
+
+            if (forcedMethod != PlaybackMethod.AUTO) {
+                // A forced method is tried on its own: no other client is attempted, so a
+                // refusal here ends the load instead of walking the ladder. A walled visitor
+                // may still re-roll its identity and retry THE SAME client — that is a new
+                // identity, not a fallback to another client. Live is the one exception: a
+                // live broadcast always plays through the live branch, whatever is forced.
+                val failureReasons = mutableListOf<String>()
+                val liveDetected = booleanArrayOf(false)
+                tryForcedMethod(videoId, forcedMethod, failureReasons, liveDetected)?.let {
+                    Log.w(TAG, "Extraction OK for $videoId via ${it.usedClient.clientName} (mode=FORCED/${forcedMethod.name})")
+                    PlayerDiagnostics.logWarning(
+                        TAG,
+                        "extract OK $videoId mode=FORCED/${forcedMethod.name} via ${it.usedClient.clientName}",
+                    )
+                    return@withContext it
+                }
+                if (liveDetected[0]) {
+                    tryLiveClients(videoId, failureReasons)?.let {
+                        Log.w(
+                            TAG,
+                            "Live manifest for $videoId via ${it.usedClient.clientName} " +
+                                "(live-clients; forced ${forcedMethod.name} does not serve live)",
+                        )
+                        return@withContext it
+                    }
+                }
+                Log.e(TAG, "Forced ${forcedMethod.name} extraction failed for $videoId. Reasons: ${failureReasons.joinToString(" | ")}")
+                PlayerDiagnostics.logError(TAG, "forced ${forcedMethod.name} FAILED $videoId: ${failureReasons.joinToString(" | ")}")
                 recordBlock(videoId, failureReasons)
                 return@withContext null
             }
@@ -877,6 +935,49 @@ object InnerTubeVideoStreamExtractor {
             null to "error:${e.javaClass.simpleName}"
         }
     }
+
+    /**
+     * One forced method, and nothing else. VISIONOS and KIDS are single clients; ANDROID_VR is
+     * its version variants in ladder order (still one client name — a demoted variant retried
+     * here is the same client, not a fallback to another one); TV is the Tizen resolver only;
+     * SABR is the web-client SABR path. Live detection rides along for the direct clients so
+     * the caller can fall through to the live branch when the forced client cannot serve a
+     * live broadcast.
+     */
+    private suspend fun tryForcedMethod(
+        videoId: String,
+        method: PlaybackMethod,
+        failureReasons: MutableList<String>,
+        liveDetected: BooleanArray,
+    ): VideoExtractionResult? =
+        when (method) {
+            PlaybackMethod.AUTO -> null
+            PlaybackMethod.VISIONOS ->
+                tryDirectClients(
+                    videoId,
+                    FAST_CLIENTS,
+                    failureReasons,
+                    liveDetected = liveDetected,
+                    retryTimeoutOnce = true,
+                )
+            PlaybackMethod.ANDROID_VR ->
+                tryDirectClients(
+                    videoId,
+                    GATED_FALLBACK_CLIENTS,
+                    failureReasons,
+                    liveDetected = liveDetected,
+                )
+            PlaybackMethod.KIDS ->
+                tryDirectClients(
+                    videoId,
+                    listOf(YouTubeClient.ANDROID_KIDS),
+                    failureReasons,
+                    liveDetected = liveDetected,
+                    retryTimeoutOnce = true,
+                )
+            PlaybackMethod.SABR -> trySabrClients(videoId, failureReasons)
+            PlaybackMethod.TV -> TizenStreamResolver.resolve(videoId, failureReasons)
+        }
 
     @OptIn(UnstableApi::class)
     private suspend fun tryDirectClients(

@@ -9,6 +9,7 @@ internal object LadderTestStreams {
     private val H264_ITAGS = mapOf(144 to 160, 240 to 133, 360 to 134, 480 to 135, 720 to 136, 1080 to 137)
     private val VP9_ITAGS = mapOf(144 to 278, 240 to 242, 360 to 243, 480 to 244, 720 to 247, 1080 to 248)
     private val VP9_HDR_ITAGS = mapOf(144 to 330, 240 to 331, 360 to 332, 480 to 333, 720 to 334, 1080 to 335)
+    private val AV1_ITAGS = mapOf(144 to 394, 240 to 395, 360 to 396, 480 to 397, 720 to 398, 1080 to 399)
 
     fun h264(
         height: Int,
@@ -25,6 +26,11 @@ internal object LadderTestStreams {
     } else {
         stream(height, bitrate, "video/webm; codecs=\"vp09.00.40.08\"", VP9_ITAGS.getValue(height))
     }
+
+    fun av1(
+        height: Int,
+        bitrate: Int,
+    ) = stream(height, bitrate, "video/mp4; codecs=\"av01.0.08M.08\"", AV1_ITAGS.getValue(height))
 
     fun stream(
         height: Int,

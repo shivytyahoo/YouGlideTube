@@ -23,6 +23,7 @@ import io.github.shivytyahoo.glidetube.player.EnhancedPlayerManager
 import io.github.shivytyahoo.glidetube.player.PictureInPictureHelper
 import io.github.shivytyahoo.glidetube.player.dlna.DlnaCastManager
 import io.github.shivytyahoo.glidetube.player.state.EnhancedPlayerState
+import io.github.shivytyahoo.glidetube.player.stream.PlaybackMethod
 import io.github.shivytyahoo.glidetube.ui.components.videoplayer.settings.SettingsMenuDialog
 import io.github.shivytyahoo.glidetube.ui.screens.player.VideoPlayerViewModel
 import io.github.shivytyahoo.glidetube.ui.screens.player.saveChosenPlaybackSpeed
@@ -64,6 +65,7 @@ internal fun PlayerSettingsSheetHost(
     val sponsorSegments by playerManager.sponsorSegments.collectAsState()
     val sponsorBlockOffForVideo by playerManager.sponsorBlockOffForVideo.collectAsState()
     val sponsorBlockEnabled by playerPreferences.sponsorBlockEnabled.collectAsState(initial = false)
+    val playbackMethod by playerPreferences.playbackMethod.collectAsState(initial = PlaybackMethod.AUTO)
     val subtitleFilePicker =
         rememberLauncherForActivityResult(OpenSubtitleFile()) { uri ->
             if (uri == null) return@rememberLauncherForActivityResult
@@ -108,6 +110,9 @@ internal fun PlayerSettingsSheetHost(
                 channelId = uiState.cachedVideo?.channelId,
             )
         },
+        playbackMethod = playbackMethod,
+        extractionClientName = uiState.extractionClientName,
+        onPlaybackMethodSelected = viewModel::setPlaybackMethod,
         selectedSubtitleUrl = playerState.selectedSubtitleUrl,
         onSubtitleSelected = { index ->
             SubtitleSelection.applyAt(

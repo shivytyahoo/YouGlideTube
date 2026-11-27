@@ -91,6 +91,7 @@ internal class PlaybackPreparer(
         preferredLiveQualityHeight = step.preferredQuality.height,
         speedContext = speedContext,
         isCurrent = isCurrent,
+        preferSabrOverride = step.sabrPreferred,
     )
 
     suspend fun prepareMergedStreams(
@@ -235,6 +236,7 @@ internal class PlaybackPreparer(
         preferredLiveQualityHeight: Int,
         isCurrent: () -> Boolean,
         speedContext: PlaybackSpeedContext = PlaybackSpeedContext.Unknown,
+        preferSabrOverride: Boolean = false,
     ) = withContext(Dispatchers.Main) {
         if (!isCurrent()) return@withContext
         if (playerManager.isPreparedForPlayback(videoId)) return@withContext
@@ -249,9 +251,13 @@ internal class PlaybackPreparer(
         // An escalated reload must not force SABR: measured 2026-09-21, a session never receives an
         // init segment, so ExoPlayer cannot sniff it and every attempt dies. Recovery is the
         // re-minted attested direct ladder instead. Revisit when an init segment is observed.
+        // A user-forced SABR load is the one exception: the user asked for SABR rendering, so
+        // it is preferred — and if the session then fails for want of an init segment, the
+        // player's SABR fallback re-extracts through the direct ladder instead.
         val preferSabr =
-            sabrInfo != null &&
-                SabrRoutingPolicy.shouldPreferSabr(false, sabrInfo.videoHeight, directMaxHeight)
+            preferSabrOverride ||
+                (sabrInfo != null &&
+                    SabrRoutingPolicy.shouldPreferSabr(false, sabrInfo.videoHeight, directMaxHeight))
 
         playerManager.setStreams(
             videoId = videoId,

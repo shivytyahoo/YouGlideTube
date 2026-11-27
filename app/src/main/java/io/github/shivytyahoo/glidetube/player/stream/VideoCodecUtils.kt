@@ -1,6 +1,7 @@
 package io.github.shivytyahoo.glidetube.player.stream
 
 import android.net.Uri
+import io.github.shivytyahoo.glidetube.player.config.DeviceCapabilities
 import org.schabi.newpipe.extractor.stream.VideoStream
 
 object VideoCodecUtils {
@@ -13,6 +14,11 @@ object VideoCodecUtils {
      */
     private const val HIGH_FRAME_RATE_FPS = 50
     private val CODECS_PARAMETER_REGEX = Regex("""codecs\s*=\s*["']([^"']+)["']""", RegexOption.IGNORE_CASE)
+
+    // The rank a weak device's H.264 takes: below every preference and family band, so it
+    // leads whatever the user picked. Only the weak-device override uses it; the preference
+    // and family bands keep the existing `index - size` shape, which tests pin.
+    private const val WEAK_DEVICE_H264_RANK = -1000
 
     private val AV1_ITAGS = setOf(394, 395, 396, 397, 398, 399, 400, 401, 402, 571, 694, 695, 696, 697, 698, 699, 700, 701)
     private val VP9_ITAGS =
@@ -229,17 +235,58 @@ object VideoCodecUtils {
     fun codecRankWithPreference(
         codecKey: String,
         preferred: String?,
+        weakDevice: Boolean = false,
+        familyOrder: List<String>? = null,
     ): Int {
+        // A weak device stutters on AV1/VP9 even where they claim hardware decode, so H.264
+        // leads whatever the preference says — this is an override, not a preference.
+        if (weakDevice && codecKey == "h264") return WEAK_DEVICE_H264_RANK
         val priority = codecPriorityList(preferred)
         val index = priority.indexOf(codecKey)
         // Negative so any listed codec outranks the built-in order, earlier entries ranking lower.
-        return if (index >= 0) index - priority.size else playbackCodecRank(codecKey)
+        if (index >= 0) return index - priority.size
+        // On TV with no codec preference, the families rank by the tallest height they
+        // decode instead of the built-in order. A preference still wins outright — the
+        // family order only fills the gap the preference leaves.
+        if (priority.isEmpty()) {
+            val familyIndex = familyOrder?.indexOf(codecKey) ?: -1
+            if (familyIndex >= 0) return familyIndex - (familyOrder?.size ?: 0)
+        }
+        return playbackCodecRank(codecKey)
     }
 
     fun codecRankWithPreference(
         stream: VideoStream,
         preferred: String?,
-    ): Int = codecRankWithPreference(codecKeyFromStream(stream), preferred)
+        weakDevice: Boolean = false,
+        familyOrder: List<String>? = null,
+    ): Int = codecRankWithPreference(codecKeyFromStream(stream), preferred, weakDevice, familyOrder)
+
+    /**
+     * Codec families ordered by the tallest height this device decodes, tallest first — the
+     * order a TV's ladder anchor ranks by. Ties keep AV1 first: where every family decodes
+     * the same height, AV1 is the best use of the bandwidth. Families that decode nothing
+     * are left out; the caller falls back to the built-in order for them.
+     */
+    fun codecFamilyOrderByDecodableHeight(): List<String> {
+        val keys = listOf("av1", "vp9", "hevc", "h264", "vp8")
+        return keys
+            .map { key -> key to DeviceCapabilities.maxDecodableHeight(MIME_TYPE_BY_CODEC_KEY.getValue(key)) }
+            .filter { it.second > 0 }
+            .sortedByDescending { it.second }
+            .map { it.first }
+    }
+
+    /**
+     * The track selector's mime order on TV: codec families by the tallest height they
+     * decode, everything else in the default order behind them. Reordering, not filtering:
+     * a family that decodes nothing stays available.
+     */
+    fun tvOrderedVideoMimeTypes(): Array<String> {
+        val ordered = codecFamilyOrderByDecodableHeight().mapNotNull { MIME_TYPE_BY_CODEC_KEY[it] }
+        if (ordered.isEmpty()) return DEFAULT_VIDEO_MIME_TYPES
+        return (ordered + DEFAULT_VIDEO_MIME_TYPES.filterNot { it in ordered }).toTypedArray()
+    }
 
     private val DEFAULT_VIDEO_MIME_TYPES =
         arrayOf(

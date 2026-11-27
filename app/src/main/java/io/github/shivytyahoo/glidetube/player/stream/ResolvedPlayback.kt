@@ -59,6 +59,12 @@ sealed interface ResolvedPlayback {
         val preferredCodecKey: String,
         val preferredSubtitleLanguage: String,
         val resumePositionOverrideMs: Long?,
+        /**
+         * The user forced the SABR method, so SABR rendering is preferred when the result
+         * carries a session. A 403-expiry reload leaves this false: its direct formats are
+         * the recovery, and a SABR session without an init segment cannot play.
+         */
+        val sabrPreferred: Boolean = false,
     ) : ResolvedPlayback
 
     /** The video has not premiered yet, so the screen shows a countdown rather than an error. */

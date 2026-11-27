@@ -19,6 +19,7 @@ class BufferSettingsViewModel
         val startBufferMs = preferences.bufferForPlaybackMs.asState(BufferProfile.STABLE.playbackBuffer)
         val rebufferMs = preferences.bufferForPlaybackAfterRebufferMs.asState(BufferProfile.STABLE.rebufferBuffer)
         val diskReadAheadEnabled = preferences.diskReadAheadEnabled.asState(true)
+        val longBufferEnabled = preferences.longBufferEnabled.asState(false)
 
         fun setProfile(value: BufferProfile) =
             write {
@@ -49,4 +50,6 @@ class BufferSettingsViewModel
         fun setRebuffer(ms: Int) = write { preferences.setBufferForPlaybackAfterRebufferMs(ms) }
 
         fun setDiskReadAheadEnabled(enabled: Boolean) = write { preferences.setDiskReadAheadEnabled(enabled) }
+
+        fun setLongBufferEnabled(enabled: Boolean) = write { preferences.setLongBufferEnabled(enabled) }
     }

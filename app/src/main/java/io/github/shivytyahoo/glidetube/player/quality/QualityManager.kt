@@ -24,6 +24,13 @@ class QualityManager(
     private val stateFlow: MutableStateFlow<EnhancedPlayerState>,
     // Receives the stream to switch to and the position playback must resume from.
     private val onQualitySwitch: (VideoStream, Long) -> Unit,
+    // A weak device ranks H.264 first whatever the preference says; on TV the codec families
+    // rank by the tallest height they decode. Both default to today's behaviour.
+    private val weakDevice: Boolean = false,
+    private val familyOrder: List<String>? = null,
+    // The track selector's mime order on TV, so a later quality switch does not silently
+    // revert it to the phone order.
+    private val tvMimeTypes: Array<String>? = null,
 ) {
     companion object {
         private const val TAG = "QualityManager"
@@ -158,7 +165,8 @@ class QualityManager(
      */
     fun selectSmartInitialQuality(): VideoStream? {
         val estimatedBandwidth = bandwidthMeter?.bitrateEstimate ?: PlayerConfig.INITIAL_BANDWIDTH_ESTIMATE
-        val smartStream = AutoQualityPolicy.cappedInitialPick(getWorkingStreams(), estimatedBandwidth, preferredCodecKey)
+        val smartStream =
+            AutoQualityPolicy.cappedInitialPick(getWorkingStreams(), estimatedBandwidth, preferredCodecKey, weakDevice, familyOrder)
         Log.d(
             TAG,
             "Smart quality selection: bandwidth=${estimatedBandwidth / 1_000_000}Mbps, selected=${smartStream?.let(::qualityHeight)}p",
@@ -243,7 +251,7 @@ class QualityManager(
             getWorkingStreams()
                 .filter { qualityHeight(it) == height }
                 .minWithOrNull(
-                    compareBy<VideoStream> { VideoCodecUtils.codecRankWithPreference(it, preferredCodecKey) }
+                    compareBy<VideoStream> { VideoCodecUtils.codecRankWithPreference(it, preferredCodecKey, weakDevice, familyOrder) }
                         .thenByDescending { it.bitrate },
                 )
         if (targetStream == null) {
@@ -321,7 +329,8 @@ class QualityManager(
         }
 
         val estimatedBandwidth = bandwidthMeter?.bitrateEstimate ?: PlayerConfig.INITIAL_BANDWIDTH_ESTIMATE
-        val targetStream = AutoQualityPolicy.initialPick(getWorkingStreams(), estimatedBandwidth, preferredCodecKey)
+        val targetStream =
+            AutoQualityPolicy.initialPick(getWorkingStreams(), estimatedBandwidth, preferredCodecKey, weakDevice, familyOrder)
         Log.d(TAG, "Auto quality: estimated bandwidth ${estimatedBandwidth / 1_000_000}Mbps -> ${targetStream?.let(::qualityHeight)}p")
 
         val heightChanges = targetStream != null && qualityHeight(targetStream) != currentVideoStream?.let(::qualityHeight)
@@ -363,10 +372,12 @@ class QualityManager(
                 getWorkingStreams()
                     .filter { qualityHeight(it) == lastAdaptiveQualityHeight }
                     .minWithOrNull(
-                        compareBy<VideoStream> { VideoCodecUtils.codecRankWithPreference(it, preferredCodecKey) }
+                        compareBy<VideoStream> { VideoCodecUtils.codecRankWithPreference(it, preferredCodecKey, weakDevice, familyOrder) }
                             .thenByDescending { it.bitrate },
                     ) ?: current
-            val next = AutoQualityPolicy.stepUp(ceilingStream, getWorkingStreams(), estimatedBandwidth, preferredCodecKey) ?: return
+            val next =
+                AutoQualityPolicy.stepUp(ceilingStream, getWorkingStreams(), estimatedBandwidth, preferredCodecKey, weakDevice, familyOrder)
+                    ?: return
             val nextHeight = qualityHeight(next)
             if (nextHeight == lastAdaptiveQualityHeight) return
             val now = System.currentTimeMillis()
@@ -388,7 +399,8 @@ class QualityManager(
             return
         }
         val estimatedBandwidth = bandwidthMeter?.bitrateEstimate ?: return
-        val next = AutoQualityPolicy.stepUp(current, getWorkingStreams(), estimatedBandwidth, preferredCodecKey) ?: return
+        val next =
+            AutoQualityPolicy.stepUp(current, getWorkingStreams(), estimatedBandwidth, preferredCodecKey, weakDevice, familyOrder) ?: return
         Log.d(
             TAG,
             "Adaptive UPGRADE: ${qualityHeight(current)}p -> ${qualityHeight(next)}p (bandwidth: ${estimatedBandwidth / 1_000_000}Mbps)",
@@ -444,7 +456,7 @@ class QualityManager(
             // client is refused the same way, so stepping down only replays the wall.
             // The refusal swapper owns this case; the net stands down here.
             if (ClientGateTracker.isGated(StreamDenialClassifier.clientOf(current.getContent()))) return
-            val lower = AutoQualityPolicy.stepDown(current, getWorkingStreams(), preferredCodecKey) ?: return
+            val lower = AutoQualityPolicy.stepDown(current, getWorkingStreams(), preferredCodecKey, weakDevice, familyOrder) ?: return
             Log.d(TAG, "Pinned DOWNGRADE (buffering): ${qualityHeight(current)}p -> ${qualityHeight(lower)}p")
             switchQualityByStreamKey(streamKey(lower), currentPosition)
             return
@@ -454,8 +466,8 @@ class QualityManager(
         if (forceCheck) {
             val estimatedBandwidth = bandwidthMeter?.bitrateEstimate
             val lower =
-                estimatedBandwidth?.let { AutoQualityPolicy.jumpDown(current, streams, it, preferredCodecKey) }
-                    ?: AutoQualityPolicy.stepDown(current, streams, preferredCodecKey)
+                estimatedBandwidth?.let { AutoQualityPolicy.jumpDown(current, streams, it, preferredCodecKey, weakDevice, familyOrder) }
+                    ?: AutoQualityPolicy.stepDown(current, streams, preferredCodecKey, weakDevice, familyOrder)
             // No lower rung exists: already at the bottom, so the stall is the link, not the
             // choice. Log it so the report shows the net fired and had nowhere to go.
             logPlayStall(videoId, current, bufferedAheadMs)
@@ -469,7 +481,7 @@ class QualityManager(
             return
         }
         val estimatedBandwidth = bandwidthMeter?.bitrateEstimate ?: return
-        val lower = AutoQualityPolicy.jumpDown(current, streams, estimatedBandwidth, preferredCodecKey) ?: return
+        val lower = AutoQualityPolicy.jumpDown(current, streams, estimatedBandwidth, preferredCodecKey, weakDevice, familyOrder) ?: return
         logPlayStall(videoId, current, bufferedAheadMs)
         Log.d(
             TAG,
@@ -541,7 +553,7 @@ class QualityManager(
             val params =
                 selector
                     .buildUponParameters()
-                    .setPreferredVideoMimeTypes(*PlayerConfig.PREFERRED_VIDEO_MIME_TYPES)
+                    .setPreferredVideoMimeTypes(*(tvMimeTypes ?: PlayerConfig.PREFERRED_VIDEO_MIME_TYPES))
                     .setMinVideoSize(0, minHeight)
                     .setMaxVideoSize(Int.MAX_VALUE, maxHeight)
                     .setForceHighestSupportedBitrate(true)
@@ -556,7 +568,7 @@ class QualityManager(
      */
     fun applyAdaptiveTrackSelectorDefaults() {
         trackSelector?.let { selector ->
-            selector.setParameters(adaptiveTrackSelectorDefaults(selector.buildUponParameters(), videoSizeCap).build())
+            selector.setParameters(adaptiveTrackSelectorDefaults(selector.buildUponParameters(), videoSizeCap, tvMimeTypes).build())
         }
     }
 

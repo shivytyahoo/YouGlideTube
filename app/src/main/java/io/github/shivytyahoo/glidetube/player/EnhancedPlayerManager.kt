@@ -46,6 +46,7 @@ import io.github.shivytyahoo.glidetube.player.audio.AudioSessionAnnouncer
 import io.github.shivytyahoo.glidetube.player.audio.eq.EqualizerAudioProcessor
 import io.github.shivytyahoo.glidetube.player.cache.DiskReadAhead
 import io.github.shivytyahoo.glidetube.player.cache.PlayerCacheManager
+import io.github.shivytyahoo.glidetube.player.config.DeviceCapabilities
 import io.github.shivytyahoo.glidetube.player.config.PlayerConfig
 import io.github.shivytyahoo.glidetube.player.config.VideoSizeCap
 import io.github.shivytyahoo.glidetube.player.config.resetVideoSizeTo
@@ -177,6 +178,15 @@ class EnhancedPlayerManager private constructor() {
     private var liveQualityPick: LiveQualityPick? = null
     private var videoSizeCap = VideoSizeCap.UHD
 
+    /**
+     * Device codec behaviour, read once at initialisation: a weak device ranks H.264 first
+     * whatever the preference says, and on TV the codec families rank by the tallest height
+     * they decode. Both stay at their defaults until the player is created.
+     */
+    private var weakDevice = false
+    private var tvCodecOrder: List<String>? = null
+    private var tvMimeTypes: Array<String>? = null
+
     private var pendingLiveQualityHeight: Int = 0
 
     /**
@@ -283,6 +293,8 @@ class EnhancedPlayerManager private constructor() {
                             videoStreams,
                             resolved.preferredCodec,
                             bandwidthMeter?.bitrateEstimate,
+                            weakDevice = weakDevice,
+                            familyOrder = tvCodecOrder,
                         ),
                 )
             },
@@ -628,6 +640,11 @@ class EnhancedPlayerManager private constructor() {
         // Initialize bandwidth meter and track selector via factory
         bandwidthMeter = playerFactory.createBandwidthMeter(context)
         videoSizeCap = VideoSizeCap.forDevice(context)
+        weakDevice = DeviceCapabilities.isWeakDevice(context)
+        if (isTelevision()) {
+            tvCodecOrder = VideoCodecUtils.codecFamilyOrderByDecodableHeight()
+            tvMimeTypes = VideoCodecUtils.tvOrderedVideoMimeTypes()
+        }
         trackSelector = playerFactory.createTrackSelector(context, videoSizeCap)
 
         // Initialize media loader
@@ -670,6 +687,9 @@ class EnhancedPlayerManager private constructor() {
                     currentVideoStream = stream
                     loadMediaInternal(stream, currentAudioStream, position)
                 },
+                weakDevice = weakDevice,
+                familyOrder = tvCodecOrder,
+                tvMimeTypes = tvMimeTypes,
             )
 
         // Initialize error handler
@@ -2421,6 +2441,8 @@ class EnhancedPlayerManager private constructor() {
                 availableVideoStreams,
                 data.preferredCodec,
                 bandwidthMeter?.bitrateEstimate,
+                weakDevice = weakDevice,
+                familyOrder = tvCodecOrder,
             )
         currentVideoStream = data.videoStream ?: ladder.lastOrNull() ?: availableVideoStreams.firstOrNull()
         currentAudioStream = data.audioStream

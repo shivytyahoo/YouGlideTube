@@ -68,6 +68,9 @@ internal fun BufferSettingsScreen(
         group(key = BufferIndex.diskReadAhead.key, footer = R.string.disk_read_ahead_footer) {
             switch(BufferIndex.diskReadAhead, viewModel.diskReadAheadEnabled, viewModel::setDiskReadAheadEnabled)
         }
+        group(key = BufferIndex.longBuffer.key) {
+            switch(BufferIndex.longBuffer, viewModel.longBufferEnabled, viewModel::setLongBufferEnabled)
+        }
     }
 }
 

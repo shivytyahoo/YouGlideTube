@@ -1,6 +1,7 @@
 package io.github.shivytyahoo.glidetube.player.quality
 
 import com.google.common.truth.Truth.assertThat
+import io.github.shivytyahoo.glidetube.player.quality.LadderTestStreams.av1
 import io.github.shivytyahoo.glidetube.player.quality.LadderTestStreams.h264
 import io.github.shivytyahoo.glidetube.player.quality.LadderTestStreams.vp9
 import io.github.shivytyahoo.glidetube.player.stream.VideoCodecUtils
@@ -56,5 +57,17 @@ class AdaptiveLadderTest {
         assertThat(AdaptiveLadder.forPreload(streams[0], streams, null)).isEmpty()
         val rungs = AdaptiveLadder.forPreload(null, streams, "vp9")
         assertThat(rungs.map(VideoCodecUtils::codecKeyFromStream).distinct()).containsExactly("vp9")
+    }
+
+    @Test
+    fun `a weak device anchors on H264 even with an AV1 preference`() {
+        val streams = listOf(av1(1080, 8_000_000), av1(720, 4_000_000), h264(1080, 4_500_000), h264(720, 2_500_000))
+
+        val rungs = AdaptiveLadder.forPreload(null, streams, "av1", weakDevice = true)
+        assertThat(rungs.map(VideoCodecUtils::codecKeyFromStream).distinct()).containsExactly("h264")
+
+        // Without the override the preference wins and the ladder stays AV1.
+        val preferred = AdaptiveLadder.forPreload(null, streams, "av1")
+        assertThat(preferred.map(VideoCodecUtils::codecKeyFromStream).distinct()).containsExactly("av1")
     }
 }

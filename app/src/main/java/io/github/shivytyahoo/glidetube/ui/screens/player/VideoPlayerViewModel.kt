@@ -31,7 +31,9 @@ import io.github.shivytyahoo.glidetube.player.LifecyclePlaybackPreferences
 import io.github.shivytyahoo.glidetube.player.MiniPlayerExpansionState
 import io.github.shivytyahoo.glidetube.player.preview.FeedPreviewController
 import io.github.shivytyahoo.glidetube.player.state.EnhancedPlayerState
+import io.github.shivytyahoo.glidetube.player.stream.InnerTubeVideoStreamExtractor
 import io.github.shivytyahoo.glidetube.player.stream.PlaybackLoadResolver
+import io.github.shivytyahoo.glidetube.player.stream.PlaybackMethod
 import io.github.shivytyahoo.glidetube.player.stream.ResetYouTubeSession
 import io.github.shivytyahoo.glidetube.player.stream.UpcomingPremiereProbe
 import io.github.shivytyahoo.glidetube.ui.screens.player.state.*
@@ -472,6 +474,33 @@ class VideoPlayerViewModel
             escalateToSabr: Boolean = false,
             resumePositionOverrideMs: Long? = null,
         ) = loads.load(videoId, isWifi, forceRefresh, escalateToSabr, resumePositionOverrideMs)
+
+        /**
+         * Applies a playback-method pick from the player sheet: saves the preference, drops
+         * the video's cached streams so the old method's URLs are never replayed, and reloads
+         * the current video at its position. A pick while nothing is playing only saves the
+         * preference; a live stream or a local file is not reloaded — live always uses Auto,
+         * and a file has no streams to re-extract.
+         */
+        fun setPlaybackMethod(method: PlaybackMethod) {
+            viewModelScope.launch {
+                if (playerPreferences.playbackMethod.first() == method) return@launch
+                playerPreferences.setPlaybackMethod(method)
+                val videoId =
+                    playerManager.playerState.value.currentVideoId
+                        ?: _uiState.value.cachedVideo?.id
+                        ?: return@launch
+                if (_uiState.value.isLive || _uiState.value.localFilePath != null) return@launch
+                InnerTubeVideoStreamExtractor.clearCachedExtractions(videoId)
+                loads.cancel()
+                loadVideoInfo(
+                    videoId,
+                    isWifi = detectIsWifi(),
+                    forceRefresh = true,
+                    resumePositionOverrideMs = playerManager.getCurrentPosition().takeIf { it > 0L },
+                )
+            }
+        }
 
         fun switchQuality(quality: VideoQuality) = settings.switchQuality(quality)
 

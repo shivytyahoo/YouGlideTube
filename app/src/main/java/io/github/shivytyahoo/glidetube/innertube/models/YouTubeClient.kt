@@ -299,6 +299,34 @@ data class YouTubeClient(
                 attestation = AttestationPlatform.DROIDGUARD,
             )
 
+        /**
+         * The YouTube Kids app, asked anonymously. Serves only kids-eligible videos (anything
+         * else answers "This video is unavailable") and no SABR session, but its adaptive
+         * formats all carry direct URLs — measured 2026-11-27 against a kids video, 22 formats
+         * with direct URLs, heights to 1080p, none ciphered — so it reuses the direct-URL path
+         * with no new machinery. No signature timestamp: the probe that returned those formats
+         * sent none.
+         */
+        val ANDROID_KIDS =
+            YouTubeClient(
+                clientName = "ANDROID_KIDS",
+                clientVersion = "8.35.0",
+                clientId = "8",
+                userAgent =
+                    "com.google.android.apps.youtube.kids/8.35.0 " +
+                        "(Linux; U; Android 14) gzip",
+                osName = "Android",
+                osVersion = "14",
+                deviceMake = "Google",
+                deviceModel = "Pixel 6 Pro",
+                androidSdkVersion = "34",
+                packageName = "com.google.android.apps.youtube.kids",
+                friendlyName = "YouTube Kids",
+                loginSupported = false,
+                useSignatureTimestamp = false,
+                attestation = AttestationPlatform.DROIDGUARD,
+            )
+
         val ANDROID_VR_NO_AUTH =
             YouTubeClient(
                 clientName = "ANDROID_VR",

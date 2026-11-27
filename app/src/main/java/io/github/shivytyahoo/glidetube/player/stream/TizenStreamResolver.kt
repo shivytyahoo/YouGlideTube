@@ -53,6 +53,24 @@ internal object TizenStreamResolver {
                 val tag = if (PlayabilityVerdict.isBotWall(reason)) "BOT_WALL" else "status=${response.playabilityStatus.status}"
                 return@withContext refuse("$tag, reason=$reason")
             }
+            // A live broadcast carries no adaptive formats, so the formats path below would
+            // refuse it — but live is always Auto, and a forced method must not make a live
+            // stream unplayable. The manifest is the whole result, as in the extractor.
+            val liveHls = response.streamingData?.hlsManifestUrl?.takeIf { it.isNotBlank() }
+            val liveDash = response.streamingData?.dashManifestUrl?.takeIf { it.isNotBlank() }
+            if (response.videoDetails?.isLive == true && (liveHls != null || liveDash != null)) {
+                Log.w(TAG, "TV_TIZEN live manifest for $videoId (hls=${liveHls != null}, dash=${liveDash != null})")
+                return@withContext InnerTubeVideoStreamExtractor.VideoExtractionResult(
+                    videoFormats = emptyList(),
+                    audioFormats = emptyList(),
+                    playerResponse = response,
+                    usedClient = YouTubeClient.TV_TIZEN,
+                    sabrInfo = null,
+                    isLive = true,
+                    liveHlsUrl = liveHls,
+                    liveDashUrl = liveDash,
+                )
+            }
             val formats = response.streamingData?.adaptiveFormats.orEmpty()
             val playable = playableFormats(formats)
             val video = playable.filter { !it.isAudio && it.height != null && it.width != null }

@@ -16,6 +16,7 @@ import io.github.shivytyahoo.glidetube.ui.components.settings.SettingsTarget
 /** The pickers Player & playback opens over itself. */
 internal enum class PlaybackDialog {
     AUTOPLAY_COUNTDOWN,
+    PLAYBACK_METHOD,
     LONG_PRESS_SPEED,
     DOUBLE_TAP_SEEK,
     SEEK_ZONE_WIDTH,
