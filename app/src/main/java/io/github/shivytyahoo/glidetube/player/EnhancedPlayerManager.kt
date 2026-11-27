@@ -2505,7 +2505,8 @@ class EnhancedPlayerManager private constructor() {
         val videoId = currentVideoId ?: return
         if (nearEndPreloadFiredFor == videoId) return
         val target = nextPreloadTarget() ?: return
-        if (NetworkState.isMetered(appContext) && !target.fromQueue && !audioOnlyMode.isActive) return
+        val ctx = appContext ?: return
+        if (NetworkState.isMetered(ctx) && !target.fromQueue && !audioOnlyMode.isActive) return
         nearEndPreloadFiredFor = videoId
         preload.request("near-end")
     }

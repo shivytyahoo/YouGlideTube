@@ -189,6 +189,13 @@ class SabrDownloadEngine {
                                         isCancelled = true
                                     }
 
+                                    // A mid-download restart would leave the file starting at the
+                                    // wrong offset; fail cleanly instead of writing a corrupt file.
+                                    is SabrEvent.RestartRequired -> {
+                                        Log.w(TAG, "Restart required during download: ${event.reason}")
+                                        isCancelled = true
+                                    }
+
                                     is SabrEvent.SeekDirective -> {
                                         Log.d(TAG, "Seek directive ignored during download: ${event.targetMs}ms")
                                     }

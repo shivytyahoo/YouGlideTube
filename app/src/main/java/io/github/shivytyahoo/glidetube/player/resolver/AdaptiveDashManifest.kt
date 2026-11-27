@@ -45,7 +45,6 @@ internal object AdaptiveDashManifest {
     fun canDescribeAudio(stream: AudioStream): Boolean {
         val itag = stream.itagItem ?: return false
         return stream.deliveryMethod == DeliveryMethod.PROGRESSIVE_HTTP &&
-            !stream.isVideoOnly &&
             stream.content.isNotBlank() &&
             !itag.codec.isNullOrBlank() &&
             itag.bitrate > 0 &&
@@ -107,7 +106,7 @@ internal object AdaptiveDashManifest {
                 }
         return grouped.entries.mapIndexed { index, (_, streams) ->
             AdaptationSet(
-                index + 1,
+                (index + 1).toLong(),
                 C.TRACK_TYPE_AUDIO,
                 streams.map(::audioRepresentation),
                 emptyList(),

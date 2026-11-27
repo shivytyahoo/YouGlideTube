@@ -181,6 +181,7 @@ internal fun DownloadSettingsScreen(
             GlideToggleOption(DownloadDialogStyle.FULL, stringResource(R.string.download_menu_style_classic)),
             GlideToggleOption(DownloadDialogStyle.COMPACT, stringResource(R.string.download_menu_style_compact)),
         )
+    val autoDownloadEmptyText = stringResource(R.string.settings_auto_download_channels_empty)
 
     SettingsPage(
         title = stringResource(R.string.settings_downloads_title),
@@ -202,7 +203,7 @@ internal fun DownloadSettingsScreen(
             if (autoDownloadChannels.isEmpty()) {
                 info(
                     DownloadsIndex.autoDownloadChannels,
-                    value = stringResource(R.string.settings_auto_download_channels_empty),
+                    value = autoDownloadEmptyText,
                 )
             } else {
                 autoDownloadChannels.forEach { channel ->

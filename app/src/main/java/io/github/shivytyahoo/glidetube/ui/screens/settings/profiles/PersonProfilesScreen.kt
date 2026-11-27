@@ -27,9 +27,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.shivytyahoo.glidetube.R
 import io.github.shivytyahoo.glidetube.data.local.PersonProfile
 import io.github.shivytyahoo.glidetube.ui.components.settings.SettingsPage
-import io.github.shivytyahoo.glidetube.ui.components.settings.group
 import io.github.shivytyahoo.glidetube.ui.components.settings.nav
-import io.github.shivytyahoo.glidetube.ui.components.settings.row
 import io.github.shivytyahoo.glidetube.ui.components.settings.switch
 import io.github.shivytyahoo.glidetube.ui.components.shared.GlideAlertDialog
 import io.github.shivytyahoo.glidetube.ui.components.shared.GlideNavRow

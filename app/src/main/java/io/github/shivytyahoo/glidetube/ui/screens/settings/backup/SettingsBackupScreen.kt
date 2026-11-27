@@ -17,7 +17,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.shivytyahoo.glidetube.R
 import io.github.shivytyahoo.glidetube.data.local.SettingsBackup
 import io.github.shivytyahoo.glidetube.ui.components.settings.SettingsPage
-import io.github.shivytyahoo.glidetube.ui.components.settings.group
 import io.github.shivytyahoo.glidetube.ui.components.settings.nav
 import io.github.shivytyahoo.glidetube.ui.components.shared.GlideAlertDialog
 import io.github.shivytyahoo.glidetube.ui.screens.settings.index.BackupIndex
@@ -52,6 +51,9 @@ internal fun SettingsBackupScreen(
             if (uri != null) viewModel.importFrom(uri)
         }
 
+    val coveredText = stringResource(R.string.backup_stores_covered, covered.size)
+    val preservedText = stringResource(R.string.backup_preserved_note)
+
     SettingsPage(
         title = stringResource(R.string.settings_backup_title),
         onBack = onBack,
@@ -60,7 +62,7 @@ internal fun SettingsBackupScreen(
         group(key = "backup.export", header = R.string.settings_backup_tab_export) {
             nav(
                 BackupIndex.export,
-                value = stringResource(R.string.backup_stores_covered, covered.size),
+                value = coveredText,
                 onClick = {
                     scope.launch {
                         val text = viewModel.prepareExport()
@@ -77,7 +79,7 @@ internal fun SettingsBackupScreen(
         group(key = "backup.import", header = R.string.settings_backup_tab_import) {
             nav(
                 BackupIndex.import,
-                value = stringResource(R.string.backup_preserved_note),
+                value = preservedText,
                 onClick = { importLauncher.launch(arrayOf("application/json")) },
             )
         }

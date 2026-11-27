@@ -153,33 +153,33 @@ class SettingsBackup
             return when (encoded.type) {
                 "string" -> {
                     val primitive = value as? JsonPrimitive ?: return null
-                    stringPreferencesKey(name) to primitive.content
+                    Pair<Preferences.Key<*>, Any>(stringPreferencesKey(name), primitive.content)
                 }
 
                 "int" -> {
                     val primitive = value as? JsonPrimitive ?: return null
-                    intPreferencesKey(name) to (primitive.intOrNull ?: return null)
+                    Pair<Preferences.Key<*>, Any>(intPreferencesKey(name), primitive.intOrNull ?: return null)
                 }
 
                 "long" -> {
                     val primitive = value as? JsonPrimitive ?: return null
-                    longPreferencesKey(name) to (primitive.longOrNull ?: return null)
+                    Pair<Preferences.Key<*>, Any>(longPreferencesKey(name), primitive.longOrNull ?: return null)
                 }
 
                 "float" -> {
                     val primitive = value as? JsonPrimitive ?: return null
-                    floatPreferencesKey(name) to (primitive.floatOrNull ?: return null)
+                    Pair<Preferences.Key<*>, Any>(floatPreferencesKey(name), primitive.floatOrNull ?: return null)
                 }
 
                 "boolean" -> {
                     val primitive = value as? JsonPrimitive ?: return null
-                    booleanPreferencesKey(name) to (primitive.booleanOrNull ?: return null)
+                    Pair<Preferences.Key<*>, Any>(booleanPreferencesKey(name), primitive.booleanOrNull ?: return null)
                 }
 
                 "stringSet" -> {
                     val array = value as? JsonArray ?: return null
                     val strings = array.map { (it as? JsonPrimitive)?.content ?: return null }.toSet()
-                    stringSetPreferencesKey(name) to strings
+                    Pair<Preferences.Key<*>, Any>(stringSetPreferencesKey(name), strings)
                 }
 
                 else -> {
