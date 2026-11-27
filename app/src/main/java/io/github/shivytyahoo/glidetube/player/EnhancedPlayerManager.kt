@@ -88,7 +88,6 @@ import io.github.shivytyahoo.glidetube.player.surface.VideoSurfacePolicy
 import io.github.shivytyahoo.glidetube.player.tracker.PlaybackTracker
 import io.github.shivytyahoo.glidetube.utils.NetworkState
 import io.github.shivytyahoo.glidetube.utils.ThumbnailUrlResolver
-import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -117,6 +116,7 @@ import org.schabi.newpipe.extractor.stream.StreamInfo
 import org.schabi.newpipe.extractor.stream.StreamInfoItem
 import org.schabi.newpipe.extractor.stream.StreamType
 import org.schabi.newpipe.extractor.stream.VideoStream
+import java.util.concurrent.ConcurrentHashMap
 
 @UnstableApi
 class EnhancedPlayerManager private constructor() {
@@ -209,6 +209,7 @@ class EnhancedPlayerManager private constructor() {
 
     private val audioOnlyMode = AudioOnlyMode()
     private var currentLocalFilePath: String? = null
+
     /** The audio track group of the local file that is playing, for multi-audio switching. */
     private var localAudioTrackGroup: Tracks.Group? = null
     private val clearedMediaRecoveryState = ClearedMediaRecoveryState()
@@ -1615,8 +1616,16 @@ class EnhancedPlayerManager private constructor() {
                 val tag = format.language?.takeIf { it.isNotBlank() } ?: ""
                 val display =
                     when {
-                        tag.isBlank() || tag == "und" -> "Audio ${index + 1}"
-                        else -> java.util.Locale.forLanguageTag(tag).displayLanguage.takeIf { it.isNotBlank() } ?: tag
+                        tag.isBlank() || tag == "und" -> {
+                            "Audio ${index + 1}"
+                        }
+
+                        else -> {
+                            java.util.Locale
+                                .forLanguageTag(tag)
+                                .displayLanguage
+                                .takeIf { it.isNotBlank() } ?: tag
+                        }
                     }
                 AudioTrackOption(
                     index = index,
@@ -2160,7 +2169,11 @@ class EnhancedPlayerManager private constructor() {
                             _playerState.value =
                                 _playerState.value.copy(
                                     isBuffering = false,
-                                    error = appContext?.getString(io.github.shivytyahoo.glidetube.R.string.error_unable_to_load_next_video).orEmpty(),
+                                    error =
+                                        appContext
+                                            ?.getString(
+                                                io.github.shivytyahoo.glidetube.R.string.error_unable_to_load_next_video,
+                                            ).orEmpty(),
                                 )
                             releaseAdvanceWakeLock()
                             return@launch
@@ -2208,7 +2221,11 @@ class EnhancedPlayerManager private constructor() {
                         _playerState.value.copy(
                             isBuffering = false,
                             error =
-                                e.message ?: appContext?.getString(io.github.shivytyahoo.glidetube.R.string.error_unable_to_load_next_video).orEmpty(),
+                                e.message
+                                    ?: appContext
+                                        ?.getString(
+                                            io.github.shivytyahoo.glidetube.R.string.error_unable_to_load_next_video,
+                                        ).orEmpty(),
                         )
                     releaseAdvanceWakeLock()
                 } finally {

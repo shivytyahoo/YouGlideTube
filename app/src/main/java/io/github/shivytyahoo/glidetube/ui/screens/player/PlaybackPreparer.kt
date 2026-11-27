@@ -256,8 +256,10 @@ internal class PlaybackPreparer(
         // player's SABR fallback re-extracts through the direct ladder instead.
         val preferSabr =
             preferSabrOverride ||
-                (sabrInfo != null &&
-                    SabrRoutingPolicy.shouldPreferSabr(false, sabrInfo.videoHeight, directMaxHeight))
+                (
+                    sabrInfo != null &&
+                        SabrRoutingPolicy.shouldPreferSabr(false, sabrInfo.videoHeight, directMaxHeight)
+                )
 
         playerManager.setStreams(
             videoId = videoId,

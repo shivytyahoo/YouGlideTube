@@ -77,7 +77,9 @@ object DeviceCapabilities {
             !info.isEncoder &&
                 info.supportedTypes.any { it.equals(mimeType, ignoreCase = true) } &&
                 runCatching {
-                    info.getCapabilitiesForType(mimeType).videoCapabilities
+                    info
+                        .getCapabilitiesForType(mimeType)
+                        .videoCapabilities
                         ?.areSizeAndRateSupported(width, height, frameRate.toDouble()) == true
                 }.getOrDefault(false)
         }

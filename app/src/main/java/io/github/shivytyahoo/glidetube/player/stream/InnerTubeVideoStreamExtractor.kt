@@ -951,8 +951,11 @@ object InnerTubeVideoStreamExtractor {
         liveDetected: BooleanArray,
     ): VideoExtractionResult? =
         when (method) {
-            PlaybackMethod.AUTO -> null
-            PlaybackMethod.VISIONOS ->
+            PlaybackMethod.AUTO -> {
+                null
+            }
+
+            PlaybackMethod.VISIONOS -> {
                 tryDirectClients(
                     videoId,
                     FAST_CLIENTS,
@@ -960,14 +963,18 @@ object InnerTubeVideoStreamExtractor {
                     liveDetected = liveDetected,
                     retryTimeoutOnce = true,
                 )
-            PlaybackMethod.ANDROID_VR ->
+            }
+
+            PlaybackMethod.ANDROID_VR -> {
                 tryDirectClients(
                     videoId,
                     GATED_FALLBACK_CLIENTS,
                     failureReasons,
                     liveDetected = liveDetected,
                 )
-            PlaybackMethod.KIDS ->
+            }
+
+            PlaybackMethod.KIDS -> {
                 tryDirectClients(
                     videoId,
                     listOf(YouTubeClient.ANDROID_KIDS),
@@ -975,8 +982,15 @@ object InnerTubeVideoStreamExtractor {
                     liveDetected = liveDetected,
                     retryTimeoutOnce = true,
                 )
-            PlaybackMethod.SABR -> trySabrClients(videoId, failureReasons)
-            PlaybackMethod.TV -> TizenStreamResolver.resolve(videoId, failureReasons)
+            }
+
+            PlaybackMethod.SABR -> {
+                trySabrClients(videoId, failureReasons)
+            }
+
+            PlaybackMethod.TV -> {
+                TizenStreamResolver.resolve(videoId, failureReasons)
+            }
         }
 
     @OptIn(UnstableApi::class)

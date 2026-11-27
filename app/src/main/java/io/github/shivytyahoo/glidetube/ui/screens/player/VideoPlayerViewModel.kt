@@ -220,7 +220,6 @@ class VideoPlayerViewModel
             stopLiveChat()
         }
 
-
         val downloadedVideoIds =
             videoDownloadManager.downloadedVideos
                 .map { list -> list.map { it.video.id }.toSet() }
@@ -540,7 +539,10 @@ class VideoPlayerViewModel
         private var lastPlayerWasPlaying: Boolean = false
         private var watchTimeFirstLogged: Boolean = false
 
-        fun reportServerWatchTime(videoId: String, positionMs: Long) {
+        fun reportServerWatchTime(
+            videoId: String,
+            positionMs: Long,
+        ) {
             val session = _uiState.value.serverWatchSession
             if (session == null || session.videoId != videoId || !YouTube.isSignedIn()) return
             viewModelScope.launch {
