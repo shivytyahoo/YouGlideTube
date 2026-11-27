@@ -12,6 +12,7 @@ import kotlin.math.abs
 import kotlin.math.exp
 import kotlin.math.log10
 import kotlin.math.pow
+import kotlin.math.roundToInt
 import kotlin.math.tanh
 
 /**
@@ -344,7 +345,10 @@ class EqualizerAudioProcessor : BaseAudioProcessor() {
             }
         val gainCoef = if (target < compGain) attackCoef else releaseCoef
         compGain += (target - compGain) * gainCoef
-        if (abs(compGain - 1.0) < COMP_GAIN_EPSILON) compGain = 1.0
+        // Snap to unity only while night mode is off: with night mode on, the make-up gain
+        // pulls compGain up through 1.0 in steps smaller than this epsilon, so an ungated snap
+        // would pin it at 1.0 forever and the make-up would never engage.
+        if (!nightOn && abs(compGain - 1.0) < COMP_GAIN_EPSILON) compGain = 1.0
         if (compGain != 1.0) {
             for (channel in 0 until channels) samples[channel] *= compGain
         }
@@ -382,8 +386,10 @@ class EqualizerAudioProcessor : BaseAudioProcessor() {
             return if (sample < 0) -shaped else shaped
         }
 
+        // Round instead of truncating: truncating halves every odd sample toward zero, which
+        // shrinks a mono fold's RMS (and a widened spread) by a measurable fraction of an LSB.
         fun toShort(sample: Double): Short =
-            (sample * SHORT_SCALE).coerceIn(Short.MIN_VALUE.toDouble(), Short.MAX_VALUE.toDouble()).toInt().toShort()
+            (sample * SHORT_SCALE).coerceIn(Short.MIN_VALUE.toDouble(), Short.MAX_VALUE.toDouble()).roundToInt().toShort()
     }
 }
 
