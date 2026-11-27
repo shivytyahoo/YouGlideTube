@@ -24,6 +24,9 @@ interface MediaNavigator {
 
     fun openEqualizer()
 
+    /** Opens the search screen with [query] already submitted, results showing. */
+    fun openSearch(query: String)
+
     /** Opens what [link] points at. False when YouGlideTube has no page for it, so the caller can say so. */
     fun openLink(link: YouTubeLink): Boolean
 }
@@ -38,6 +41,8 @@ private object NoOpMediaNavigator : MediaNavigator {
     override fun openMusicPlaylist(playlistId: String) = Unit
 
     override fun openEqualizer() = Unit
+
+    override fun openSearch(query: String) = Unit
 
     override fun openLink(link: YouTubeLink) = false
 }

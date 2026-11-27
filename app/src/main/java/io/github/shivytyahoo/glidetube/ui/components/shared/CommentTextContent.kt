@@ -18,6 +18,7 @@ import io.github.shivytyahoo.glidetube.data.model.Comment
 import io.github.shivytyahoo.glidetube.data.model.RichText
 import io.github.shivytyahoo.glidetube.utils.RICH_TEXT_CHANNEL
 import io.github.shivytyahoo.glidetube.utils.RICH_TEXT_EMOJI_PREFIX
+import io.github.shivytyahoo.glidetube.utils.RICH_TEXT_HASHTAG
 import io.github.shivytyahoo.glidetube.utils.RICH_TEXT_SEEK
 import io.github.shivytyahoo.glidetube.utils.RICH_TEXT_URL
 import io.github.shivytyahoo.glidetube.utils.RICH_TEXT_VIDEO
@@ -37,6 +38,7 @@ internal data class CommentTextContent(
         onSeekMs: (Long) -> Unit,
         onOpenUrl: (String) -> Unit,
         onAuthorClick: (String) -> Unit,
+        onHashtagClick: ((String) -> Unit)? = null,
     ): Boolean {
         annotated.getStringAnnotations(RICH_TEXT_SEEK, offset, offset).firstOrNull()?.let { seek ->
             seek.item.toLongOrNull()?.let { onSeekMs(it * 1_000L) }
@@ -44,6 +46,11 @@ internal data class CommentTextContent(
         }
         annotated.getStringAnnotations(LEGACY_TIMESTAMP, offset, offset).firstOrNull()?.let { legacy ->
             onSeekMs(commentTimestampToMs(legacy.item))
+            return true
+        }
+        annotated.getStringAnnotations(RICH_TEXT_HASHTAG, offset, offset).firstOrNull()?.let { hashtag ->
+            val handler = onHashtagClick ?: return false
+            handler(hashtag.item.removePrefix("#"))
             return true
         }
         annotated.getStringAnnotations(RICH_TEXT_CHANNEL, offset, offset).firstOrNull()?.let { channel ->

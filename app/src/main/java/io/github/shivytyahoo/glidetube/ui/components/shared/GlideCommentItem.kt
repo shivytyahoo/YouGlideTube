@@ -47,7 +47,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import kotlinx.coroutines.delay
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -72,7 +71,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.shivytyahoo.glidetube.R
 import io.github.shivytyahoo.glidetube.data.model.Comment
+import io.github.shivytyahoo.glidetube.ui.components.layout.navigation.LocalMediaNavigator
 import io.github.shivytyahoo.glidetube.utils.formatLikeCount
+import kotlinx.coroutines.delay
 
 private val ThreadHorizontalPadding = 16.dp
 private val ThreadLineWidth = 2.dp
@@ -117,6 +118,7 @@ fun GlideCommentItem(
     var showFullSizeImage by remember { mutableStateOf(false) }
 
     val uriHandler = LocalUriHandler.current
+    val navigator = LocalMediaNavigator.current
 
     LaunchedEffect(comment.replies) {
         isLoadingReplies = false
@@ -221,6 +223,7 @@ fun GlideCommentItem(
                                                             runCatching { uriHandler.openUri(url) }
                                                         },
                                                         onAuthorClick = onAuthorClick,
+                                                        onHashtagClick = navigator::openSearch,
                                                     )
                                                 if (!handled && !isExpanded && isOverflowing) isExpanded = true
                                             },

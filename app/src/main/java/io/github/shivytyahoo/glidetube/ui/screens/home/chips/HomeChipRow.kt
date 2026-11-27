@@ -86,7 +86,7 @@ internal fun HomeChipRow(
                 Box {
                     GlideFilterChip(
                         label = moreLabel,
-                        selected = state.chips.any { it.key == state.selected && it is HomeChip.TopicChannel && it.label in moreLabels },
+                        selected = moreLabels.any { HomeChip.TopicChannel(it, topicChannels.getValue(it)).key == state.selected },
                         onClick = { open = true },
                         modifier = Modifier.semantics { contentDescription = moreLabel },
                     )

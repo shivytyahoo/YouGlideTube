@@ -67,6 +67,12 @@ internal class GlideMediaNavigator(
         navController.navigate(EQUALIZER_ROUTE)
     }
 
+    override fun openSearch(query: String) {
+        if (query.isBlank()) return
+        beforeNavigate()
+        navController.navigate("search?query=${Uri.encode(query)}")
+    }
+
     /**
      * A link that starts a video leaves an expanded player where it is: the new video takes it over,
      * and collapsing it first would only bounce it down and back up.

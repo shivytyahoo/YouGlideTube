@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.shivytyahoo.glidetube.R
 import io.github.shivytyahoo.glidetube.data.model.Comment
+import io.github.shivytyahoo.glidetube.ui.components.layout.navigation.LocalMediaNavigator
 import io.github.shivytyahoo.glidetube.utils.formatLikeCount
 import io.github.shivytyahoo.glidetube.utils.formatRichText
 
@@ -56,6 +57,7 @@ fun GlideReplyItem(
     tint: MediaArtworkTint? = null,
 ) {
     val uriHandler = LocalUriHandler.current
+    val navigator = LocalMediaNavigator.current
     val accent = tint?.accent ?: MaterialTheme.colorScheme.primary
     val chipColor = tint?.container ?: MaterialTheme.colorScheme.surfaceContainerHighest
     val replyText = rememberCommentText(reply, accent)
@@ -129,6 +131,7 @@ fun GlideReplyItem(
                                             onSeekMs = onSeekMs,
                                             onOpenUrl = { url -> runCatching { uriHandler.openUri(url) } },
                                             onAuthorClick = onAuthorClick,
+                                            onHashtagClick = navigator::openSearch,
                                         )
                                     },
                                 )

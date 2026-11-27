@@ -36,7 +36,9 @@ import io.github.shivytyahoo.glidetube.data.model.toVideo
 import io.github.shivytyahoo.glidetube.data.model.uploadDateMillis
 import io.github.shivytyahoo.glidetube.player.EnhancedPlayerManager
 import io.github.shivytyahoo.glidetube.player.state.SubtitleOption
+import io.github.shivytyahoo.glidetube.ui.components.layout.navigation.LocalMediaNavigator
 import io.github.shivytyahoo.glidetube.ui.components.shared.GlideDescriptionBottomSheet
+import io.github.shivytyahoo.glidetube.ui.components.shared.GlideMessageComposer
 import io.github.shivytyahoo.glidetube.ui.components.shared.MediaSleepTimerSheet
 import io.github.shivytyahoo.glidetube.ui.components.shared.commentTimestampToMs
 import io.github.shivytyahoo.glidetube.ui.components.shared.defaultSheetExpandedHeight
@@ -46,7 +48,6 @@ import io.github.shivytyahoo.glidetube.ui.components.shared.rememberDateDisplayS
 import io.github.shivytyahoo.glidetube.ui.components.videoplayer.sheet.GlideChaptersBottomSheet
 import io.github.shivytyahoo.glidetube.ui.components.videoplayer.sheet.GlidePlaylistQueueBottomSheet
 import io.github.shivytyahoo.glidetube.ui.components.videoplayer.sheet.GlideTranscriptBottomSheet
-import io.github.shivytyahoo.glidetube.ui.components.shared.GlideMessageComposer
 import io.github.shivytyahoo.glidetube.ui.components.videoplayer.sheet.LiveChatList
 import io.github.shivytyahoo.glidetube.ui.components.videoplayer.sheet.PlayerCommentsPanel
 import io.github.shivytyahoo.glidetube.ui.components.videoplayer.sheet.TranscriptChapter
@@ -153,6 +154,7 @@ internal fun PlayerDescriptionSheetHost(
     onSheetProgressChange: (Float) -> Unit = {},
 ) {
     val descriptionPage by viewModel.descriptionState.collectAsStateWithLifecycle()
+    val navigator = LocalMediaNavigator.current
     LaunchedEffect(video.id) {
         viewModel.loadDescription(video.id)
     }
@@ -164,6 +166,8 @@ internal fun PlayerDescriptionSheetHost(
         onChaptersClick = onChaptersClick,
         onTranscriptClick = onTranscriptClick?.takeIf { hasTranscriptTrack },
         onChannelClick = onChannelClick,
+        onHashtagClick = navigator::openSearch,
+        onTagClick = navigator::openSearch,
         artworkUrl = video.thumbnailUrl,
         onSeekMs = { EnhancedPlayerManager.getInstance().seekTo(it) },
         expandedHeight = expandedHeight,
@@ -173,7 +177,6 @@ internal fun PlayerDescriptionSheetHost(
         onDismiss = onDismiss,
         modifier = if (asSidePanel) Modifier.fillMaxSize() else Modifier,
     )
-
 }
 
 @Composable

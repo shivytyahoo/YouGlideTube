@@ -81,6 +81,7 @@ internal fun HomeFeedGrid(
             uiState.continueWatchingVideos.isNotEmpty(),
             showShorts && uiState.shorts.isNotEmpty(),
             showGreeting,
+            uiState.isGuest,
             uiState.todayWatchedMinutes,
             uiState.interests,
             uiState.shelves,
@@ -92,8 +93,10 @@ internal fun HomeFeedGrid(
                 showShorts = showShorts && uiState.shorts.isNotEmpty(),
                 showGreeting = showGreeting,
                 minutesToday = uiState.todayWatchedMinutes,
-                interests = uiState.interests,
-                shelves = uiState.shelves,
+                // Signed in, the server feed is the feed: stale local interests and shelves
+                // never render under it.
+                interests = if (uiState.isGuest) uiState.interests else emptyList(),
+                shelves = if (uiState.isGuest) uiState.shelves else emptyList(),
             )
         }
     val plan =

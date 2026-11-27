@@ -123,11 +123,25 @@ class HomeChipFeeds
             load(chip, force = true)
         }
 
-        private fun chipFor(key: String): HomeChip? = (listOf(HomeChip.All) + localChips + topics).firstOrNull { it.key == key }
+        private fun chipFor(key: String): HomeChip? = (listOf(HomeChip.All) + selectableLocalChips() + topics).firstOrNull { it.key == key }
+
+        /**
+         * The local chips select() may resolve. The row only shows Discover and Live, but the
+         * More menu builds its topics on the fly, so they resolve here too. Guest-only, like
+         * the row's own local chips: signed in, the server feed supplies the chips.
+         */
+        private fun selectableLocalChips(): List<HomeChip> =
+            if (YouTube.isSignedIn()) {
+                emptyList()
+            } else {
+                localChips + topicChannels.map { (label, channelId) -> HomeChip.TopicChannel(label, channelId) }
+            }
 
         private fun publishChips() {
             if (!::scope.isInitialized) return
-            val all = listOf<HomeChip>(HomeChip.All) + localChips + topics
+            // The row's local chips are guest-only: signed in, the server feed supplies the chips.
+            val local = if (YouTube.isSignedIn()) emptyList<HomeChip>() else localChips
+            val all = listOf<HomeChip>(HomeChip.All) + local + topics
             chipsState.update { state ->
                 if (all.none { it.key == state.selected }) {
                     state.copy(chips = all, selected = HomeChip.All.key, feed = null)

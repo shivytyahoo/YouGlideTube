@@ -88,6 +88,7 @@ fun SearchScreen(
     LaunchedEffect(initialQuery) {
         if (initialQuery.isNotBlank() && !initialQueryConsumed) {
             initialQueryConsumed = true
+            state.textFieldState.setTextAndPlaceCursorAtEnd(initialQuery)
             submit(initialQuery)
         }
     }
@@ -114,7 +115,9 @@ fun SearchScreen(
         if (showResults) {
             focusManager.clearFocus(force = true)
             keyboard?.hide()
-        } else {
+        } else if (initialQuery.isBlank()) {
+            // A query carried in from elsewhere already submitted: the results are the
+            // screen, so only focus the field when the user arrived with no query.
             runCatching { focusRequester.requestFocus() }
             keyboard?.show()
         }

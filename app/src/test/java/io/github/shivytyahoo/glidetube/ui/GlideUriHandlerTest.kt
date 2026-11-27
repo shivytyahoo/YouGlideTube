@@ -22,6 +22,8 @@ class GlideUriHandlerTest {
 
         override fun openEqualizer() = Unit
 
+        override fun openSearch(query: String) = Unit
+
         override fun openLink(link: YouTubeLink): Boolean {
             if (link is YouTubeLink.Search) return false
             opened += link

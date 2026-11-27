@@ -27,6 +27,8 @@ internal class TvMediaNavigator(
 
     override fun openEqualizer() = Unit
 
+    override fun openSearch(query: String) = Unit
+
     override fun openLink(link: YouTubeLink): Boolean {
         when (link) {
             is YouTubeLink.Video -> {

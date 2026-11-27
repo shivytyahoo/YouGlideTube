@@ -49,6 +49,7 @@ import io.github.shivytyahoo.glidetube.player.GlobalPlayerState
 import io.github.shivytyahoo.glidetube.player.shorts.ShortsPlayerPool
 import io.github.shivytyahoo.glidetube.ui.OnTabReselected
 import io.github.shivytyahoo.glidetube.ui.components.layout.navigation.GlideTab
+import io.github.shivytyahoo.glidetube.ui.components.layout.navigation.LocalMediaNavigator
 import io.github.shivytyahoo.glidetube.ui.components.shared.CommentSortFilter
 import io.github.shivytyahoo.glidetube.ui.components.shared.GlideCommentsBottomSheet
 import io.github.shivytyahoo.glidetube.ui.components.shared.GlideDescriptionBottomSheet
@@ -85,6 +86,7 @@ fun ShortsScreen(
     viewModel: ShortsViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
+    val navigator = LocalMediaNavigator.current
     val playerPreferences = remember(context) { PlayerPreferences(context) }
     val reelSettings = rememberShortsReelSettings(playerPreferences)
     val uiState by viewModel.uiState.collectAsState()
@@ -318,6 +320,8 @@ fun ShortsScreen(
             GlideDescriptionBottomSheet(
                 video = uiState.shorts[safeIndex].toVideo(),
                 expandedHeight = sheetExpandedHeight,
+                onHashtagClick = navigator::openSearch,
+                onTagClick = navigator::openSearch,
                 onSheetProgressChange = { progress -> sheetInsets.follow(sheetExpandedHeightPx * progress) },
                 dismissOnOutsideTap = true,
                 onDismiss = { showDescriptionSheet = false },

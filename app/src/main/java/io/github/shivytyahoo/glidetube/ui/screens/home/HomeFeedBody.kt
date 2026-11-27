@@ -233,7 +233,7 @@ internal fun HomeFeedBody(
                 // Since v5 the feed can end at a few dozen cards; a list that just stops reads as broken (#1317).
                 footerMinVideos = 0,
                 showShorts = showShorts,
-                showGreeting = true,
+                showGreeting = uiState.isGuest,
                 onInterestClick = { query -> onOpenSearch?.invoke(query) },
             )
         }

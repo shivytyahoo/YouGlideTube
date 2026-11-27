@@ -296,15 +296,19 @@ class HomeViewModel
                     }
                     // The taste learns here, lazily, from the history that already exists:
                     // no player file is touched, and nothing is learned while history is off.
-                    learnSettledViews(latestHistory)
-                    val watchedTodayMs = localDataManager.watchLedger.first()[LocalDate.now()] ?: 0L
-                    val minutesToday = (watchedTodayMs / 60_000).toInt()
-                    val words = tasteStore.interests()
-                    _uiState.update { state ->
-                        if (state.todayWatchedMinutes == minutesToday && state.interests == words) {
-                            state
-                        } else {
-                            state.copy(todayWatchedMinutes = minutesToday, interests = words)
+                    // Signed in, nothing local is built: the server feed is the feed, so the
+                    // taste is never learned and the greeting stays empty.
+                    if (!YouTube.isSignedIn()) {
+                        learnSettledViews(latestHistory)
+                        val watchedTodayMs = localDataManager.watchLedger.first()[LocalDate.now()] ?: 0L
+                        val minutesToday = (watchedTodayMs / 60_000).toInt()
+                        val words = tasteStore.interests()
+                        _uiState.update { state ->
+                            if (state.todayWatchedMinutes == minutesToday && state.interests == words) {
+                                state
+                            } else {
+                                state.copy(todayWatchedMinutes = minutesToday, interests = words)
+                            }
                         }
                     }
                 }
@@ -606,7 +610,19 @@ class HomeViewModel
             feedGeneration++
             resetHomePrefetch()
             serverContinuation = null
-            _uiState.update { it.copy(isLoading = true, error = null, isGuest = !YouTube.isSignedIn()) }
+            val signedIn = YouTube.isSignedIn()
+            _uiState.update {
+                it.copy(
+                    isLoading = true,
+                    error = null,
+                    isGuest = !signedIn,
+                    // Signed in, the server feed is the feed: drop any local taste a guest
+                    // session left behind instead of showing it under the server feed.
+                    todayWatchedMinutes = if (signedIn) 0 else it.todayWatchedMinutes,
+                    interests = if (signedIn) emptyList() else it.interests,
+                    shelves = if (signedIn) emptyList() else it.shelves,
+                )
+            }
 
             feedJob =
                 viewModelScope.launch(PerformanceDispatcher.networkIO) {

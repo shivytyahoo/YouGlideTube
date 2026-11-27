@@ -55,11 +55,13 @@ fun parseHtmlDescription(
         // 4. Find plain-text URLs (https://... not covered by an anchor tag)
         val htmlUrlStarts = urlSpans.map { spanned.getSpanStart(it) }.toSet()
         val urlRegex = Regex("""https?://[^\s]+""")
+        val plainUrlRanges = mutableListOf<IntRange>()
         urlRegex.findAll(text).forEach { matchResult ->
             val start = matchResult.range.first
             // Skip if already covered by an HTML anchor
             if (start !in htmlUrlStarts) {
                 val end = matchResult.range.last + 1
+                plainUrlRanges += start until end
                 addStyle(
                     style =
                         SpanStyle(
@@ -88,6 +90,27 @@ fun parseHtmlDescription(
                 end = end,
             )
             addStringAnnotation(tag = "TIMESTAMP", annotation = matchResult.value, start = start, end = end)
+        }
+
+        // 5. Hashtags are plain text in HTML: mark them like the server's own runs so a
+        // tap searches in-app instead of doing nothing. A # inside a bare URL is its
+        // fragment, not a tag, so those ranges are skipped; a hashtag anchor keeps the
+        // tag annotation on top of its URL one, and the tap router prefers the tag.
+        val hashtagRegex = Regex("""#\w+""")
+        hashtagRegex.findAll(text).forEach { matchResult ->
+            val start = matchResult.range.first
+            if (plainUrlRanges.any { start in it }) return@forEach
+            val end = matchResult.range.last + 1
+            addStyle(
+                style =
+                    SpanStyle(
+                        color = linkColor,
+                        fontWeight = FontWeight.SemiBold,
+                    ),
+                start = start,
+                end = end,
+            )
+            addStringAnnotation(tag = RICH_TEXT_HASHTAG, annotation = matchResult.value.removePrefix("#"), start = start, end = end)
         }
     }
 }
