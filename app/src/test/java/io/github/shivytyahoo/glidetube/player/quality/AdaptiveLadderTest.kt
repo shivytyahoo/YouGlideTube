@@ -51,10 +51,12 @@ class AdaptiveLadderTest {
     }
 
     @Test
-    fun `a pinned preload gets no ladder, an Auto one follows the codec preference`() {
+    fun `a pinned preload gets the ladder around the pin, an Auto one follows the codec preference`() {
         val streams = listOf(h264(720, 2_500_000), h264(360, 700_000), vp9(720, 2_000_000), vp9(360, 600_000))
 
-        assertThat(AdaptiveLadder.forPreload(streams[0], streams, null)).isEmpty()
+        val pinned = AdaptiveLadder.forPreload(streams[0], streams, null)
+        assertThat(heights(pinned)).containsExactly(360, 720).inOrder()
+        assertThat(pinned.map(VideoCodecUtils::codecKeyFromStream).distinct()).containsExactly("h264")
         val rungs = AdaptiveLadder.forPreload(null, streams, "vp9")
         assertThat(rungs.map(VideoCodecUtils::codecKeyFromStream).distinct()).containsExactly("vp9")
     }

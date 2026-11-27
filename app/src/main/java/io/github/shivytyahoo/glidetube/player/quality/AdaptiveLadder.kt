@@ -35,9 +35,10 @@ internal object AdaptiveLadder {
     }
 
     /**
-     * The ladder a preloaded video plays on: none when a quality is pinned ([pinned] set), else one
-     * around the bandwidth-fitting anchor when an estimate is known. Promotion recomputes it from
-     * the same inputs to learn what is playing.
+     * The ladder a preloaded video plays on: around the pin when a quality is pinned ([pinned]
+     * set) — the pin is a track-selector constraint on the ladder, not a single stream — else
+     * one around the bandwidth-fitting anchor when an estimate is known. Promotion recomputes
+     * it from the same inputs to learn what is playing.
      */
     fun forPreload(
         pinned: VideoStream?,
@@ -48,7 +49,7 @@ internal object AdaptiveLadder {
         familyOrder: List<String>? = null,
     ): List<VideoStream> =
         if (pinned != null) {
-            emptyList()
+            rungs(pinned, streams)
         } else {
             rungs(anchorFor(streams, preferredCodec, bandwidthEstimateBps, weakDevice, familyOrder), streams)
         }

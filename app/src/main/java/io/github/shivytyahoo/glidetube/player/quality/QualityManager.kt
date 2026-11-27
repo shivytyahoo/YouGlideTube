@@ -55,7 +55,13 @@ class QualityManager(
 
     private var lastQualitySwitchTime = 0L
 
-    var isDashSource = false
+    /**
+     * The loaded source is a multi-representation DASH manifest — a generated ladder, or
+     * YouTube's own manifest — so a quality change can move within it instead of reloading.
+     * A player-response `dashManifestUrl` alone does not prove this: a pinned load bypasses
+     * the native manifest for a generated single-representation one.
+     */
+    var isMultiRungDashSource = false
 
     /** Media3 is adapting over a ladder source, so Auto's own bandwidth checks stand down. */
     var isAdaptiveLadderActive = false
@@ -105,6 +111,7 @@ class QualityManager(
         manualQualityHeight = null
         consecutiveBufferingCount = 0
         lastQualitySwitchTime = 0L
+        isMultiRungDashSource = false
         isAdaptiveLadderActive = false
         applyAdaptiveTrackSelectorDefaults()
     }
@@ -188,9 +195,40 @@ class QualityManager(
         switchDashQualitySeamlessly(stream.height, qualityHeight(stream))
     }
 
+    /** The rungs around [anchor] whether a quality is pinned or not. A pinned load plays the
+     * same ladder with the pin as a track-selector constraint, so switches within it need no reload. */
+    fun pinnedLadder(anchor: VideoStream?): List<VideoStream> = AdaptiveLadder.rungs(anchor, getWorkingStreams())
+
     /** The qualities Auto hands to Media3 around [anchor], or none while a quality is pinned. */
-    fun adaptiveLadder(anchor: VideoStream?): List<VideoStream> =
-        if (isAdaptiveQualityEnabled) AdaptiveLadder.rungs(anchor, getWorkingStreams()) else emptyList()
+    fun adaptiveLadder(anchor: VideoStream?): List<VideoStream> = if (isAdaptiveQualityEnabled) pinnedLadder(anchor) else emptyList()
+
+    /**
+     * Constrain the track selector to the pinned height. No-op unless a quality is pinned and
+     * its ladder has at least two rungs: a single-representation load already plays only the
+     * pin, and a switch before the load lands has nothing to constrain yet.
+     */
+    fun applyPinConstraint() {
+        val pinHeight = manualQualityHeight ?: return
+        if (isAdaptiveQualityEnabled) return
+        val anchor = currentVideoStream ?: return
+        if (pinnedLadder(anchor).size < 2) return
+        switchDashQualitySeamlessly(anchor.height, pinHeight)
+    }
+
+    /**
+     * Whether [targetStream] is a rung of the loaded multi-rung manifest. Call before adopting
+     * the target as the current stream: the check anchors on the loaded ladder's family, which
+     * the current stream still carries. A native manifest carries every format, so any
+     * available stream is a rung of it; a generated ladder carries only its own rungs, so the
+     * target must be one of them. A codec-family change, or a height the loaded family does
+     * not carry, still needs a reload.
+     */
+    fun isRungOfLoadedLadder(targetStream: VideoStream): Boolean {
+        if (!isMultiRungDashSource) return false
+        if (!isAdaptiveLadderActive) return true
+        val anchor = currentVideoStream ?: return false
+        return pinnedLadder(anchor).any { streamKey(it) == streamKey(targetStream) }
+    }
 
     /**
      * Build quality options list for UI.
@@ -227,6 +265,7 @@ class QualityManager(
     fun switchQualityByHeight(
         height: Int,
         currentPosition: Long,
+        videoId: String? = null,
     ): Boolean {
         // Height 0 means Auto (adaptive quality)
         if (height == 0) {
@@ -260,8 +299,17 @@ class QualityManager(
         }
 
         val targetHeight = qualityHeight(targetStream)
+        // Decide the path before adopting the target: the rung check anchors on the loaded
+        // ladder's family, which the current stream still carries.
+        val fromStream = currentVideoStream
+        val seamless = isRungOfLoadedLadder(targetStream)
         currentVideoStream = targetStream
-        onQualitySwitch(targetStream, currentPosition)
+        if (seamless) {
+            switchDashQualitySeamlessly(targetStream.height, targetHeight)
+        } else {
+            onQualitySwitch(targetStream, currentPosition)
+        }
+        logQualitySwitch(videoId, fromStream, targetStream, viaSeamless = seamless)
 
         stateFlow.value =
             stateFlow.value.copy(
@@ -275,14 +323,16 @@ class QualityManager(
     fun switchQuality(
         option: QualityOption,
         currentPosition: Long,
+        videoId: String? = null,
     ): Boolean {
-        option.streamKey?.let { return switchQualityByStreamKey(it, currentPosition) }
-        return switchQualityByHeight(option.height, currentPosition)
+        option.streamKey?.let { return switchQualityByStreamKey(it, currentPosition, videoId) }
+        return switchQualityByHeight(option.height, currentPosition, videoId)
     }
 
     fun switchQualityByStreamKey(
         streamKey: String,
         currentPosition: Long,
+        videoId: String? = null,
     ): Boolean {
         val targetStream = availableVideoStreams.firstOrNull { streamKey(it) == streamKey }
         if (targetStream == null) {
@@ -292,16 +342,21 @@ class QualityManager(
 
         val targetHeight = qualityHeight(targetStream)
         val targetCodec = VideoCodecUtils.codecKeyFromStream(targetStream)
+        // Decide the path before adopting the target: the rung check anchors on the loaded
+        // ladder's family, which the current stream still carries.
+        val fromStream = currentVideoStream
+        val seamless = isRungOfLoadedLadder(targetStream)
         isAdaptiveQualityEnabled = false
         manualQualityHeight = targetHeight
         currentVideoStream = targetStream
         Log.d(TAG, "Switching to FIXED quality: ${targetHeight}p ${VideoCodecUtils.codecLabelFromKey(targetCodec)}")
 
-        if (isDashSource) {
+        if (seamless) {
             switchDashQualitySeamlessly(targetStream.height, targetHeight)
         } else {
             onQualitySwitch(targetStream, currentPosition)
         }
+        logQualitySwitch(videoId, fromStream, targetStream, viaSeamless = seamless)
 
         stateFlow.value =
             stateFlow.value.copy(
@@ -313,8 +368,9 @@ class QualityManager(
     }
 
     /**
-     * Enable adaptive quality mode. A pinned quality is a single-stream source, so Auto reloads
-     * whenever a ladder can take over from it, not only when the starting quality differs.
+     * Enable adaptive quality mode. A pinned single-stream source reloads whenever a ladder can
+     * take over from it, not only when the starting quality differs — but when the ladder is
+     * already loaded, lifting the pin constraint is the whole switch and no reload is needed.
      */
     private fun enableAdaptiveQuality(currentPosition: Long) {
         val alreadyAdapting = isAdaptiveQualityEnabled && isAdaptiveLadderActive
@@ -325,6 +381,15 @@ class QualityManager(
         applyAdaptiveTrackSelectorDefaults()
         if (alreadyAdapting) {
             stateFlow.value = stateFlow.value.copy(currentQuality = 0, currentQualityKey = null)
+            return
+        }
+
+        // The ladder is already loaded — a pinned ladder load, or a native multi-rung manifest —
+        // so Media3 adapts over it from the current rung once the pin constraint is lifted.
+        // Reloading here would only discard the buffer.
+        if (isMultiRungDashSource) {
+            stateFlow.value = stateFlow.value.copy(currentQuality = 0, currentQualityKey = null)
+            lastAdaptiveQualityHeight = currentVideoStream?.let(::qualityHeight) ?: 0
             return
         }
 
@@ -431,6 +496,29 @@ class QualityManager(
     }
 
     /**
+     * One stable telemetry line per quality switch, kept in-app for the Diagnostics report.
+     * The effective rung is the target stream: on a reload it is the stream the reload loads,
+     * on a seamless switch it is the rung the selector is constrained to. `src` is the loaded
+     * source's shape, so a future report can tell a real step-down from a state-only one.
+     */
+    fun logQualitySwitch(
+        videoId: String?,
+        fromStream: VideoStream?,
+        targetStream: VideoStream?,
+        viaSeamless: Boolean,
+    ) {
+        val itag =
+            targetStream?.itagItem?.id?.toString()
+                ?: runCatching { targetStream?.id }.getOrNull()?.takeIf { it.isNotBlank() }
+                ?: "?"
+        ShivLog.i(
+            "qualitySwitch id=${videoId ?: "?"} from=${fromStream?.let(::qualityHeight) ?: 0}p " +
+                "to=${targetStream?.let(::qualityHeight) ?: 0}p itag=$itag " +
+                "via=${if (viaSeamless) "seamless" else "reload"} src=${if (isMultiRungDashSource) "ladder" else "single"}",
+        )
+    }
+
+    /**
      * Check if we need to downgrade quality due to buffering or low bandwidth.
      */
     fun checkAdaptiveQualityDowngrade(
@@ -447,7 +535,7 @@ class QualityManager(
         // bandwidth check — but a stall episode is ground truth that the link cannot
         // sustain this rung: after repeated rebuffers it steps down one rung instead
         // of stalling forever at the pinned height. The pin is kept at the new rung;
-        // the next video re-pins from the user's preference as before.
+        // the next video starts from the user's default quality as before.
         if (!isAdaptiveQualityEnabled) {
             if (!forceCheck) return
             logPlayStall(videoId, currentVideoStream, bufferedAheadMs)
@@ -477,7 +565,7 @@ class QualityManager(
             // 19:34:48 stall in Report 55 logged but did not switch because the debounce held
             // it 3 s after the previous switch. One decision per 3-stall episode (the caller
             // resets the count after each forceCheck) keeps this from thrashing.
-            performAdaptiveQualitySwitch(lower, currentPosition, force = true)
+            performAdaptiveQualitySwitch(lower, currentPosition, force = true, videoId = videoId)
             return
         }
         val estimatedBandwidth = bandwidthMeter?.bitrateEstimate ?: return
@@ -488,7 +576,7 @@ class QualityManager(
             "Adaptive DOWNGRADE (low bandwidth): ${qualityHeight(current)}p -> ${qualityHeight(lower)}p " +
                 "(bandwidth: ${estimatedBandwidth / 1_000_000}Mbps)",
         )
-        performAdaptiveQualitySwitch(lower, currentPosition)
+        performAdaptiveQualitySwitch(lower, currentPosition, videoId = videoId)
     }
 
     /**
@@ -499,6 +587,7 @@ class QualityManager(
         targetStream: VideoStream,
         currentPosition: Long,
         force: Boolean = false,
+        videoId: String? = null,
     ) {
         val targetHeight = qualityHeight(targetStream)
         // Don't switch if we just switched recently (same height debounce)
@@ -516,20 +605,27 @@ class QualityManager(
             return
         }
 
+        // Decide the path before adopting the target: the rung check anchors on the loaded
+        // ladder's family, which the current stream still carries.
+        val fromStream = currentVideoStream
+        val seamless = isRungOfLoadedLadder(targetStream)
         currentVideoStream = targetStream
         lastAdaptiveQualityHeight = targetHeight
         lastQualitySwitchTime = now
 
-        // The ladder source survives a reload, so move the selector ceiling to the new rung
-        // first or Media3 keeps rendering the old one.
-        if (isAdaptiveLadderActive && !isDashSource) {
-            switchDashQualitySeamlessly(targetStream.height, targetHeight)
-        }
-        if (isDashSource) {
+        if (seamless) {
+            // The rung is already in the loaded manifest: constrain the selector and keep the
+            // buffer. Reloading here would discard it for no gain — the ladder does not change.
             switchDashQualitySeamlessly(targetStream.height, targetHeight)
         } else {
+            // The ladder source survives a reload, so move the selector ceiling to the new rung
+            // first or Media3 keeps rendering the old one.
+            if (isAdaptiveLadderActive) {
+                switchDashQualitySeamlessly(targetStream.height, targetHeight)
+            }
             onQualitySwitch(targetStream, currentPosition)
         }
+        logQualitySwitch(videoId, fromStream, targetStream, viaSeamless = seamless)
 
         stateFlow.value =
             stateFlow.value.copy(

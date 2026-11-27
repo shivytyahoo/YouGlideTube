@@ -1433,19 +1433,20 @@ class PlayerPreferences(
     }
 
     // Quality preferences
-    // Video defaults are fixed heights: 720p on Wi-Fi, 480p on mobile data. A fixed height
-    // pins every video to that height with adaptive off, so a video never climbs above the
-    // default; Auto is still offered in settings for anyone who wants the ABR to decide.
+    // Video defaults are Auto on both networks: the ladder picks the rung from the live
+    // bandwidth, so a video climbs when the link sustains more. A fixed height is still
+    // offered in settings for anyone who wants a pin; a pin applies to the video it was
+    // picked on, and the next video starts from this default again.
     val defaultQualityWifi: Flow<VideoQuality> =
         context.playerPreferencesDataStore.data
             .map { preferences ->
-                VideoQuality.fromString(preferences[Keys.DEFAULT_QUALITY_WIFI] ?: "720p")
+                VideoQuality.fromString(preferences[Keys.DEFAULT_QUALITY_WIFI] ?: "Auto")
             }
 
     val defaultQualityCellular: Flow<VideoQuality> =
         context.playerPreferencesDataStore.data
             .map { preferences ->
-                VideoQuality.fromString(preferences[Keys.DEFAULT_QUALITY_CELLULAR] ?: "480p")
+                VideoQuality.fromString(preferences[Keys.DEFAULT_QUALITY_CELLULAR] ?: "Auto")
             }
 
     suspend fun setDefaultQualityWifi(quality: VideoQuality) {
@@ -4363,7 +4364,7 @@ enum class BufferProfile(
     AGGRESSIVE("Fast Start", 5_000, 30_000, 500, 2_500),
 
     // Balanced: Good default for most connections
-    STABLE("Balanced", 50_000, 75_000, 1_000, 2_000),
+    STABLE("Balanced", 60_000, 300_000, 1_000, 2_000),
 
     // Data Saver: Minimize data usage with smaller buffers
     DATASAVER("Data Saver", 12_000, 25_000, 1_500, 3_000),

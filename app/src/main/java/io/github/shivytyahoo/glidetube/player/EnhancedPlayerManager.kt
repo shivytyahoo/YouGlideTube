@@ -1267,7 +1267,8 @@ class EnhancedPlayerManager private constructor() {
         // Update quality manager with available streams
         qualityManager?.setAvailableStreams(availableVideoStreams)
         qualityManager?.preferredCodecKey = preferredVideoCodec
-        qualityManager?.isDashSource = !currentDashManifestUrl.isNullOrEmpty()
+        // A switch before the load lands takes the reload path: nothing is multi-rung yet.
+        qualityManager?.isMultiRungDashSource = false
 
         // Quality selection: respect user preference
         if (videoStream != null) {
@@ -1319,6 +1320,11 @@ class EnhancedPlayerManager private constructor() {
         // at the capped pick before the media loads. Pinned and live loads skip it.
         if (isAutoMode && !isLiveStream) {
             qualityManager?.applyStartLowConstraint(currentVideoStream)
+        }
+        // A pinned load plays the ladder too: pin the rendered rung before the media loads,
+        // or Media3's burst-inflated estimate starts it at the top rung instead of the pin.
+        if (!isAutoMode && !isLiveStream && localFilePath == null) {
+            qualityManager?.applyPinConstraint()
         }
         when {
             localFilePath != null -> loadMediaInternal(null, audioStream, localFilePath = localFilePath, preservePosition = resumePos)
@@ -1525,11 +1531,13 @@ class EnhancedPlayerManager private constructor() {
             Log.w(TAG, "loadMediaInternal: no playable audio/video streams")
             return false
         }
+        // A pinned load plays the ladder too, with the pin as a track-selector constraint —
+        // so the ladder is built around the pin, not only around Auto's anchor.
         val ladder =
             if (audioOnly || currentIsLiveStream) {
                 emptyList()
             } else {
-                qualityManager?.adaptiveLadder(videoStream ?: currentVideoStream).orEmpty()
+                qualityManager?.pinnedLadder(videoStream ?: currentVideoStream).orEmpty()
             }
         val result =
             mediaLoader?.loadMedia(
@@ -1562,8 +1570,10 @@ class EnhancedPlayerManager private constructor() {
         if (qualityManager?.isAdaptiveLadderActive == true) {
             qualityManager?.logPlayStall(currentVideoId, videoStream ?: currentVideoStream, -1L)
         }
+        qualityManager?.isMultiRungDashSource = result && mediaLoader?.lastSourceWasMultiRungDash == true
+        // A reload rebuilt the ladder in a new family: re-apply the pin constraint to it.
         if (result) {
-            qualityManager?.isDashSource = !currentDashManifestUrl.isNullOrEmpty()
+            qualityManager?.applyPinConstraint()
         }
         return result
     }
@@ -2468,9 +2478,9 @@ class EnhancedPlayerManager private constructor() {
         qualityManager?.resetForNewVideo()
         qualityManager?.setAvailableStreams(availableVideoStreams)
         qualityManager?.preferredCodecKey = data.preferredCodec
-        qualityManager?.isDashSource = !currentDashManifestUrl.isNullOrEmpty()
         qualityManager?.setCurrentStream(currentVideoStream)
         qualityManager?.isAdaptiveLadderActive = AdaptiveDashManifest.build(ladder, data.durationSeconds) != null
+        qualityManager?.isMultiRungDashSource = qualityManager?.isAdaptiveLadderActive == true
         // Start-low, as in setStreams: the preloaded ladder's anchor is its top rung, so cap
         // the rendered rung at the capped pick before the promoted source plays.
         if (data.videoStream == null && qualityManager?.isAdaptiveLadderActive == true) {
@@ -2484,6 +2494,8 @@ class EnhancedPlayerManager private constructor() {
         }
         if (data.videoStream != null) {
             qualityManager?.setManualMode(VideoCodecUtils.qualityHeightFromStream(data.videoStream))
+            // A pinned promotion plays the ladder too: pin the rendered rung, as in setStreams.
+            qualityManager?.applyPinConstraint()
         }
 
         playbackTracker?.reset()
@@ -2930,7 +2942,7 @@ class EnhancedPlayerManager private constructor() {
         if (currentIsLiveStream) {
             switchLiveQuality(height)
         } else {
-            qualityManager?.switchQualityByHeight(height, player?.currentPosition ?: 0L)
+            qualityManager?.switchQualityByHeight(height, player?.currentPosition ?: 0L, videoId = currentVideoId)
         }
 
     fun switchQuality(height: Int) = switchQualityByHeight(height)
@@ -2940,7 +2952,7 @@ class EnhancedPlayerManager private constructor() {
             return switchSabrQuality(option)
         }
         if (currentIsLiveStream) return switchLiveQuality(option.height)
-        return qualityManager?.switchQuality(option, player?.currentPosition ?: 0L)
+        return qualityManager?.switchQuality(option, player?.currentPosition ?: 0L, videoId = currentVideoId)
     }
 
     private fun updateLiveQualityOptions(tracks: Tracks) {

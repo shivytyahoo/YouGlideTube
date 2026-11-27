@@ -47,6 +47,15 @@ class VideoPlaybackResolver(
     var resolvedAdaptiveLadder = false
         private set
 
+    /**
+     * Whether the last [resolve] handed Media3 a multi-representation DASH manifest — a
+     * generated ladder, or YouTube's own manifest. A player-response `dashManifestUrl` does
+     * not prove this on its own: a pinned load bypasses it for a single-representation
+     * generated manifest, and that is exactly the case the seamless path must not take.
+     */
+    var resolvedMultiRungDash = false
+        private set
+
     fun resolve(
         videoStreams: List<VideoStream>,
         audioStream: AudioStream?,
@@ -57,6 +66,7 @@ class VideoPlaybackResolver(
         asAdaptiveLadder: Boolean = false,
     ): MediaSource? {
         resolvedAdaptiveLadder = false
+        resolvedMultiRungDash = false
         Log.d(
             TAG,
             "Resolving playback: ${videoStreams.size} video streams, audio=${audioStream != null}, " +
@@ -115,6 +125,7 @@ class VideoPlaybackResolver(
                                 .build(),
                         ).build()
 
+                resolvedMultiRungDash = true
                 return androidx.media3.exoplayer.dash.DashMediaSource
                     .Factory(liveDashDataSourceFactory)
                     .createMediaSource(liveDashItem)
@@ -140,6 +151,7 @@ class VideoPlaybackResolver(
                     playbackItem(dashManifestUrl)
                         .setMimeType(androidx.media3.common.MimeTypes.APPLICATION_MPD)
                         .build()
+                resolvedMultiRungDash = true
                 return androidx.media3.exoplayer.dash.DashMediaSource
                     .Factory(dashDataSourceFactory)
                     .createMediaSource(dashItem)
@@ -161,6 +173,7 @@ class VideoPlaybackResolver(
         // This avoids YouTube's progressive throttling (~50-100 KB/s limit)
         val ladderSource = if (asAdaptiveLadder) createLadderSource(videoStreams, durationSeconds) else null
         resolvedAdaptiveLadder = ladderSource != null
+        resolvedMultiRungDash = ladderSource != null
         // A ladder that cannot be built starts on its lowest rung; Auto's own checks step up from there.
         val videoSource =
             ladderSource ?: createVideoSource(

@@ -87,6 +87,10 @@ class MediaLoader(
     /** Whether the media last loaded is a quality ladder that Media3 adapts over by itself. */
     var lastSourceWasAdaptiveLadder = false
         private set
+
+    /** Whether the media last loaded is a multi-representation DASH manifest (see [VideoPlaybackResolver.resolvedMultiRungDash]). */
+    var lastSourceWasMultiRungDash = false
+        private set
     var onSabrFallbackNeeded: (() -> Unit)? = null
 
     /** Invoked with a subtitle track's index and display label once its fetch has finally given up. */
@@ -129,8 +133,10 @@ class MediaLoader(
         sabrInfo: SabrStreamInfo? = null,
         sabrVideoId: String? = null,
         sabrPreferred: Boolean = false,
-        innerTubeVideoFormats: List<io.github.shivytyahoo.glidetube.innertube.models.response.PlayerResponse.StreamingData.Format> = emptyList(),
-        innerTubeAudioFormats: List<io.github.shivytyahoo.glidetube.innertube.models.response.PlayerResponse.StreamingData.Format> = emptyList(),
+        innerTubeVideoFormats: List<io.github.shivytyahoo.glidetube.innertube.models.response.PlayerResponse.StreamingData.Format> =
+            emptyList(),
+        innerTubeAudioFormats: List<io.github.shivytyahoo.glidetube.innertube.models.response.PlayerResponse.StreamingData.Format> =
+            emptyList(),
         mediaId: String = "",
         mediaMetadata: MediaMetadata = MediaMetadata.EMPTY,
         adaptiveLadder: List<VideoStream> = emptyList(),
@@ -169,6 +175,7 @@ class MediaLoader(
 
                 lastSourceWasSabr = false
                 lastSourceWasAdaptiveLadder = false
+                lastSourceWasMultiRungDash = false
                 val mediaSource =
                     createMediaSource(
                         context = ctx,
@@ -300,8 +307,10 @@ class MediaLoader(
         sabrVideoId: String? = null,
         sabrPreferred: Boolean = false,
         startPositionMs: Long = 0L,
-        innerTubeVideoFormats: List<io.github.shivytyahoo.glidetube.innertube.models.response.PlayerResponse.StreamingData.Format> = emptyList(),
-        innerTubeAudioFormats: List<io.github.shivytyahoo.glidetube.innertube.models.response.PlayerResponse.StreamingData.Format> = emptyList(),
+        innerTubeVideoFormats: List<io.github.shivytyahoo.glidetube.innertube.models.response.PlayerResponse.StreamingData.Format> =
+            emptyList(),
+        innerTubeAudioFormats: List<io.github.shivytyahoo.glidetube.innertube.models.response.PlayerResponse.StreamingData.Format> =
+            emptyList(),
         mediaId: String = "",
         mediaMetadata: MediaMetadata = MediaMetadata.EMPTY,
         adaptiveLadder: List<VideoStream> = emptyList(),
@@ -401,7 +410,10 @@ class MediaLoader(
                         durationSeconds = finalDuration,
                         isLiveStream = isLiveStream && !audioOnly,
                         asAdaptiveLadder = useLadder,
-                    ).also { onAdaptiveLadder(resolver.resolvedAdaptiveLadder) }
+                    ).also {
+                        onAdaptiveLadder(resolver.resolvedAdaptiveLadder)
+                        lastSourceWasMultiRungDash = resolver.resolvedMultiRungDash
+                    }
             }
 
         if (mediaSource == null && sabrAvailable && !sabrPreferred) {

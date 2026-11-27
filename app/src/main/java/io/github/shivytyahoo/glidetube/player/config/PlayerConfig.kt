@@ -23,17 +23,17 @@ object PlayerConfig {
     /** Allocator buffer size (64 KB optimal for DASH segments) */
     const val ALLOCATOR_BUFFER_SIZE = 64 * 1024
 
-    /** Back buffer duration in milliseconds (45 seconds for instant rewind) */
-    const val BACK_BUFFER_DURATION_MS = 45_000
+    /** Back buffer duration in milliseconds (30 seconds for instant rewind) */
+    const val BACK_BUFFER_DURATION_MS = 30_000
 
     /** Back buffer duration for low-memory devices. */
     const val LOW_MEMORY_BACK_BUFFER_DURATION_MS = 0
 
     /** Hard runtime cap for main-player max buffer */
-    const val MAX_SAFE_MAIN_BUFFER_MS = 75_000
+    const val MAX_SAFE_MAIN_BUFFER_MS = 300_000
 
     /** Hard runtime cap for main-player min buffer so low-RAM devices do not over-retain media. */
-    const val MAX_SAFE_MAIN_MIN_BUFFER_MS = 50_000
+    const val MAX_SAFE_MAIN_MIN_BUFFER_MS = 60_000
 
     /** Runtime caps used when Android reports a small app heap. */
     const val LOW_MEMORY_MAX_SAFE_MAIN_BUFFER_MS = 18_000
@@ -110,8 +110,8 @@ object PlayerConfig {
 
     /**
      * Media3 holds the current quality while more than this is buffered. At its 25 s default a full
-     * 75 s buffer drains for 50 s before a collapsed network steps down; the midpoint of the main
-     * buffer window cuts that to 12.5 s.
+     * 300 s buffer drains for 275 s before a collapsed network steps down; the midpoint of the main
+     * buffer window cuts that to 120 s.
      */
     const val ABR_MAX_BUFFER_FOR_QUALITY_DECREASE_MS = (MAX_SAFE_MAIN_MIN_BUFFER_MS + MAX_SAFE_MAIN_BUFFER_MS) / 2
 
