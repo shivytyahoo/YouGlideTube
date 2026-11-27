@@ -29,7 +29,6 @@ import io.github.shivytyahoo.glidetube.ui.screens.home.chips.HomeChipsState
 import io.github.shivytyahoo.glidetube.utils.PerformanceDispatcher
 import io.github.shivytyahoo.glidetube.utils.ShivLog
 import io.github.shivytyahoo.glidetube.utils.ThumbnailUrlResolver
-import io.github.shivytyahoo.glidetube.utils.potoken.WebPoTokenSession
 import io.github.shivytyahoo.glidetube.utils.traced
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineStart
@@ -589,24 +588,21 @@ class HomeViewModel
                         withTimeoutOrNull(SERVER_FEED_TIMEOUT_MS) {
                             YouTube.serverHome().getOrNull()
                         }
-                    // A guest browse that parsed fine but came back empty is usually the bot
-                    // wall on this visitor, not an empty feed: replace the visitor once so
-                    // the retries below ask again with a fresh one. Bounded by the
-                    // player-wall generation guard — a second call for the same visitor
-                    // is a no-op — and a fresh visitor walled again just falls through
-                    // to the fallback below.
-                    if (page != null && page.videos.isEmpty() && page.shorts.isEmpty() && !YouTube.isSignedIn()) {
-                        WebPoTokenSession.rerollAfterPlayerWall(WebPoTokenSession.identityGeneration)
-                    }
-                    // The first load of a session — above all the one right after sign-in, while
-                    // the client's identity is still warming up — can come back failed or empty
-                    // when the same request a moment later succeeds. Retry before believing
-                    // either, so a cold start never settles on a blank home. Signed out
-                    // this matters more, not less: the guest browse rides on the same
-                    // warming-up visitor, so guests retry exactly like signed-in users.
+                    // A guest browse that parsed fine but came back empty is the
+                    // history nudge, not a walled visitor: YouTube personalises
+                    // the WEB home from the visitor's server-side watch history,
+                    // and guests record none (both history beacons require
+                    // sign-in), so every fresh visitor gets the same empty grid.
+                    // No retry or re-roll can fill it — verified live against
+                    // youtubei across fresh visitors, clients and regions — so
+                    // an empty guest page goes straight to the fallback below
+                    // instead of burning the re-roll budget and ~7s of retries.
+                    // A failed load (page == null) still retries, and a signed-in
+                    // empty page still retries: that one can be a cold start.
+                    val signedIn = YouTube.isSignedIn()
                     var attempt = 0
                     while (
-                        (page == null || (page.videos.isEmpty() && page.shorts.isEmpty())) &&
+                        (page == null || (signedIn && page.videos.isEmpty() && page.shorts.isEmpty())) &&
                         attempt < 2
                     ) {
                         attempt++
