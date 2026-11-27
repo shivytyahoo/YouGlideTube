@@ -8,6 +8,7 @@ import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
 import dagger.hilt.android.HiltAndroidApp
+import io.github.shivytyahoo.glidetube.data.account.AccountCookieStore
 import io.github.shivytyahoo.glidetube.data.local.PersonProfiles
 import io.github.shivytyahoo.glidetube.data.local.PlayerPreferences
 import io.github.shivytyahoo.glidetube.data.repository.NewPipeDownloader
@@ -31,7 +32,6 @@ import io.github.shivytyahoo.glidetube.utils.contentYouTubeLocale
 import io.github.shivytyahoo.glidetube.utils.newPipeContentCountry
 import io.github.shivytyahoo.glidetube.utils.newPipeLocalization
 import io.github.shivytyahoo.glidetube.utils.potoken.NewPipePoTokenProvider
-import io.github.shivytyahoo.glidetube.data.account.AccountCookieStore
 import io.github.shivytyahoo.glidetube.utils.potoken.VisitorIdentityStore
 import io.github.shivytyahoo.glidetube.utils.potoken.WebPoTokenSession
 import kotlinx.coroutines.CoroutineScope
@@ -115,7 +115,6 @@ class GlideApplication :
         appContext = applicationContext
         purgeRemovedContentStores()
         YouTube.cacheDirectory = cacheDir.resolve("innertube_http_cache")
-
 
         val playerPreferences = PlayerPreferences(this)
 
@@ -272,8 +271,7 @@ class GlideApplication :
                 lastRegion = region
             }
         }
-
-   }
+    }
 
     private fun applyProxyConfig(
         config: io.github.shivytyahoo.glidetube.network.AppProxyConfig,

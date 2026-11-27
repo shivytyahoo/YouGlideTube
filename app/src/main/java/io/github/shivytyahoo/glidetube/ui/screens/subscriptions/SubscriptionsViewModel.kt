@@ -4,13 +4,14 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.shivytyahoo.glidetube.data.engagement.FeedExclusions
 import io.github.shivytyahoo.glidetube.data.engagement.FeedInvalidationBus
 import io.github.shivytyahoo.glidetube.data.local.PlayerPreferences
 import io.github.shivytyahoo.glidetube.data.model.Channel
 import io.github.shivytyahoo.glidetube.data.model.Video
-import io.github.shivytyahoo.glidetube.data.engagement.FeedExclusions
 import io.github.shivytyahoo.glidetube.data.subscriptions.SubscriptionWatchedVideos
 import io.github.shivytyahoo.glidetube.data.subscriptions.withHighQualityThumbnails
+import io.github.shivytyahoo.glidetube.innertube.YouTube
 import io.github.shivytyahoo.glidetube.utils.PerformanceDispatcher
 import io.github.shivytyahoo.glidetube.utils.ShivLog
 import io.github.shivytyahoo.glidetube.utils.ThumbnailUrlResolver
@@ -42,7 +43,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import io.github.shivytyahoo.glidetube.innertube.YouTube
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import kotlinx.coroutines.channels.Channel as EventChannel
@@ -210,10 +210,10 @@ class SubscriptionsViewModel
             // loads, and the screen shows its sign-in empty state instead.
             viewModelScope.launch(PerformanceDispatcher.networkIO) {
                 accountSubscriptions.channels.collect {
-                        if (signedIn()) {
-                            runRefresh(force = false, showLoading = _uiState.value.recentVideos.isEmpty())
-                        }
+                    if (signedIn()) {
+                        runRefresh(force = false, showLoading = _uiState.value.recentVideos.isEmpty())
                     }
+                }
             }
         }
 
@@ -271,10 +271,11 @@ class SubscriptionsViewModel
                                     id = channelId,
                                     name = channelVideos.firstOrNull { it.channelName.isNotBlank() }?.channelName.orEmpty(),
                                     thumbnailUrl =
-                                        channelVideos.firstNotNullOfOrNull { video ->
-                                            video.channelThumbnailUrl.takeIf(String::isNotBlank)
-                                                ?: video.channelThumbnailUrls.firstOrNull(String::isNotBlank)
-                                        }.orEmpty(),
+                                        channelVideos
+                                            .firstNotNullOfOrNull { video ->
+                                                video.channelThumbnailUrl.takeIf(String::isNotBlank)
+                                                    ?: video.channelThumbnailUrls.firstOrNull(String::isNotBlank)
+                                            }.orEmpty(),
                                     subscriberCount = 0L,
                                 )
                             }
@@ -326,7 +327,11 @@ class SubscriptionsViewModel
                                 async {
                                     val avatar =
                                         runCatching {
-                                            YouTube.channel(channel.id).getOrNull()?.header?.avatarUrl
+                                            YouTube
+                                                .channel(channel.id)
+                                                .getOrNull()
+                                                ?.header
+                                                ?.avatarUrl
                                         }.getOrNull()
                                     channel.id to avatar
                                 }

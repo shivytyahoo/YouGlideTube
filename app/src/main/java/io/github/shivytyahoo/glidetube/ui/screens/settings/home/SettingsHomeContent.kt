@@ -58,7 +58,7 @@ internal fun SettingsListScope.homeContent(
         )
 
 // First on the list, so it is one tap away: the whole point is reaching it fast.
-group(key = "home.battery", header = R.string.settings_battery_saver_title) {
+    group(key = "home.battery", header = R.string.settings_battery_saver_title) {
         switch(
             HomeIndex.batterySaver,
             checked = state.batterySaver,
@@ -66,7 +66,7 @@ group(key = "home.battery", header = R.string.settings_battery_saver_title) {
             icon = HomeRowIcons.BatterySaver,
         )
     }
-group(key = "home.account", header = R.string.account_title) {
+    group(key = "home.account", header = R.string.account_title) {
         page(SettingsDestination.ACCOUNT)
     }
     group(key = "home.watching", header = R.string.settings_group_watching) {

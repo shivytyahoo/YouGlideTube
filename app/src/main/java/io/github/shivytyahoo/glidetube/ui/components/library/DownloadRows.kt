@@ -210,12 +210,20 @@ internal fun ActiveDownloadRow(
             }
     val statusText =
         when {
-            isMerging -> "${stringResource(R.string.download_merging_audio_video)} ${stringResource(R.string.download_progress_percent, percent)}"
+            isMerging -> "${stringResource(
+                R.string.download_merging_audio_video,
+            )} ${stringResource(R.string.download_progress_percent, percent)}"
+
             status == DownloadItemStatus.PENDING -> stringResource(R.string.download_status_queued)
+
             isPaused -> stringResource(R.string.download_status_paused_template, percent, stringResource(R.string.download_status_paused))
+
             status == DownloadItemStatus.FAILED -> stringResource(R.string.download_status_failed)
+
             status == DownloadItemStatus.CANCELLED -> stringResource(R.string.download_status_cancelled)
+
             bytes != null -> "$bytes $separator ${stringResource(R.string.download_progress_percent, percent)}"
+
             else -> stringResource(R.string.download_progress_percent, percent)
         }
 

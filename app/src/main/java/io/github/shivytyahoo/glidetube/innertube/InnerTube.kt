@@ -1,8 +1,5 @@
 package io.github.shivytyahoo.glidetube.innertube
 
-import io.github.shivytyahoo.glidetube.utils.ShivLog
-import io.github.shivytyahoo.glidetube.utils.liveChatSendParams
-
 import android.util.Log
 import io.github.shivytyahoo.glidetube.GlideApplication
 import io.github.shivytyahoo.glidetube.data.local.PlayerPreferences
@@ -18,6 +15,8 @@ import io.github.shivytyahoo.glidetube.innertube.models.response.NextResponse
 import io.github.shivytyahoo.glidetube.innertube.models.response.PlayerResponse
 import io.github.shivytyahoo.glidetube.innertube.utils.parseCookieString
 import io.github.shivytyahoo.glidetube.innertube.utils.sha1
+import io.github.shivytyahoo.glidetube.utils.ShivLog
+import io.github.shivytyahoo.glidetube.utils.liveChatSendParams
 import io.ktor.client.*
 import io.ktor.client.call.body
 import io.ktor.client.engine.okhttp.*
@@ -38,12 +37,12 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.put
 import okhttp3.ConnectionPool
 import okhttp3.OkHttpClient
@@ -282,8 +281,9 @@ class InnerTube {
     ) {
         val useMainSite = apiUrl != null && apiUrl != YouTubeClient.API_URL_YOUTUBE_MUSIC
         val origin = if (useMainSite) YouTubeClient.ORIGIN_YOUTUBE else YouTubeClient.ORIGIN_YOUTUBE_MUSIC
-        val referer = client.referer
-            ?: if (useMainSite) YouTubeClient.REFERER_YOUTUBE else YouTubeClient.REFERER_YOUTUBE_MUSIC
+        val referer =
+            client.referer
+                ?: if (useMainSite) YouTubeClient.REFERER_YOUTUBE else YouTubeClient.REFERER_YOUTUBE_MUSIC
         contentType(ContentType.Application.Json)
         headers {
             append("X-Goog-Api-Format-Version", "1")
@@ -557,41 +557,42 @@ class InnerTube {
         localeOverride: YouTubeLocale? = null,
         apiUrl: String? = null,
     ) = withRetry {
-        httpClient.post(apiUrl?.let { "${it}player" } ?: "player") {
-            ytClient(client, setLogin = true, apiUrl = apiUrl)
-            setBody(
-                PlayerBody(
-                    context =
-                        client.toContext(localeOverride ?: locale, visitorData, dataSyncId).let {
-                            if (client.isEmbedded) {
-                                it.copy(
-                                    thirdParty =
-                                        Context.ThirdParty(
-                                            embedUrl = "https://www.youtube.com/watch?v=$videoId",
-                                        ),
+        httpClient
+            .post(apiUrl?.let { "${it}player" } ?: "player") {
+                ytClient(client, setLogin = true, apiUrl = apiUrl)
+                setBody(
+                    PlayerBody(
+                        context =
+                            client.toContext(localeOverride ?: locale, visitorData, dataSyncId).let {
+                                if (client.isEmbedded) {
+                                    it.copy(
+                                        thirdParty =
+                                            Context.ThirdParty(
+                                                embedUrl = "https://www.youtube.com/watch?v=$videoId",
+                                            ),
+                                    )
+                                } else {
+                                    it
+                                }
+                            },
+                        videoId = videoId,
+                        playlistId = playlistId,
+                        playbackContext =
+                            if (client.useSignatureTimestamp && signatureTimestamp != null) {
+                                PlayerBody.PlaybackContext(
+                                    PlayerBody.PlaybackContext.ContentPlaybackContext(
+                                        signatureTimestamp,
+                                    ),
                                 )
                             } else {
-                                it
-                            }
-                        },
-                    videoId = videoId,
-                    playlistId = playlistId,
-                    playbackContext =
-                        if (client.useSignatureTimestamp && signatureTimestamp != null) {
-                            PlayerBody.PlaybackContext(
-                                PlayerBody.PlaybackContext.ContentPlaybackContext(
-                                    signatureTimestamp,
-                                ),
-                            )
-                        } else {
-                            null
-                        },
-                    serviceIntegrityDimensions = poToken?.let { PlayerBody.ServiceIntegrityDimensions(it) },
-                ),
-            )
-        }.also { response ->
-            if (Backoff.isBusy(response.status.value)) throw RateLimitedException(response.status.value)
-        }
+                                null
+                            },
+                        serviceIntegrityDimensions = poToken?.let { PlayerBody.ServiceIntegrityDimensions(it) },
+                    ),
+                )
+            }.also { response ->
+                if (Backoff.isBusy(response.status.value)) throw RateLimitedException(response.status.value)
+            }
     }
 
     /**
@@ -612,78 +613,79 @@ class InnerTube {
         client: YouTubeClient = YouTubeClient.WEB,
         withAuth: Boolean = false,
     ) = withRetry {
-        httpClient.post("https://www.youtube.com/youtubei/v1/player") {
-            headers {
-                append("X-Goog-Api-Format-Version", "1")
-                append("X-YouTube-Client-Name", client.clientId)
-                append("X-YouTube-Client-Version", client.clientVersion)
-                append("X-Origin", "https://www.youtube.com")
-                append("Referer", "https://www.youtube.com/")
-                visitorData?.let { append("X-Goog-Visitor-Id", it) }
-                if (withAuth) {
-                    // The tracking fetch wants an ACCOUNT-minted blob, not a
-                    // guest-visitor one: the beacon later presents the same
-                    // auth, so the server can attribute the blob to the
-                    // account's history. Kept off the SABR path (default)
-                    // so working streams never change shape.
-                    cookie?.let { cookieValue ->
-                        append("cookie", cookieValue)
-                        val sapisid =
-                            cookieMap["SAPISID"]
-                                ?: cookieMap["__Secure-3PSAPISID"]
-                                ?: cookieMap["__Secure-1PSAPISID"]
-                        if (sapisid != null) {
-                            val currentTime = System.currentTimeMillis() / 1000
-                            val sapisidHash = sha1("$currentTime $sapisid https://www.youtube.com")
-                            append("Authorization", "SAPISIDHASH ${currentTime}_$sapisidHash")
+        httpClient
+            .post("https://www.youtube.com/youtubei/v1/player") {
+                headers {
+                    append("X-Goog-Api-Format-Version", "1")
+                    append("X-YouTube-Client-Name", client.clientId)
+                    append("X-YouTube-Client-Version", client.clientVersion)
+                    append("X-Origin", "https://www.youtube.com")
+                    append("Referer", "https://www.youtube.com/")
+                    visitorData?.let { append("X-Goog-Visitor-Id", it) }
+                    if (withAuth) {
+                        // The tracking fetch wants an ACCOUNT-minted blob, not a
+                        // guest-visitor one: the beacon later presents the same
+                        // auth, so the server can attribute the blob to the
+                        // account's history. Kept off the SABR path (default)
+                        // so working streams never change shape.
+                        cookie?.let { cookieValue ->
+                            append("cookie", cookieValue)
+                            val sapisid =
+                                cookieMap["SAPISID"]
+                                    ?: cookieMap["__Secure-3PSAPISID"]
+                                    ?: cookieMap["__Secure-1PSAPISID"]
+                            if (sapisid != null) {
+                                val currentTime = System.currentTimeMillis() / 1000
+                                val sapisidHash = sha1("$currentTime $sapisid https://www.youtube.com")
+                                append("Authorization", "SAPISIDHASH ${currentTime}_$sapisidHash")
+                            }
+                        }
+                        if (cookie == null) {
+                            oauthAccessToken?.let { token -> append("Authorization", "Bearer $token") }
                         }
                     }
-                    if (cookie == null) {
-                        oauthAccessToken?.let { token -> append("Authorization", "Bearer $token") }
-                    }
                 }
+                contentType(ContentType.Application.Json)
+                userAgent(client.userAgent)
+                parameter("prettyPrint", false)
+                setBody(
+                    PlayerBody(
+                        context = client.toContext(locale, visitorData, null),
+                        videoId = videoId,
+                        playlistId = null,
+                        playbackContext =
+                            if (signatureTimestamp != null || reloadToken != null) {
+                                PlayerBody.PlaybackContext(
+                                    contentPlaybackContext =
+                                        signatureTimestamp?.let {
+                                            PlayerBody.PlaybackContext.ContentPlaybackContext(
+                                                signatureTimestamp = it,
+                                                referer = "https://www.youtube.com/watch?v=$videoId",
+                                                vis = 0,
+                                                splay = false,
+                                                lactMilliseconds = "-1",
+                                                html5Preference = "HTML5_PREF_WANTS",
+                                            )
+                                        },
+                                    reloadPlaybackContext =
+                                        reloadToken?.let {
+                                            PlayerBody.PlaybackContext.ReloadPlaybackContext(
+                                                PlayerBody.PlaybackContext.ReloadPlaybackContext.ReloadPlaybackParams(it),
+                                            )
+                                        },
+                                )
+                            } else {
+                                null
+                            },
+                        serviceIntegrityDimensions = poToken?.let { PlayerBody.ServiceIntegrityDimensions(it) },
+                        contentCheckOk = true,
+                        racyCheckOk = true,
+                        cpn = cpn,
+                    ),
+                )
+            }.also { response ->
+                if (Backoff.isBusy(response.status.value)) throw RateLimitedException(response.status.value)
             }
-            contentType(ContentType.Application.Json)
-            userAgent(client.userAgent)
-            parameter("prettyPrint", false)
-            setBody(
-                PlayerBody(
-                    context = client.toContext(locale, visitorData, null),
-                    videoId = videoId,
-                    playlistId = null,
-                    playbackContext =
-                        if (signatureTimestamp != null || reloadToken != null) {
-                            PlayerBody.PlaybackContext(
-                                contentPlaybackContext =
-                                    signatureTimestamp?.let {
-                                        PlayerBody.PlaybackContext.ContentPlaybackContext(
-                                            signatureTimestamp = it,
-                                            referer = "https://www.youtube.com/watch?v=$videoId",
-                                            vis = 0,
-                                            splay = false,
-                                            lactMilliseconds = "-1",
-                                            html5Preference = "HTML5_PREF_WANTS",
-                                        )
-                                    },
-                                reloadPlaybackContext =
-                                    reloadToken?.let {
-                                        PlayerBody.PlaybackContext.ReloadPlaybackContext(
-                                            PlayerBody.PlaybackContext.ReloadPlaybackContext.ReloadPlaybackParams(it),
-                                        )
-                                    },
-                            )
-                        } else {
-                            null
-                        },
-                    serviceIntegrityDimensions = poToken?.let { PlayerBody.ServiceIntegrityDimensions(it) },
-                    contentCheckOk = true,
-                    racyCheckOk = true,
-                    cpn = cpn,
-                ),
-            )
-        }.also { response ->
-            if (Backoff.isBusy(response.status.value)) throw RateLimitedException(response.status.value)
-        }
     }
 
     suspend fun registerPlayback(
@@ -703,13 +705,14 @@ class InnerTube {
         }
     }
 
-    /**
+    /*
      * The official client's watch-history beacon (YouTube.js MediaInfo.addToWatchHistory):
      * one GET to the player response's videostatsPlaybackUrl, s. host swapped for www.,
      * with the playback nonce and the fmt/rtn/rt params. This is what makes a watch
      * land in the account's server history; the video player never sent it, so the
      * server never learned of app watches.
      */
+
     /**
      * Rebuilds a stats URL with the given params SET, not appended — exactly
      * like the official client's (YouTube.js Actions.stats uses
@@ -874,28 +877,29 @@ class InnerTube {
      * The account's guide. Its subscriptions section lists every channel the account
      * follows — the complete membership list the subscription feed only ever samples.
      */
-    suspend fun guide() = withRetry {
-        // Same client rule as browse: an OAuth (TV-code) token is a TV client's token, and
-        // YouTube rejects it in a WEB context with 400 — the guide must speak TVHTML5 too.
-        val client =
-            if (cookie.isNullOrBlank() && oauthAccessToken != null) {
-                YouTubeClient.TV_FIRETV
-            } else {
-                YouTubeClient.WEB.copy(loginSupported = true)
+    suspend fun guide() =
+        withRetry {
+            // Same client rule as browse: an OAuth (TV-code) token is a TV client's token, and
+            // YouTube rejects it in a WEB context with 400 — the guide must speak TVHTML5 too.
+            val client =
+                if (cookie.isNullOrBlank() && oauthAccessToken != null) {
+                    YouTubeClient.TV_FIRETV
+                } else {
+                    YouTubeClient.WEB.copy(loginSupported = true)
+                }
+            httpClient.post("https://www.youtube.com/youtubei/v1/guide") {
+                ytClient(client, setLogin = true, apiUrl = YouTubeClient.API_URL_YOUTUBE)
+                // Same brand-page rule as browse: X-Goog-Pageid from accounts_list.
+                if (cookie.isNullOrBlank() && oauthAccessToken != null) {
+                    pageIdToken?.takeIf { it.isNotBlank() }?.let { header("X-Goog-Pageid", it) }
+                }
+                setBody(
+                    GuideBody(
+                        context = client.toContext(locale, visitorData, dataSyncId),
+                    ),
+                )
             }
-        httpClient.post("https://www.youtube.com/youtubei/v1/guide") {
-            ytClient(client, setLogin = true, apiUrl = YouTubeClient.API_URL_YOUTUBE)
-            // Same brand-page rule as browse: X-Goog-Pageid from accounts_list.
-            if (cookie.isNullOrBlank() && oauthAccessToken != null) {
-                pageIdToken?.takeIf { it.isNotBlank() }?.let { header("X-Goog-Pageid", it) }
-            }
-            setBody(
-                GuideBody(
-                    context = client.toContext(locale, visitorData, dataSyncId),
-                ),
-            )
         }
-    }
 
     suspend fun reel(
         client: YouTubeClient,
@@ -1054,7 +1058,8 @@ class InnerTube {
         // What the request actually carries, as facts only — the create has answered a bare
         // 404 to a genuine box token from the same session, and every static property of
         // this request matches the working ones. These are the values left to check.
-        ShivLog.i("commentCreateReq tokenLen=${createCommentParams.length} " +
+        ShivLog.i(
+            "commentCreateReq tokenLen=${createCommentParams.length} " +
                 "sapisidExact=${"SAPISID" in cookieMap} " +
                 "sapisidAny=${listOf("SAPISID", "__Secure-3PSAPISID", "__Secure-1PSAPISID").any { it in cookieMap }} " +
                 "datasync=${dataSyncId != null} visitor=${!visitorData.isNullOrBlank()}",
@@ -1259,8 +1264,11 @@ class InnerTube {
         // prefixing those again would double the path and 404 every call.
         val path = apiUrl.removePrefix("/").removePrefix("youtubei/v1/")
         val url =
-            if (apiUrl.startsWith("http")) apiUrl
-            else "https://www.youtube.com/youtubei/v1/$path"
+            if (apiUrl.startsWith("http")) {
+                apiUrl
+            } else {
+                "https://www.youtube.com/youtubei/v1/$path"
+            }
         val body =
             buildJsonObject {
                 put("context", json.encodeToJsonElement(client.toContext(locale, visitorData, dataSyncId)))
@@ -1371,22 +1379,31 @@ class InnerTube {
         val selected =
             items.firstOrNull { it["isSelected"]?.jsonPrimitive?.booleanOrNull == true }
                 ?: items.firstOrNull()
-        val item = selected ?: run {
-            ShivLog.i("accountsList empty items=${items.size} topKeys=${root.keys} selectText=${root["selectText"]?.jsonObject.readText()}")
-            error("accounts_list empty")
-        }
+        val item =
+            selected ?: run {
+                ShivLog.i(
+                    "accountsList empty items=${items.size} topKeys=${root.keys} selectText=${root["selectText"]?.jsonObject.readText()}",
+                )
+                error("accounts_list empty")
+            }
         val identity =
             OAuthIdentity(
                 name = item["accountName"]?.jsonObject.readText(),
                 email = item["accountByline"]?.jsonObject.readText(),
                 channelHandle = item["channelHandle"]?.jsonObject.readText(),
                 pageIdToken =
-                    item["serviceEndpoint"]?.jsonObject
-                        ?.get("selectActiveIdentityEndpoint")?.jsonObject
-                        ?.get("supportedTokens")?.jsonArray
+                    item["serviceEndpoint"]
+                        ?.jsonObject
+                        ?.get("selectActiveIdentityEndpoint")
+                        ?.jsonObject
+                        ?.get("supportedTokens")
+                        ?.jsonArray
                         ?.firstNotNullOfOrNull { token ->
-                            token.jsonObject["pageIdToken"]?.jsonObject
-                                ?.get("pageId")?.jsonPrimitive?.contentOrNull
+                            token.jsonObject["pageIdToken"]
+                                ?.jsonObject
+                                ?.get("pageId")
+                                ?.jsonPrimitive
+                                ?.contentOrNull
                         },
             )
         ShivLog.i("accountsList name=${identity.name != null} pageId=${identity.pageIdToken != null} items=${items.size}")
@@ -1396,12 +1413,23 @@ class InnerTube {
     private fun JsonObject.accountsItems(): List<JsonObject> {
         val contents = get("contents")?.jsonArray
         val section =
-            contents?.firstOrNull()?.jsonObject
-                ?.get("accountSectionListRenderer")?.jsonObject
-                ?.get("contents")?.jsonArray?.firstOrNull()?.jsonObject
-        val exact = section?.get("accountItemSectionRenderer")?.jsonObject?.get("contents")?.jsonArray
-            ?.mapNotNull { it.jsonObject["accountItem"]?.jsonObject }
-            .orEmpty()
+            contents
+                ?.firstOrNull()
+                ?.jsonObject
+                ?.get("accountSectionListRenderer")
+                ?.jsonObject
+                ?.get("contents")
+                ?.jsonArray
+                ?.firstOrNull()
+                ?.jsonObject
+        val exact =
+            section
+                ?.get("accountItemSectionRenderer")
+                ?.jsonObject
+                ?.get("contents")
+                ?.jsonArray
+                ?.mapNotNull { it.jsonObject["accountItem"]?.jsonObject }
+                .orEmpty()
         if (exact.isNotEmpty()) return exact
         return deepAccountItems()
     }
@@ -1412,7 +1440,11 @@ class InnerTube {
                 get("accountItem")?.jsonObject?.let { acc += it }
                 values.forEach { it.deepAccountItems(acc) }
             }
-            is JsonArray -> forEach { it.deepAccountItems(acc) }
+
+            is JsonArray -> {
+                forEach { it.deepAccountItems(acc) }
+            }
+
             else -> {}
         }
         return acc
@@ -1420,10 +1452,19 @@ class InnerTube {
 
     private fun JsonObject?.readText(): String? {
         if (this == null) return null
-        get("simpleText")?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }?.let { return it }
-        return get("runs")?.jsonArray
-            ?.joinToString("") { run -> run.jsonObject["text"]?.jsonPrimitive?.contentOrNull.orEmpty() }
+        get("simpleText")
+            ?.jsonPrimitive
+            ?.contentOrNull
             ?.takeIf { it.isNotBlank() }
+            ?.let { return it }
+        return get("runs")
+            ?.jsonArray
+            ?.joinToString("") { run ->
+                run.jsonObject["text"]
+                    ?.jsonPrimitive
+                    ?.contentOrNull
+                    .orEmpty()
+            }?.takeIf { it.isNotBlank() }
     }
 
     suspend fun likeVideo(
@@ -1652,7 +1693,11 @@ class InnerTube {
         // HTTP 200 alone proves nothing here (report 19), so log what the server says.
         val bodyStatus =
             runCatching {
-                Json.parseToJsonElement(response.bodyAsText()).jsonObject["status"]?.jsonPrimitive?.contentOrNull
+                Json
+                    .parseToJsonElement(response.bodyAsText())
+                    .jsonObject["status"]
+                    ?.jsonPrimitive
+                    ?.contentOrNull
             }.getOrNull()
         ShivLog.i("playlistEditBody id=$playlistId status=${response.status.value} bodyStatus=$bodyStatus")
         response

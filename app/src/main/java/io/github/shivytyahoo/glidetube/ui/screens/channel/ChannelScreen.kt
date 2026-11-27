@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.ViewList
 import androidx.compose.material.icons.rounded.Folder
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -46,7 +47,6 @@ import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -65,10 +65,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
@@ -91,7 +91,6 @@ import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import coil3.compose.AsyncImage
 import io.github.shivytyahoo.glidetube.R
-import io.github.shivytyahoo.glidetube.ui.screens.settings.account.GoogleLoginActivity
 import io.github.shivytyahoo.glidetube.data.model.Video
 import io.github.shivytyahoo.glidetube.innertube.YouTube
 import io.github.shivytyahoo.glidetube.innertube.pages.channel.ChannelHeader
@@ -103,14 +102,15 @@ import io.github.shivytyahoo.glidetube.ui.components.shared.ChannelAvatarImage
 import io.github.shivytyahoo.glidetube.ui.components.shared.CollectionEditDialog
 import io.github.shivytyahoo.glidetube.ui.components.shared.CollectionSheetEntry
 import io.github.shivytyahoo.glidetube.ui.components.shared.CommentSortFilter
+import io.github.shivytyahoo.glidetube.ui.components.shared.FullSizeImageDialog
 import io.github.shivytyahoo.glidetube.ui.components.shared.GlideCommentsBottomSheet
 import io.github.shivytyahoo.glidetube.ui.components.shared.GlideEmptyState
 import io.github.shivytyahoo.glidetube.ui.components.shared.GlideErrorState
 import io.github.shivytyahoo.glidetube.ui.components.shared.GlideLoadingIndicator
 import io.github.shivytyahoo.glidetube.ui.components.shared.GlideSubscribeButton
-import io.github.shivytyahoo.glidetube.ui.components.shared.FullSizeImageDialog
 import io.github.shivytyahoo.glidetube.ui.components.shared.SaveToCollectionSheet
 import io.github.shivytyahoo.glidetube.ui.components.shared.sortCommentsByFilter
+import io.github.shivytyahoo.glidetube.ui.screens.settings.account.GoogleLoginActivity
 import io.github.shivytyahoo.glidetube.ui.theme.extendedColors
 import io.github.shivytyahoo.glidetube.ui.youtubeChannelUrl
 import io.github.shivytyahoo.glidetube.utils.ThumbnailUrlResolver
@@ -341,6 +341,4 @@ fun ChannelScreen(
             },
         )
     }
-
-
 }

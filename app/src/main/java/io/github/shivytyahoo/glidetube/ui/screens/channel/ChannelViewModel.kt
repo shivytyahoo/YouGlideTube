@@ -297,11 +297,9 @@ class ChannelViewModel
             onResult: (Boolean) -> Unit,
         ) = communityController.postPostComment(text, onResult)
 
-        fun toggleCommunityCommentLike(comment: Comment) =
-            communityController.togglePostCommentVote(comment, like = true)
+        fun toggleCommunityCommentLike(comment: Comment) = communityController.togglePostCommentVote(comment, like = true)
 
-        fun toggleCommunityCommentDislike(comment: Comment) =
-            communityController.togglePostCommentVote(comment, like = false)
+        fun toggleCommunityCommentDislike(comment: Comment) = communityController.togglePostCommentVote(comment, like = false)
 
         fun postCommunityCommentReply(
             comment: Comment,

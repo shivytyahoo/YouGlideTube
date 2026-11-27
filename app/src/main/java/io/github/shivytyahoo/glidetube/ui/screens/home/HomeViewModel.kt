@@ -810,8 +810,8 @@ class HomeViewModel
                 if ((finished || stale || superseded) && !tasteStore.isLearned(entry.videoId, positionMs)) {
                     tasteStore.learnWatch(
                         video = entry.toResumeVideo(),
-                        watchedSec = (positionMs / 1000).toInt(),
-                        lengthSec = (durationMs / 1000).toInt(),
+                        watchedSec = positionMs / 1000.0,
+                        lengthSec = durationMs / 1000.0,
                     )
                 }
             }

@@ -16,10 +16,10 @@ import io.github.shivytyahoo.glidetube.ui.screens.settings.appearance.theme.Cust
 import io.github.shivytyahoo.glidetube.ui.screens.settings.appearance.theme.ThemeScreen
 import io.github.shivytyahoo.glidetube.ui.screens.settings.backup.SettingsBackupScreen
 import io.github.shivytyahoo.glidetube.ui.screens.settings.content.ContentSettingsScreen
-import io.github.shivytyahoo.glidetube.ui.screens.settings.downloads.DownloadSettingsScreen
 import io.github.shivytyahoo.glidetube.ui.screens.settings.content.LibrarySettingsScreen
 import io.github.shivytyahoo.glidetube.ui.screens.settings.content.MusicHomeSettingsScreen
 import io.github.shivytyahoo.glidetube.ui.screens.settings.diagnostics.DiagnosticsScreen
+import io.github.shivytyahoo.glidetube.ui.screens.settings.downloads.DownloadSettingsScreen
 import io.github.shivytyahoo.glidetube.ui.screens.settings.history.HistorySettingsScreen
 import io.github.shivytyahoo.glidetube.ui.screens.settings.integrations.IntegrationsScreen
 import io.github.shivytyahoo.glidetube.ui.screens.settings.localmedia.LocalMediaSettingsScreen
@@ -119,7 +119,6 @@ internal fun SettingsDetail(
         SettingsDestination.QUALITY -> {
             QualitySettingsScreen(onBack = onBack, highlight = target.highlight, tab = target.tab)
         }
-
 
         SettingsDestination.INTEGRATIONS -> {
             IntegrationsScreen(onBack = onBack, highlight = target.highlight, onNavigate = onNavigate)

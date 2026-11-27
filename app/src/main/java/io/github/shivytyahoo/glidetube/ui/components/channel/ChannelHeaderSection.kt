@@ -38,8 +38,8 @@ import androidx.compose.ui.unit.dp
 import io.github.shivytyahoo.glidetube.R
 import io.github.shivytyahoo.glidetube.innertube.pages.channel.ChannelHeader
 import io.github.shivytyahoo.glidetube.ui.components.shared.ChannelAvatarImage
-import io.github.shivytyahoo.glidetube.ui.components.shared.GlideSubscribeButton
 import io.github.shivytyahoo.glidetube.ui.components.shared.FullSizeImageDialog
+import io.github.shivytyahoo.glidetube.ui.components.shared.GlideSubscribeButton
 import io.github.shivytyahoo.glidetube.ui.theme.extendedColors
 import io.github.shivytyahoo.glidetube.utils.ThumbnailUrlResolver
 import io.github.shivytyahoo.glidetube.utils.copyPlainText

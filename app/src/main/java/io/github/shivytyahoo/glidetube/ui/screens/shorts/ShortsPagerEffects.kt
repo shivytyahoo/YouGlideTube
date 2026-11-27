@@ -9,9 +9,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.platform.LocalContext
 import io.github.shivytyahoo.glidetube.data.local.PlayerPreferences
-import io.github.shivytyahoo.glidetube.ui.components.shared.LocalBatterySaver
 import io.github.shivytyahoo.glidetube.data.model.ShortVideo
 import io.github.shivytyahoo.glidetube.player.shorts.ShortsPlayerPool
+import io.github.shivytyahoo.glidetube.ui.components.shared.LocalBatterySaver
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch

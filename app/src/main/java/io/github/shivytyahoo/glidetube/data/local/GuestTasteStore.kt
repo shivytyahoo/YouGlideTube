@@ -167,7 +167,7 @@ class GuestTasteStore
             if (normalized.isEmpty() || normalized in taste.value.learnedSearches) return
             val words = GuestTaste.words(query).take(5)
             if (words.isEmpty()) {
-                update { it.copy(learnedSearches = (it.learnedSearches + normalized).takeLast(50).toSet()) }
+                update { it.copy(learnedSearches = (it.learnedSearches + normalized).toList().takeLast(50).toSet()) }
                 return
             }
             val bucket = GuestTaste.bucketNow()
@@ -180,7 +180,7 @@ class GuestTasteStore
                 decayed.copy(
                     kw = trim(kw, KEYWORD_TRIM),
                     kwTime = decayed.kwTime + (bucket to trim(bucketKw, BUCKET_TRIM)),
-                    learnedSearches = (decayed.learnedSearches + normalized).takeLast(50).toSet(),
+                    learnedSearches = (decayed.learnedSearches + normalized).toList().takeLast(50).toSet(),
                 )
             }
         }

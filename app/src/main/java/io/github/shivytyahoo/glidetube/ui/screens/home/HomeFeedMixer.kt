@@ -3,7 +3,7 @@ package io.github.shivytyahoo.glidetube.ui.screens.home
 import io.github.shivytyahoo.glidetube.data.model.Video
 import kotlinx.coroutines.flow.map
 
-internal enum class FeedSource {
+enum class FeedSource {
     SUBS,
     RELATED,
     DISCOVERY,
