@@ -1,7 +1,5 @@
 package io.github.shivytyahoo.glidetube.innertube
 
-import io.github.shivytyahoo.glidetube.utils.ShivLog
-
 import android.util.Log
 import io.github.shivytyahoo.glidetube.data.account.AccountPlaylistIds
 import io.github.shivytyahoo.glidetube.data.model.LiveChatMessage
@@ -26,8 +24,8 @@ import io.github.shivytyahoo.glidetube.innertube.models.SongItem
 import io.github.shivytyahoo.glidetube.innertube.models.WatchEndpoint
 import io.github.shivytyahoo.glidetube.innertube.models.WatchEndpoint.WatchEndpointMusicSupportedConfigs.WatchEndpointMusicConfig.Companion.MUSIC_VIDEO_TYPE_ATV
 import io.github.shivytyahoo.glidetube.innertube.models.YouTubeClient
-import io.github.shivytyahoo.glidetube.innertube.models.YouTubeClient.Companion.WEB
 import io.github.shivytyahoo.glidetube.innertube.models.YouTubeClient.Companion.ANDROID_MUSIC
+import io.github.shivytyahoo.glidetube.innertube.models.YouTubeClient.Companion.WEB
 import io.github.shivytyahoo.glidetube.innertube.models.YouTubeClient.Companion.WEB_REMIX
 import io.github.shivytyahoo.glidetube.innertube.models.YouTubeLocale
 import io.github.shivytyahoo.glidetube.innertube.models.body.Action
@@ -46,8 +44,6 @@ import io.github.shivytyahoo.glidetube.innertube.models.response.GetTranscriptRe
 import io.github.shivytyahoo.glidetube.innertube.models.response.ImageUploadResponse
 import io.github.shivytyahoo.glidetube.innertube.models.response.NextResponse
 import io.github.shivytyahoo.glidetube.innertube.models.response.PlayerResponse
-import io.ktor.client.plugins.ClientRequestException
-import io.ktor.client.statement.HttpResponse
 import io.github.shivytyahoo.glidetube.innertube.models.response.ResolveUrlResponse
 import io.github.shivytyahoo.glidetube.innertube.models.response.SearchResponse
 import io.github.shivytyahoo.glidetube.innertube.models.response.channelVideoCountText
@@ -59,12 +55,7 @@ import io.github.shivytyahoo.glidetube.innertube.pages.BrowseResult
 import io.github.shivytyahoo.glidetube.innertube.pages.ChartsPage
 import io.github.shivytyahoo.glidetube.innertube.pages.ExplorePage
 import io.github.shivytyahoo.glidetube.innertube.pages.HistoryPage
-import io.github.shivytyahoo.glidetube.innertube.pages.TimedLyricLine
-import io.github.shivytyahoo.glidetube.innertube.pages.timedLyricLines
 import io.github.shivytyahoo.glidetube.innertube.pages.HomePage
-import io.github.shivytyahoo.glidetube.innertube.pages.ServerFeedPage
-import io.github.shivytyahoo.glidetube.innertube.pages.renderer.harvestFeedPage
-import io.github.shivytyahoo.glidetube.innertube.pages.toServerFeedPage
 import io.github.shivytyahoo.glidetube.innertube.pages.LibraryContinuationPage
 import io.github.shivytyahoo.glidetube.innertube.pages.LibraryPage
 import io.github.shivytyahoo.glidetube.innertube.pages.MoodAndGenres
@@ -78,6 +69,8 @@ import io.github.shivytyahoo.glidetube.innertube.pages.SearchPage
 import io.github.shivytyahoo.glidetube.innertube.pages.SearchResult
 import io.github.shivytyahoo.glidetube.innertube.pages.SearchSuggestionPage
 import io.github.shivytyahoo.glidetube.innertube.pages.SearchSummaryPage
+import io.github.shivytyahoo.glidetube.innertube.pages.ServerFeedPage
+import io.github.shivytyahoo.glidetube.innertube.pages.TimedLyricLine
 import io.github.shivytyahoo.glidetube.innertube.pages.VideoCommentsPage
 import io.github.shivytyahoo.glidetube.innertube.pages.VideoDescriptionPage
 import io.github.shivytyahoo.glidetube.innertube.pages.VideoPlaylistPage
@@ -101,6 +94,7 @@ import io.github.shivytyahoo.glidetube.innertube.pages.explore.exploreShelves
 import io.github.shivytyahoo.glidetube.innertube.pages.explore.ranked
 import io.github.shivytyahoo.glidetube.innertube.pages.explore.toExploreDestinationShell
 import io.github.shivytyahoo.glidetube.innertube.pages.explore.trendingVideoChart
+import io.github.shivytyahoo.glidetube.innertube.pages.findCreateCommentParams
 import io.github.shivytyahoo.glidetube.innertube.pages.parseYouTubeViewCount
 import io.github.shivytyahoo.glidetube.innertube.pages.reel.ReelLockup
 import io.github.shivytyahoo.glidetube.innertube.pages.reel.ReelOverlay
@@ -114,6 +108,7 @@ import io.github.shivytyahoo.glidetube.innertube.pages.renderer.CommunityPostsPa
 import io.github.shivytyahoo.glidetube.innertube.pages.renderer.FeedItemOwner
 import io.github.shivytyahoo.glidetube.innertube.pages.renderer.FeedShelf
 import io.github.shivytyahoo.glidetube.innertube.pages.renderer.collaboratorDialog
+import io.github.shivytyahoo.glidetube.innertube.pages.renderer.harvestFeedPage
 import io.github.shivytyahoo.glidetube.innertube.pages.renderer.lockupDateAndViews
 import io.github.shivytyahoo.glidetube.innertube.pages.renderer.toCommunityCommentsPage
 import io.github.shivytyahoo.glidetube.innertube.pages.renderer.toCommunityPostsPage
@@ -121,17 +116,21 @@ import io.github.shivytyahoo.glidetube.innertube.pages.search.SearchResultsPage
 import io.github.shivytyahoo.glidetube.innertube.pages.search.SearchSuggestion
 import io.github.shivytyahoo.glidetube.innertube.pages.search.parseSearchSuggestions
 import io.github.shivytyahoo.glidetube.innertube.pages.search.toSearchResultsPage
+import io.github.shivytyahoo.glidetube.innertube.pages.timedLyricLines
 import io.github.shivytyahoo.glidetube.innertube.pages.toCommentRepliesPage
-import io.github.shivytyahoo.glidetube.innertube.pages.findCreateCommentParams
 import io.github.shivytyahoo.glidetube.innertube.pages.toGuideChannels
+import io.github.shivytyahoo.glidetube.innertube.pages.toServerFeedPage
 import io.github.shivytyahoo.glidetube.innertube.pages.toVideoCommentsPage
 import io.github.shivytyahoo.glidetube.innertube.pages.toVideoDescriptionPage
 import io.github.shivytyahoo.glidetube.innertube.pages.toVideoPlaylistPage
 import io.github.shivytyahoo.glidetube.innertube.pages.videoCommentsContinuation
 import io.github.shivytyahoo.glidetube.utils.PerformanceDispatcher
+import io.github.shivytyahoo.glidetube.utils.ShivLog
 import io.github.shivytyahoo.glidetube.utils.avatarImageIdentityKey
 import io.github.shivytyahoo.glidetube.utils.relativedate.RelativeUploadDateParser
 import io.ktor.client.call.body
+import io.ktor.client.plugins.ClientRequestException
+import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.Dispatchers
@@ -699,7 +698,10 @@ object YouTube {
                     ignoreUnknownKeys = true
                     explicitNulls = false
                 }
-            val response = lenientJson.decodeFromString<io.github.shivytyahoo.glidetube.innertube.models.response.ChannelSearchResponse>(rawBody)
+            val response =
+                lenientJson.decodeFromString<io.github.shivytyahoo.glidetube.innertube.models.response.ChannelSearchResponse>(
+                    rawBody,
+                )
             parseChannelSearchResponse(response, channelId, channelName, channelThumbnailUrl)
         }
 
@@ -723,7 +725,10 @@ object YouTube {
                     ignoreUnknownKeys = true
                     explicitNulls = false
                 }
-            val response = lenientJson.decodeFromString<io.github.shivytyahoo.glidetube.innertube.models.response.ChannelSearchResponse>(rawBody)
+            val response =
+                lenientJson.decodeFromString<io.github.shivytyahoo.glidetube.innertube.models.response.ChannelSearchResponse>(
+                    rawBody,
+                )
 
             val videos = mutableListOf<io.github.shivytyahoo.glidetube.data.model.Video>()
             var nextContinuation: String? = null
@@ -951,15 +956,15 @@ object YouTube {
                 )
             val text = response.bodyAsText()
             val page = Json.parseToJsonElement(text).toVideoPlaylistPage()
-            ShivLog.i("playlistPage id=$playlistId videos=${page.videos.size} title=${page.title != null}",
-            )
+            ShivLog.i("playlistPage id=$playlistId videos=${page.videos.size} title=${page.title != null}")
             // The next report proves whether the Save button's tokens were
             // found: a like without them 403s (report 24).
             ShivLog.i("playlistLikeParams id=$playlistId like=${page.likeParams != null} remove=${page.removeLikeParams != null}")
             if (page.videos.isEmpty()) {
                 // Watch Later still parses to zero while Liked Videos parses 55 (report 15).
                 // Count the shapes its rows could be hiding in so the next report pins it.
-                ShivLog.i("playlistPageProbe id=$playlistId playlistVideoR=${text.countOccurrences("playlistVideoRenderer")} " +
+                ShivLog.i(
+                    "playlistPageProbe id=$playlistId playlistVideoR=${text.countOccurrences("playlistVideoRenderer")} " +
                         "playlistVideoListR=${text.countOccurrences("playlistVideoListRenderer")} " +
                         "lockup=${text.countOccurrences("lockupViewModel")} " +
                         "videoR=${text.countOccurrences("videoRenderer")} " +
@@ -976,8 +981,7 @@ object YouTube {
             }
             page
         }.onFailure { e ->
-            ShivLog.i("playlistPage id=$playlistId FAILED ${e.message?.take(200)}",
-            )
+            ShivLog.i("playlistPage id=$playlistId FAILED ${e.message?.take(200)}")
         }
 
     private suspend fun communityPostsPage(
@@ -1938,12 +1942,14 @@ object YouTube {
                                 )
                             },
                         songCountText =
-                            header?.secondSubtitle
+                            header
+                                ?.secondSubtitle
                                 ?.runs
                                 ?.firstOrNull()
                                 ?.text,
                         thumbnail =
-                            header?.thumbnail
+                            header
+                                ?.thumbnail
                                 ?.musicThumbnailRenderer
                                 ?.thumbnail
                                 ?.thumbnails
@@ -1951,7 +1957,8 @@ object YouTube {
                                 ?.url,
                         playEndpoint = null,
                         shuffleEndpoint =
-                            header?.buttons
+                            header
+                                ?.buttons
                                 ?.lastOrNull()
                                 ?.menuRenderer
                                 ?.items
@@ -1960,7 +1967,8 @@ object YouTube {
                                 ?.navigationEndpoint
                                 ?.watchPlaylistEndpoint,
                         radioEndpoint =
-                            header?.buttons
+                            header
+                                ?.buttons
                                 ?.getOrNull(2)
                                 ?.menuRenderer
                                 ?.items
@@ -2115,6 +2123,12 @@ object YouTube {
         continuation: String? = null,
     ): Result<ServerFeedPage> = serverBrowse("FEwhat_to_watch", params, continuation)
 
+    /** A topic channel's first tab, one flat list of videos: the More menu's destinations. */
+    suspend fun topicChannel(
+        channelId: String,
+        continuation: String? = null,
+    ): Result<ServerFeedPage> = serverBrowse(channelId, null, continuation)
+
     /** The account's subscriptions feed (FEsubscriptions). Empty when signed out. */
     suspend fun serverSubscriptions(continuation: String? = null): Result<ServerFeedPage> =
         serverBrowse("FEsubscriptions", null, continuation)
@@ -2140,8 +2154,7 @@ object YouTube {
         serverBrowse("FEplaylist_aggregation", null, continuation)
 
     /** The account's watch history (FEhistory), newest first. Empty when signed out. */
-    suspend fun serverHistory(continuation: String? = null): Result<ServerFeedPage> =
-        serverBrowse("FEhistory", null, continuation)
+    suspend fun serverHistory(continuation: String? = null): Result<ServerFeedPage> = serverBrowse("FEhistory", null, continuation)
 
     private suspend fun serverBrowse(
         browseId: String,
@@ -2168,7 +2181,8 @@ object YouTube {
                     hasOAuthSession() -> "oauth"
                     else -> "guest"
                 }
-            ShivLog.i("browse start id=$browseId mode=$mode cont=${continuation != null} " +
+            ShivLog.i(
+                "browse start id=$browseId mode=$mode cont=${continuation != null} " +
                     "visitor=${!innerTube.visitorData.isNullOrBlank()} sync=${!innerTube.dataSyncId.isNullOrBlank()}",
             )
 
@@ -2195,7 +2209,8 @@ object YouTube {
                     text = retry.second
                 }
             }
-            ShivLog.i("browse resp id=$browseId status=$status chars=${text.length} " +
+            ShivLog.i(
+                "browse resp id=$browseId status=$status chars=${text.length} " +
                     "videoRenderer=${text.countOccurrences("videoRenderer")} " +
                     "lockup=${text.countOccurrences("lockupViewModel")} " +
                     "richGrid=${text.countOccurrences("richGridRenderer")} " +
@@ -2206,7 +2221,8 @@ object YouTube {
                 // no continuation the parser can see. Count the shapes the missing
                 // playlists or the next page could be hiding in (playlistR also counts
                 // gridPlaylistRenderer occurrences, so subtract gridPlaylistR from it).
-                ShivLog.i("aggProbe contVM=${text.countOccurrences("continuationItemViewModel")} " +
+                ShivLog.i(
+                    "aggProbe contVM=${text.countOccurrences("continuationItemViewModel")} " +
                         "contR=${text.countOccurrences("continuationItemRenderer")} " +
                         "playlistR=${text.countOccurrences("playlistRenderer")} " +
                         "gridPlaylistR=${text.countOccurrences("gridPlaylistRenderer")} " +
@@ -2221,21 +2237,32 @@ object YouTube {
                 // the button icons the feed actions actually use.
                 val rootProbe = Json.parseToJsonElement(text)
                 val buttonIcons = linkedSetOf<String>()
+
                 fun scanButtons(node: JsonElement) {
                     when (node) {
                         is JsonObject -> {
                             (node["buttonRenderer"] as? JsonObject)
-                                ?.get("icon")?.let { it as? JsonObject }
-                                ?.get("iconType")?.let { it as? JsonPrimitive }
-                                ?.contentOrNull?.let { buttonIcons += it }
+                                ?.get("icon")
+                                ?.let { it as? JsonObject }
+                                ?.get("iconType")
+                                ?.let { it as? JsonPrimitive }
+                                ?.contentOrNull
+                                ?.let { buttonIcons += it }
                             node.values.forEach(::scanButtons)
                         }
-                        is JsonArray -> node.forEach(::scanButtons)
-                        else -> Unit
+
+                        is JsonArray -> {
+                            node.forEach(::scanButtons)
+                        }
+
+                        else -> {
+                            Unit
+                        }
                     }
                 }
                 scanButtons(rootProbe)
-                ShivLog.i("historyProbe feedActions=${text.countOccurrences("browseFeedActionsRenderer")} " +
+                ShivLog.i(
+                    "historyProbe feedActions=${text.countOccurrences("browseFeedActionsRenderer")} " +
                         "buttons=${text.countOccurrences("buttonRenderer")} " +
                         "buttonIcons=${buttonIcons.take(12).joinToString("/")} " +
                         "deleteIcons=${text.countOccurrences("\"DELETE\"")} " +
@@ -2255,6 +2282,7 @@ object YouTube {
                 // and the rich grid header's keys so the chip parser can target the real shape.
                 val chipKeys = linkedSetOf<String>()
                 var richHeader = "none"
+
                 fun scanKeys(node: JsonElement) {
                     when (node) {
                         is JsonObject -> {
@@ -2272,8 +2300,14 @@ object YouTube {
                                 scanKeys(value)
                             }
                         }
-                        is JsonArray -> node.forEach(::scanKeys)
-                        else -> Unit
+
+                        is JsonArray -> {
+                            node.forEach(::scanKeys)
+                        }
+
+                        else -> {
+                            Unit
+                        }
                     }
                 }
                 scanKeys(root)
@@ -2282,11 +2316,14 @@ object YouTube {
             val strictPage = root.toServerFeedPage()
             // Strict vs final, side by side in the report: the harvest below only runs
             // when the strict page found nothing at all.
-            ShivLog.i("browse strict id=$browseId videos=${strictPage.videos.size} shorts=${strictPage.shorts.size} " +
+            ShivLog.i(
+                "browse strict id=$browseId videos=${strictPage.videos.size} shorts=${strictPage.shorts.size} " +
                     "channels=${strictPage.channels.size} playlists=${strictPage.playlists.size}",
             )
             var page = strictPage
-            if (strictPage.videos.isEmpty() && strictPage.shorts.isEmpty() && strictPage.channels.isEmpty() && strictPage.playlists.isEmpty()) {
+            if (strictPage.videos.isEmpty() && strictPage.shorts.isEmpty() && strictPage.channels.isEmpty() &&
+                strictPage.playlists.isEmpty()
+            ) {
                 // The strict parser found nothing at all in this response. Census the
                 // renderer keys so the real shape is on record, then harvest whatever video
                 // items the tree carries instead of settling for an empty page. A page
@@ -2295,8 +2332,7 @@ object YouTube {
                 ShivLog.i("census id=$browseId keys=" + rendererKeyCensus(text))
                 root.lockupProbe()?.let { ShivLog.i("lockupProbe id=$browseId $it") }
                 val harvested = root.harvestFeedPage()
-                ShivLog.i("harvest id=$browseId videos=${harvested.videos.size} shorts=${harvested.shorts.size}",
-                )
+                ShivLog.i("harvest id=$browseId videos=${harvested.videos.size} shorts=${harvested.shorts.size}")
                 page =
                     harvested.copy(
                         playlists = strictPage.playlists,
@@ -2305,7 +2341,8 @@ object YouTube {
                         continuation = harvested.continuation ?: strictPage.continuation,
                     )
             }
-            ShivLog.i("browse parsed id=$browseId videos=${page.videos.size} shorts=${page.shorts.size} " +
+            ShivLog.i(
+                "browse parsed id=$browseId videos=${page.videos.size} shorts=${page.shorts.size} " +
                     "channels=${page.channels.size} playlists=${page.playlists.size} chips=${page.chips.size} cont=${page.continuation != null}",
             )
             page
@@ -2335,15 +2372,29 @@ object YouTube {
     private fun JsonElement.lockupProbe(): String? {
         var found: JsonObject? = null
         var foundPath = ""
-        fun walk(node: JsonElement?, path: String) {
+
+        fun walk(
+            node: JsonElement?,
+            path: String,
+        ) {
             if (found != null) return
             when (node) {
                 is JsonObject -> {
-                    (node["lockupViewModel"] as? JsonObject)?.let { found = it; foundPath = path; return }
+                    (node["lockupViewModel"] as? JsonObject)?.let {
+                        found = it
+                        foundPath = path
+                        return
+                    }
                     node.entries.forEach { (key, value) -> walk(value, "$path.$key") }
                 }
-                is JsonArray -> node.forEachIndexed { index, element -> walk(element, "$path[$index]") }
-                else -> Unit
+
+                is JsonArray -> {
+                    node.forEachIndexed { index, element -> walk(element, "$path[$index]") }
+                }
+
+                else -> {
+                    Unit
+                }
             }
         }
         walk(this, "$")
@@ -2360,8 +2411,10 @@ object YouTube {
         val contentId = (lockup["contentId"] as? JsonPrimitive)?.contentOrNull
         val titleText =
             (titleNode as? JsonObject)?.let {
-                ((it["content"] as? JsonPrimitive)?.contentOrNull
-                    ?: (it["simpleText"] as? JsonPrimitive)?.contentOrNull)
+                (
+                    (it["content"] as? JsonPrimitive)?.contentOrNull
+                        ?: (it["simpleText"] as? JsonPrimitive)?.contentOrNull
+                )
             }
         return "path=${foundPath.split(".").takeLast(8).joinToString(".")} " +
             "keys=${lockup.keys.take(12)} " +
@@ -2727,8 +2780,7 @@ object YouTube {
             } else {
                 innerTube.unlikeVideo(WEB_REMIX, videoId)
             }
-        ShivLog.i("videoLike id=$videoId like=$like status=${response.status.value}",
-        )
+        ShivLog.i("videoLike id=$videoId like=$like status=${response.status.value}")
         Unit
     }.onFailure { e ->
         ShivLog.i("videoLike id=$videoId like=$like FAILED ${e.message?.take(200)}")
@@ -2753,8 +2805,9 @@ object YouTube {
             ShivLog.i("playlistLikeFallback id=$playlistId status=${e.response.status.value}")
             innerTube.likePlaylistMainSite(sessionClient(), playlistId, like, params)
         }
-    }.onSuccess { ShivLog.i("${if (like) "playlistSave" else "playlistUnsave"} id=$playlistId status=${it.status.value} params=${params != null}") }
-        .onFailure { ShivLog.i("${if (like) "playlistSave" else "playlistUnsave"} id=$playlistId FAILED ${it.message?.take(200)}") }
+    }.onSuccess {
+        ShivLog.i("${if (like) "playlistSave" else "playlistUnsave"} id=$playlistId status=${it.status.value} params=${params != null}")
+    }.onFailure { ShivLog.i("${if (like) "playlistSave" else "playlistUnsave"} id=$playlistId FAILED ${it.message?.take(200)}") }
 
     /**
      * History controls, told to the server: Clear-all and per-video removes
@@ -2867,7 +2920,11 @@ object YouTube {
         // Same route as addToPlaylist: Watch Later edits go to the main site, the
         // music host refuses them with 401 (device report 17).
         if (playlistId == AccountPlaylistIds.WATCH_LATER) {
-            innerTube.editPlaylistMainSite(sessionClient(), playlistId, listOf(Action.RemoveVideoAction(removedVideoId = videoId, setVideoId = setVideoId)))
+            innerTube.editPlaylistMainSite(
+                sessionClient(),
+                playlistId,
+                listOf(Action.RemoveVideoAction(removedVideoId = videoId, setVideoId = setVideoId)),
+            )
         } else {
             editPlaylistWithFallback(playlistId, videoId, setVideoId)
         }
@@ -2946,8 +3003,7 @@ object YouTube {
      * feedback at all and repeat taps queued the same playlist again and
      * again. Every caller already runs in a coroutine.
      */
-    suspend fun createPlaylist(title: String): String =
-        innerTube.createPlaylist(WEB_REMIX, title).body<CreatePlaylistResponse>().playlistId
+    suspend fun createPlaylist(title: String): String = innerTube.createPlaylist(WEB_REMIX, title).body<CreatePlaylistResponse>().playlistId
 
     suspend fun renamePlaylist(
         playlistId: String,
@@ -3027,9 +3083,16 @@ object YouTube {
         runCatching {
             innerTube
                 .playerWeb(
-                    videoId, signatureTimestamp, poToken, visitorData, locale, cpn, reloadToken, client, withAuth,
-                )
-                .body<PlayerResponse>()
+                    videoId,
+                    signatureTimestamp,
+                    poToken,
+                    visitorData,
+                    locale,
+                    cpn,
+                    reloadToken,
+                    client,
+                    withAuth,
+                ).body<PlayerResponse>()
         }
 
     /**
@@ -3115,7 +3178,8 @@ object YouTube {
         runCatching {
             val text = innerTube.nextWatchAuthed(videoId = videoId).bodyAsText()
             val params = Json.parseToJsonElement(text).findCreateCommentParams()
-            ShivLog.i("commentBox scan len=${text.length} simplebox=${text.contains("commentSimpleboxRenderer")} " +
+            ShivLog.i(
+                "commentBox scan len=${text.length} simplebox=${text.contains("commentSimpleboxRenderer")} " +
                     "createKey=${text.contains("createCommentParams")} found=${params != null}",
             )
             params
@@ -3129,8 +3193,7 @@ object YouTube {
         runCatching {
             val response = innerTube.createComment(createCommentParams, commentText)
             val bodyText = runCatching { response.bodyAsText() }.getOrDefault("")
-            ShivLog.i("commentCreate status=${response.status.value} body=${bodyText.take(200)}",
-            )
+            ShivLog.i("commentCreate status=${response.status.value} body=${bodyText.take(200)}")
             check(response.status.isSuccess()) { "comment create answered ${response.status.value}" }
             Unit
         }.onFailure { e ->
@@ -3139,7 +3202,6 @@ object YouTube {
             ShivLog.i("commentCreate FAILED ${e.message?.take(240)}")
         }
 
-    /** Runs a comment's own toolbar vote command; see InnerTube.performCommentAction. */
     /** Runs one server-issued comment write (reply or edit) with its own token and path. */
     suspend fun commentWrite(
         path: String,
@@ -3151,7 +3213,10 @@ object YouTube {
         runCatching {
             val response = innerTube.postCommentWrite(path, paramsField, params, textField, text)
             val bodyText = runCatching { response.bodyAsText() }.getOrDefault("")
-            ShivLog.i("commentWrite path=$path status=${response.status.value} textLen=${text.length} mut=${bodyText.contains("entityBatchUpdate")} body=${bodyText.take(700)}",
+            ShivLog.i(
+                "commentWrite path=$path status=${response.status.value} textLen=${text.length} mut=${bodyText.contains(
+                    "entityBatchUpdate",
+                )} body=${bodyText.take(700)}",
             )
             check(response.status.isSuccess()) { "comment write answered ${response.status.value}" }
             bodyText
@@ -3163,8 +3228,7 @@ object YouTube {
         runCatching {
             val response = innerTube.performCommentAction(endpointJson)
             val bodyText = runCatching { response.bodyAsText() }.getOrDefault("")
-            ShivLog.i("commentAction status=${response.status.value} body=${bodyText.take(200)}",
-            )
+            ShivLog.i("commentAction status=${response.status.value} body=${bodyText.take(200)}")
             check(response.status.isSuccess()) { "comment action answered ${response.status.value}" }
             Unit
         }.onFailure { e ->
@@ -3176,8 +3240,7 @@ object YouTube {
         runCatching {
             val response = innerTube.postLikeAction(endpointJson)
             val bodyText = runCatching { response.bodyAsText() }.getOrDefault("")
-            ShivLog.i("postLike status=${response.status.value} body=${bodyText.take(200)}",
-            )
+            ShivLog.i("postLike status=${response.status.value} body=${bodyText.take(200)}")
             check(response.status.isSuccess()) { "post like answered ${response.status.value}" }
             Unit
         }.onFailure { e ->
@@ -3252,9 +3315,7 @@ object YouTube {
      * The menu response key is spelled both ways in the wild, so both are tried;
      * the menu item's own apiUrl is replayed, never a guessed one.
      */
-    suspend fun deleteLiveChatMessage(
-        message: LiveChatMessage,
-    ): Result<Boolean> =
+    suspend fun deleteLiveChatMessage(message: LiveChatMessage): Result<Boolean> =
         runCatching {
             val params = message.menuParams ?: error("no-menu-params")
             // The youtubei menu endpoint is get_item_context_menu (YouTube.js
@@ -3262,10 +3323,11 @@ object YouTube {
             // only exists on the legacy /live_chat/ path and 404s here.
             val menuApi = message.menuApiUrl?.takeIf { it.isNotBlank() } ?: "live_chat/get_item_context_menu"
             val menuBody =
-                innerTube.postInnertubeEndpoint(
-                    menuApi,
-                    buildJsonObject { put("params", params) },
-                ).bodyAsText()
+                innerTube
+                    .postInnertubeEndpoint(
+                        menuApi,
+                        buildJsonObject { put("params", params) },
+                    ).bodyAsText()
             val menuRoot =
                 Json {
                     ignoreUnknownKeys = true
@@ -3284,16 +3346,38 @@ object YouTube {
             val deleteEndpoint =
                 items.firstNotNullOfOrNull { item ->
                     val renderer = item.jsonObject["menuServiceItemRenderer"]?.jsonObject ?: return@firstNotNullOfOrNull null
-                    val iconType = renderer["icon"]?.jsonObject?.get("iconType")?.jsonPrimitive?.contentOrNull
+                    val iconType =
+                        renderer["icon"]
+                            ?.jsonObject
+                            ?.get("iconType")
+                            ?.jsonPrimitive
+                            ?.contentOrNull
                     if (iconType?.uppercase() != "DELETE") return@firstNotNullOfOrNull null
                     renderer["serviceEndpoint"]?.jsonObject
                 } ?: run {
-                    val icons = items.mapNotNull { it.jsonObject["menuServiceItemRenderer"]?.jsonObject?.get("icon")?.jsonObject?.get("iconType")?.jsonPrimitive?.contentOrNull }
+                    val icons =
+                        items.mapNotNull {
+                            it.jsonObject["menuServiceItemRenderer"]
+                                ?.jsonObject
+                                ?.get(
+                                    "icon",
+                                )?.jsonObject
+                                ?.get("iconType")
+                                ?.jsonPrimitive
+                                ?.contentOrNull
+                        }
                     ShivLog.i("liveChatDelete id=${message.id} menu=${items.size} deleteFound=false icons=$icons")
                     error("no-delete-item")
                 }
             val deleteApi =
-                deleteEndpoint["commandMetadata"]?.jsonObject?.get("webCommandMetadata")?.jsonObject?.get("apiUrl")?.jsonPrimitive?.contentOrNull
+                deleteEndpoint["commandMetadata"]
+                    ?.jsonObject
+                    ?.get(
+                        "webCommandMetadata",
+                    )?.jsonObject
+                    ?.get("apiUrl")
+                    ?.jsonPrimitive
+                    ?.contentOrNull
                     ?: error("no-delete-api")
             // The youtubei body carries the endpoint's inner fields, not the
             // wrapper key: Remove's serviceEndpoint is
@@ -3305,7 +3389,8 @@ object YouTube {
                 buildJsonObject {
                     val singleInner = stripped.values.singleOrNull() as? JsonObject
                     if (stripped.size == 1 && singleInner != null) {
-                        singleInner.filterKeys { it != "clickTrackingParams" && it != "commandMetadata" }
+                        singleInner
+                            .filterKeys { it != "clickTrackingParams" && it != "commandMetadata" }
                             .forEach { (key, value) -> put(key, value) }
                     } else {
                         stripped.forEach { (key, value) -> put(key, value) }
@@ -3313,7 +3398,9 @@ object YouTube {
                 }
             val deleteResponse = innerTube.postInnertubeEndpoint(deleteApi, fields)
             val ok = deleteResponse.status.value in 200..299
-            ShivLog.i("liveChatDelete id=${message.id} menu=${items.size} deleteFound=true api=$deleteApi status=${deleteResponse.status.value}")
+            ShivLog.i(
+                "liveChatDelete id=${message.id} menu=${items.size} deleteFound=true api=$deleteApi status=${deleteResponse.status.value}",
+            )
             if (!ok) error("delete-http-${deleteResponse.status.value}")
             true
         }
@@ -3341,7 +3428,9 @@ object YouTube {
             }
         }
 
-    suspend fun watchMetadataLite(videoId: String): Result<io.github.shivytyahoo.glidetube.innertube.models.response.WatchMetadataResponse> =
+    suspend fun watchMetadataLite(
+        videoId: String,
+    ): Result<io.github.shivytyahoo.glidetube.innertube.models.response.WatchMetadataResponse> =
         runCatching {
             innerTube
                 .next(WEB, videoId, null, null, null, null, null)
@@ -3365,13 +3454,18 @@ object YouTube {
      * fetched player response came back without one on device (0.3.47, -2), so
      * callers pass the session's own URL, cpn and client. Returns the ping's status.
      */
-    suspend fun pingWatchHistoryPlayback(url: String, cpn: String, client: YouTubeClient): Result<Int> =
+    suspend fun pingWatchHistoryPlayback(
+        url: String,
+        cpn: String,
+        client: YouTubeClient,
+    ): Result<Int> =
         runCatching {
-            innerTube.statsPlayback(
-                url = url.replace("https://s.", "https://www."),
-                cpn = cpn,
-                client = client,
-            ).status.value
+            innerTube
+                .statsPlayback(
+                    url = url.replace("https://s.", "https://www."),
+                    cpn = cpn,
+                    client = client,
+                ).status.value
         }
 
     /** The progress beacon (YouTube.js MediaInfo.updateWatchTime): the same
@@ -3385,12 +3479,13 @@ object YouTube {
         client: YouTubeClient,
     ): Result<Int> =
         runCatching {
-            innerTube.statsWatchtime(
-                url = url.replace("https://s.", "https://www."),
-                cpn = cpn,
-                positionSec = positionSec,
-                client = client,
-            ).status.value
+            innerTube
+                .statsWatchtime(
+                    url = url.replace("https://s.", "https://www."),
+                    cpn = cpn,
+                    positionSec = positionSec,
+                    client = client,
+                ).status.value
         }
 
     suspend fun registerPlayback(
@@ -3625,8 +3720,7 @@ object YouTube {
                 }.jsonPrimitive.content
         }
 
-    suspend fun oauthIdentity(): Result<OAuthIdentity> =
-        runCatching { innerTube.accountsList() }
+    suspend fun oauthIdentity(): Result<OAuthIdentity> = runCatching { innerTube.accountsList() }
 
     suspend fun accountInfo(): Result<AccountInfo> =
         runCatching {

@@ -1,6 +1,5 @@
 package io.github.shivytyahoo.glidetube.ui.screens.update
 
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -17,57 +16,85 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.shivytyahoo.glidetube.BuildConfig
-import io.github.shivytyahoo.glidetube.R
+import io.github.shivytyahoo.glidetube.data.update.AppRelease
 import io.github.shivytyahoo.glidetube.data.update.UpdateAnnouncement
+import io.github.shivytyahoo.glidetube.data.update.UpdateDownload
 import io.github.shivytyahoo.glidetube.data.update.UpdateRepository
 import io.github.shivytyahoo.glidetube.ui.startup.LaunchPrompts
+import io.github.shivytyahoo.glidetube.updater.AppUpdateInstaller
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
-/** Re-check at most this often while the app is opened again: the update page is re-offered on every open. */
-private val RECHECK_INTERVAL_MS = TimeUnit.MINUTES.toMillis(10)
-
-/** Runs the launch update check on every app open and asks for the update page when it finds one. */
+/**
+ * Runs the launch update check on every app open and shows the update dialog when it finds one.
+ * The check is not throttled: a warm return counts as an open, and a release that dropped since
+ * the last check must be offered right away — the in-flight guard below is only there so the
+ * cold-start double call (composition + ON_START) fetches once instead of twice.
+ */
 @HiltViewModel
 class UpdateLaunchViewModel
     @Inject
     constructor(
         private val updates: UpdateRepository,
+        private val installer: AppUpdateInstaller,
         private val prompts: LaunchPrompts,
     ) : ViewModel() {
-        private var lastCheckMs = 0L
-        private val _openUpdate = MutableStateFlow(false)
-        val openUpdate: StateFlow<Boolean> = _openUpdate.asStateFlow()
-        private val _foundVersion = MutableStateFlow<String?>(null)
-        val foundVersion: StateFlow<String?> = _foundVersion.asStateFlow()
+        private var checkJob: Job? = null
+        private val _promptRelease = MutableStateFlow<AppRelease?>(null)
+        val promptRelease: StateFlow<AppRelease?> = _promptRelease.asStateFlow()
 
-        fun check(nowMs: Long = System.currentTimeMillis()) {
-            if (nowMs - lastCheckMs < RECHECK_INTERVAL_MS) return
-            lastCheckMs = nowMs
+        fun check() {
+            if (checkJob?.isActive == true) return
             if (BuildConfig.DEBUG || !BuildConfig.UPDATER_ENABLED) {
                 prompts.updateCheckFinished(shownUpdate = false)
                 return
             }
+            checkJob =
+                viewModelScope.launch {
+                    val release = updates.releaseToAnnounce(UpdateAnnouncement.LAUNCH_PAGE, bypassCooldown = true)
+                    val shown = release != null && !isDownloadActive(release)
+                    prompts.updateCheckFinished(shownUpdate = shown)
+                    if (shown) _promptRelease.value = release
+                }
+        }
+
+        /** Starts the download for the release on screen, unless it is already running or ready, then dismisses. */
+        fun updateNow() {
+            val release = _promptRelease.value ?: return
+            _promptRelease.value = null
             viewModelScope.launch {
-                val release = updates.releaseToAnnounce(UpdateAnnouncement.LAUNCH_PAGE, bypassCooldown = true)
-                prompts.updateCheckFinished(shownUpdate = release != null)
-                if (release != null) {
-                    _foundVersion.value = release.version
-                    _openUpdate.value = true
+                when (installer.state(release.version).first()) {
+                    is UpdateDownload.Idle, is UpdateDownload.Failed -> installer.download(release)
+                    else -> Unit
                 }
             }
         }
 
-        fun consumeOpenUpdate() {
-            _openUpdate.value = false
+        /** Skips this version everywhere: the launch prompt never offers it again. */
+        fun skipPrompt() {
+            val release = _promptRelease.value ?: return
+            _promptRelease.value = null
+            viewModelScope.launch { updates.skip(release.version) }
         }
+
+        /** "Later": dismisses for this launch only. The next open checks again. */
+        fun dismissPrompt() {
+            _promptRelease.value = null
+        }
+
+        private suspend fun isDownloadActive(release: AppRelease): Boolean =
+            when (installer.state(release.version).first()) {
+                is UpdateDownload.Running, UpdateDownload.Verifying -> true
+                else -> false
+            }
     }
 
-/** Checks for an update once onboarding is done, and opens the update page when there is one to show. */
+/** Checks for an update once onboarding is done, and shows the update dialog when there is one. */
 @Composable
 fun UpdateLaunchEffect(
     needsOnboarding: Boolean?,
@@ -75,8 +102,7 @@ fun UpdateLaunchEffect(
 ) {
     val activity = LocalContext.current as? ComponentActivity ?: return
     val viewModel: UpdateLaunchViewModel = hiltViewModel(activity)
-    val openUpdate by viewModel.openUpdate.collectAsStateWithLifecycle()
-    val foundVersion by viewModel.foundVersion.collectAsStateWithLifecycle()
+    val promptRelease by viewModel.promptRelease.collectAsStateWithLifecycle()
     val needsOnboardingState = rememberUpdatedState(needsOnboarding)
     val lifecycleOwner = LocalLifecycleOwner.current
     LaunchedEffect(needsOnboarding) { if (needsOnboarding == false) viewModel.check() }
@@ -88,18 +114,18 @@ fun UpdateLaunchEffect(
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
-    LaunchedEffect(openUpdate) {
-        if (openUpdate) {
-            viewModel.consumeOpenUpdate()
-            foundVersion?.let { version ->
-                Toast
-                    .makeText(
-                        activity,
-                        activity.getString(R.string.notification_update_available, version),
-                        Toast.LENGTH_LONG,
-                    ).show()
-            }
-            onOpenUpdate()
-        }
+    // The post-update notes effect lives here, at the same app-level composition point,
+    // so the launch flow stays in one place.
+    WhatsNewEffect()
+    promptRelease?.let { release ->
+        UpdatePromptDialog(
+            release = release,
+            onUpdateNow = {
+                viewModel.updateNow()
+                onOpenUpdate()
+            },
+            onSkip = { viewModel.skipPrompt() },
+            onLater = { viewModel.dismissPrompt() },
+        )
     }
 }

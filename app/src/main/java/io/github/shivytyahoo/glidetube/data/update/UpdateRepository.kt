@@ -106,6 +106,32 @@ class UpdateRepository
 
         suspend fun skip(version: String) = dataManager.setSkippedUpdateVersion(version)
 
+        /**
+         * The latest release's notes text, whatever the installed build is. Only for surfaces
+         * that show what a release contains without asking whether it is newer — the
+         * post-update notes fall back to this when the bundled changelog asset is missing.
+         * Never throws; null when the request fails.
+         */
+        suspend fun latestReleaseBody(): String? =
+            mutex.withLock {
+                runCatching { parseGitHubRelease(fetchLatestReleaseJson()).body }.getOrNull()
+            }
+
+        private suspend fun fetchLatestReleaseJson(): String =
+            withContext(Dispatchers.IO) {
+                val request =
+                    Request
+                        .Builder()
+                        .url(STABLE_RELEASE_API)
+                        .header("Accept", GITHUB_JSON)
+                        .cacheControl(CacheControl.FORCE_NETWORK)
+                        .build()
+                client.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) throw IOException("Update check failed: HTTP ${response.code}")
+                    response.body.string()
+                }
+            }
+
         // The running APK's own SHA-256, so a same-version rebuild can be told apart
         // from the installed build: version numbers never move on this release line.
         private var installedSha256Cache: String? = null
@@ -132,21 +158,7 @@ class UpdateRepository
         }
 
         private suspend fun fetchLocked(): AppRelease? {
-            val body =
-                withContext(Dispatchers.IO) {
-                    val request =
-                        Request
-                            .Builder()
-                            .url(STABLE_RELEASE_API)
-                            .header("Accept", GITHUB_JSON)
-                            .cacheControl(CacheControl.FORCE_NETWORK)
-                            .build()
-                    client.newCall(request).execute().use { response ->
-                        if (!response.isSuccessful) throw IOException("Update check failed: HTTP ${response.code}")
-                        response.body.string()
-                    }
-                }
-            val parsed = parseGitHubRelease(body)
+            val parsed = parseGitHubRelease(fetchLatestReleaseJson())
             val release = parsed.toAppReleaseIfNewer(BuildConfig.VERSION_NAME, installedSha256())
             dataManager.setLastUpdateCheck(System.currentTimeMillis())
             _latest.value = release

@@ -1,0 +1,7 @@
+VERSION: 1.1.3
+DATE: 2026-11-27
+- Update prompt: when a newer version is out, the app now shows a dialog with what's new on every open — Update now, Skip this version, or Later
+- What's new after an update: the first time the app opens after an update, it shows what's new in that version, with All releases and Close
+- Videos buffer far ahead now: tapping a video fills the buffer well ahead within seconds, and quality only climbs after 30 seconds is banked, so playback doesn't stall on a slow connection
+- Home feed without sign-in, rebuilt: a personal feed built on your device from what you watch — with a greeting, Continue watching, Your interests and shelves for you
+- Discover and More: a Discover chip with fresh videos outside what you already like, and a More menu with Music, News, Sports, Learning, Gaming and Fashion & beauty, each with its own real feed

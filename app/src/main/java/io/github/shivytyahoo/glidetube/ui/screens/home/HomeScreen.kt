@@ -56,6 +56,8 @@ import io.github.shivytyahoo.glidetube.ui.components.layout.topbar.GlideTopBar
 import io.github.shivytyahoo.glidetube.ui.components.rememberFeedGridLayout
 import io.github.shivytyahoo.glidetube.ui.components.shared.GlidePullToRefreshBox
 import io.github.shivytyahoo.glidetube.ui.screens.home.chips.HomeChipRow
+import io.github.shivytyahoo.glidetube.ui.screens.home.chips.topTopicChannels
+import io.github.shivytyahoo.glidetube.ui.screens.home.chips.topicChannels
 import io.github.shivytyahoo.glidetube.ui.screens.settings.account.GoogleLoginActivity
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -173,6 +175,7 @@ fun HomeScreen(
                         chipRowState.heightOffset = 0f
                         viewModel.selectChip(key)
                     },
+                    moreLabels = (topicChannels.keys - topTopicChannels.toSet()).toList(),
                 )
             }
             ResettableHomePullToRefreshBox(

@@ -23,11 +23,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import io.github.shivytyahoo.glidetube.player.preview.FeedPreviewController
-import kotlinx.coroutines.delay
 import io.github.shivytyahoo.glidetube.R
 import io.github.shivytyahoo.glidetube.data.local.VideoHistoryEntry
 import io.github.shivytyahoo.glidetube.data.model.Video
+import io.github.shivytyahoo.glidetube.player.preview.FeedPreviewController
 import io.github.shivytyahoo.glidetube.ui.components.FeedGridLayout
 import io.github.shivytyahoo.glidetube.ui.components.home.ContinueWatchingShelf
 import io.github.shivytyahoo.glidetube.ui.components.home.ContinueWatchingShelfDefaults
@@ -42,6 +41,7 @@ import io.github.shivytyahoo.glidetube.ui.components.shared.card.VideoCardLayout
 import io.github.shivytyahoo.glidetube.ui.components.shared.dpadFocusGroup
 import io.github.shivytyahoo.glidetube.ui.components.shared.feedStripCardWidth
 import io.github.shivytyahoo.glidetube.ui.components.shared.rememberFeedGridPlan
+import kotlinx.coroutines.delay
 
 private const val FEED_FOOTER_MIN_VIDEOS = 100
 
@@ -68,16 +68,32 @@ internal fun HomeFeedGrid(
     onRetryLoadMore: () -> Unit = {},
     footerMinVideos: Int = FEED_FOOTER_MIN_VIDEOS,
     showShorts: Boolean = true,
+    /** The main feed only: chip feeds pass a bare state and no greeting. */
+    showGreeting: Boolean = false,
+    onInterestClick: (String) -> Unit = {},
 ) {
     val videos = uiState.videos
     val channelMemoryReason = stringResource(R.string.home_reason_channel_memory)
     val rows =
-        remember(videos, feedLayout.columns, uiState.continueWatchingVideos.isNotEmpty(), showShorts && uiState.shorts.isNotEmpty()) {
+        remember(
+            videos,
+            feedLayout.columns,
+            uiState.continueWatchingVideos.isNotEmpty(),
+            showShorts && uiState.shorts.isNotEmpty(),
+            showGreeting,
+            uiState.todayWatchedMinutes,
+            uiState.interests,
+            uiState.shelves,
+        ) {
             homeFeedRows(
                 videos = videos,
                 columns = feedLayout.columns,
                 showContinueWatching = uiState.continueWatchingVideos.isNotEmpty(),
                 showShorts = showShorts && uiState.shorts.isNotEmpty(),
+                showGreeting = showGreeting,
+                minutesToday = uiState.todayWatchedMinutes,
+                interests = uiState.interests,
+                shelves = uiState.shelves,
             )
         }
     val plan =
@@ -143,15 +159,23 @@ internal fun HomeFeedGrid(
                     if (video.isLive || video.isUpcoming) null else video.id
                 }
             val firstFullyVisible =
-                info.visibleItemsInfo.firstOrNull { item ->
-                    item.offset.y >= 0 && item.offset.y + item.size.height <= viewportHeight
-                }?.let { rows.getOrNull(it.index) }
+                info.visibleItemsInfo
+                    .firstOrNull { item ->
+                        item.offset.y >= 0 && item.offset.y + item.size.height <= viewportHeight
+                    }?.let { rows.getOrNull(it.index) }
             val viewportTarget =
                 when (firstFullyVisible) {
-                    is HomeFeedRow.Shorts -> shelfFirstVisibleShortId
-                    is HomeFeedRow.VideoCard ->
+                    is HomeFeedRow.Shorts -> {
+                        shelfFirstVisibleShortId
+                    }
+
+                    is HomeFeedRow.VideoCard -> {
                         firstFullyVisible.video.takeIf { !it.isLive && !it.isUpcoming }?.id ?: fallback
-                    else -> fallback
+                    }
+
+                    else -> {
+                        fallback
+                    }
                 }
             // The D-pad target is always a long video; the viewport target is a Short
             // exactly when the first fully visible row is the Shorts shelf.
@@ -232,6 +256,34 @@ internal fun HomeFeedGrid(
                         previewVideoId = previewVideoId,
                         previewReady = previewReady,
                         modifier = Modifier.testTag("home_shorts_shelf"),
+                    )
+                }
+
+                is HomeFeedRow.Greeting -> {
+                    HomeGreeting(
+                        minutesToday = row.minutesToday,
+                        modifier = Modifier.testTag("home_greeting"),
+                    )
+                }
+
+                is HomeFeedRow.Interests -> {
+                    HomeInterests(
+                        words = row.words,
+                        onInterestClick = onInterestClick,
+                        modifier = Modifier.testTag("home_interests"),
+                    )
+                }
+
+                is HomeFeedRow.Shelf -> {
+                    HomeShelfRow(
+                        shelf = row.shelf,
+                        cardWidth = feedStripCardWidth(feedLayout.rowWidth, 260.dp),
+                        onVideoClick = onVideoClick,
+                        onEnrichChannelMetadata = onEnrichChannelMetadata,
+                        onFocusChanged = { videoId, focused ->
+                            if (isDpad) focusedVideoId = if (focused) videoId else null
+                        },
+                        modifier = Modifier.testTag("home_shelf"),
                     )
                 }
             }

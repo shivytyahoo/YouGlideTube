@@ -31,4 +31,10 @@ class LaunchPrompts
             withTimeoutOrNull(waitMs) { updateSettled.first { it } }
             return !updateShown
         }
+
+        /** Waits for the launch update check (at most [waitMs]), then says whether it showed the update prompt. */
+        suspend fun updatePromptResolved(waitMs: Long = UPDATE_WAIT_MS): Boolean {
+            withTimeoutOrNull(waitMs) { updateSettled.first { it } }
+            return updateShown
+        }
     }

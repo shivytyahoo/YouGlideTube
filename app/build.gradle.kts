@@ -64,8 +64,8 @@ android {
         applicationId = "shivyt.android.glidetube"
         minSdk = 26
         targetSdk = 36
-        versionCode = 12
-        versionName = "1.1.2"
+        versionCode = 13
+        versionName = "1.1.3"
 
         buildConfigField("Boolean", "UPDATER_ENABLED", "true")
         buildConfigField("String", "APP_LANGUAGE_TAGS", "\"${(listOf("en") + translatedLocaleTags()).joinToString(",")}\"")

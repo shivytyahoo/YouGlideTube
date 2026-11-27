@@ -14,6 +14,21 @@ internal sealed interface HomeChip {
         override val ttlMs = 0L
     }
 
+    /** Discover: popular videos from topics not yet liked, ranked without the taste. */
+    data object Discover : HomeChip {
+        override val key = "discover"
+        override val ttlMs = 10 * MINUTE
+    }
+
+    /** One of YouTube's own topic channels, loaded by its first tab. */
+    data class TopicChannel(
+        val label: String,
+        val channelId: String,
+    ) : HomeChip {
+        override val key = "topic-channel:$label"
+        override val ttlMs = 10 * MINUTE
+    }
+
     data class Interest(
         val interest: InterestChip,
     ) : HomeChip {

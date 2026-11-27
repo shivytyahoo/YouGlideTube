@@ -2,15 +2,23 @@ package io.github.shivytyahoo.glidetube.ui.screens.home.chips
 
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
@@ -40,6 +48,8 @@ internal fun HomeChipRow(
     scrollState: TopAppBarState,
     onSelect: (String) -> Unit,
     modifier: Modifier = Modifier,
+    /** Topic labels kept under More instead of in the row. */
+    moreLabels: List<String> = emptyList(),
 ) {
     val heightPx = with(LocalDensity.current) { ChipRowHeight.toPx() }
     SideEffect {
@@ -69,6 +79,34 @@ internal fun HomeChipRow(
                 modifier = Modifier.semantics { contentDescription = description },
             )
         }
+        if (moreLabels.isNotEmpty()) {
+            item(key = "more") {
+                var open by remember { mutableStateOf(false) }
+                val moreLabel = stringResource(R.string.home_chip_more)
+                Box {
+                    GlideFilterChip(
+                        label = moreLabel,
+                        selected = state.chips.any { it.key == state.selected && it is HomeChip.TopicChannel && it.label in moreLabels },
+                        onClick = { open = true },
+                        modifier = Modifier.semantics { contentDescription = moreLabel },
+                    )
+                    DropdownMenu(
+                        expanded = open,
+                        onDismissRequest = { open = false },
+                    ) {
+                        for (label in moreLabels) {
+                            DropdownMenuItem(
+                                text = { Text(label) },
+                                onClick = {
+                                    open = false
+                                    onSelect(HomeChip.TopicChannel(label, topicChannels.getValue(label)).key)
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -96,6 +134,8 @@ private fun themeLabel(category: String): Int? =
 private fun HomeChip.label(): String =
     when (this) {
         HomeChip.All -> stringResource(R.string.home_chip_all)
+        HomeChip.Discover -> stringResource(R.string.home_chip_discover)
+        is HomeChip.TopicChannel -> label
         is HomeChip.Interest -> interest.category?.let(::themeLabel)?.let { stringResource(it) } ?: interest.label
         HomeChip.NewToYou -> stringResource(R.string.home_chip_new_to_you)
         HomeChip.RecentlyUploaded -> stringResource(R.string.home_chip_recently_uploaded)

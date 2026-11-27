@@ -38,6 +38,7 @@ class LocalDataManager
             private val LAST_UPDATE_CHECK = stringPreferencesKey("last_update_check")
             private val UPDATE_SKIPPED_VERSION = stringPreferencesKey("update_skipped_version")
             private val UPDATE_NOTIFIED_VERSION = stringPreferencesKey("update_notified_version")
+            private val UPDATE_LAST_SEEN_VERSION_CODE = intPreferencesKey("update_last_seen_version_code")
             private val BEDTIME_REMINDER =
                 androidx.datastore.preferences.core
                     .booleanPreferencesKey("bedtime_reminder")
@@ -106,6 +107,13 @@ class LocalDataManager
 
         suspend fun setNotifiedUpdateVersion(version: String) {
             context.dataStore.edit { it[UPDATE_NOTIFIED_VERSION] = version }
+        }
+
+        /** The installed versionCode the app last showed the post-update notes for, if any. */
+        val lastSeenVersionCode: Flow<Int?> = context.dataStore.data.map { it[UPDATE_LAST_SEEN_VERSION_CODE] }
+
+        suspend fun setLastSeenVersionCode(versionCode: Int) {
+            context.dataStore.edit { it[UPDATE_LAST_SEEN_VERSION_CODE] = versionCode }
         }
 
         // Theme Settings

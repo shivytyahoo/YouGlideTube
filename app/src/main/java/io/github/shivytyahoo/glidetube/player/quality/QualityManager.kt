@@ -463,6 +463,9 @@ class QualityManager(
                 )
             return
         }
+        // Same gate as the ladder branch above: a reload-based step-up on a shallow buffer
+        // discards what little is banked and reloads at a rung the link may not carry.
+        if (bufferedAheadMs < PlayerConfig.ABR_MIN_BUFFER_FOR_QUALITY_INCREASE_MS) return
         val estimatedBandwidth = bandwidthMeter?.bitrateEstimate ?: return
         val next =
             AutoQualityPolicy.stepUp(current, getWorkingStreams(), estimatedBandwidth, preferredCodecKey, weakDevice, familyOrder) ?: return

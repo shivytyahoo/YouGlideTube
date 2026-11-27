@@ -2,14 +2,15 @@ package io.github.shivytyahoo.glidetube.ui.screens.home.chips
 
 import android.util.Log
 import androidx.lifecycle.SavedStateHandle
+import io.github.shivytyahoo.glidetube.data.engagement.FeedExclusions
 import io.github.shivytyahoo.glidetube.data.local.HomeFeedCacheFilters
 import io.github.shivytyahoo.glidetube.data.local.HomeFeedCacheRepository
 import io.github.shivytyahoo.glidetube.data.model.Video
-import io.github.shivytyahoo.glidetube.data.engagement.FeedExclusions
 import io.github.shivytyahoo.glidetube.data.repository.YouTubeRepository
 import io.github.shivytyahoo.glidetube.data.repository.needsChannelMetadata
 import io.github.shivytyahoo.glidetube.innertube.YouTube
 import io.github.shivytyahoo.glidetube.innertube.pages.ServerChip
+import io.github.shivytyahoo.glidetube.ui.screens.home.GuestHomeFeed
 import io.github.shivytyahoo.glidetube.ui.screens.home.filterValid
 import io.github.shivytyahoo.glidetube.ui.screens.home.filterWatched
 import io.github.shivytyahoo.glidetube.utils.PerformanceDispatcher
@@ -35,13 +36,16 @@ internal class ChipFeedContext(
 /**
  * The chips above Home are the server's own topic chips — the ones YouTube puts on its
  * home feed — and each one loads that topic's home straight from the server with the
- * params the feed itself handed out. Nothing is assembled or ranked locally.
+ * params the feed itself handed out. Nothing is assembled or ranked locally. Discover and
+ * the topic channels are the local exceptions: they need no sign-in and load from the
+ * on-device feed and YouTube's own topic channels instead.
  */
 class HomeChipFeeds
     @Inject
     constructor(
         private val repository: YouTubeRepository,
         private val homeFeedCache: HomeFeedCacheRepository,
+        private val guestFeed: GuestHomeFeed,
     ) {
         private val chipsState = MutableStateFlow(HomeChipsState(chips = listOf(HomeChip.All)))
         internal val state: StateFlow<HomeChipsState> = chipsState.asStateFlow()
@@ -57,6 +61,13 @@ class HomeChipFeeds
 
         @Volatile
         private var topics: List<HomeChip.Topic> = emptyList()
+
+        /** Chips that need no server feed: Discover, then the topic channels kept in the row. */
+        private val localChips: List<HomeChip> =
+            listOf(HomeChip.Discover) +
+                topTopicChannels.map { label ->
+                    HomeChip.TopicChannel(label, topicChannels.getValue(label))
+                }
 
         internal fun attach(
             scope: CoroutineScope,
@@ -112,12 +123,11 @@ class HomeChipFeeds
             load(chip, force = true)
         }
 
-        private fun chipFor(key: String): HomeChip? =
-            (listOf(HomeChip.All) + topics).firstOrNull { it.key == key }
+        private fun chipFor(key: String): HomeChip? = (listOf(HomeChip.All) + localChips + topics).firstOrNull { it.key == key }
 
         private fun publishChips() {
             if (!::scope.isInitialized) return
-            val all = listOf<HomeChip>(HomeChip.All) + topics
+            val all = listOf<HomeChip>(HomeChip.All) + localChips + topics
             chipsState.update { state ->
                 if (all.none { it.key == state.selected }) {
                     state.copy(chips = all, selected = HomeChip.All.key, feed = null)
@@ -131,11 +141,10 @@ class HomeChipFeeds
             chip: HomeChip,
             force: Boolean,
         ) {
-            val topic = chip as? HomeChip.Topic ?: return
             val now = System.currentTimeMillis()
             if (!force) {
-                cache.get(topic, now)?.let { cached ->
-                    chipsState.update { if (it.selected == topic.key) it.copy(feed = cached) else it }
+                cache.get(chip, now)?.let { cached ->
+                    chipsState.update { if (it.selected == chip.key) it.copy(feed = cached) else it }
                     return
                 }
             }
@@ -144,28 +153,66 @@ class HomeChipFeeds
                 scope.launch(network) {
                     val feed =
                         try {
-                            val page = YouTube.serverHome(params = topic.params).getOrNull()
-                            if (page == null) {
-                                ChipFeed.Failed
-                            } else {
-                                val exclusions = context.exclusions()
-                                val videos =
-                                    page.videos
-                                        .distinctBy { it.id }
-                                        .filterValid()
-                                        .filterWatched(context.watched())
-                                        .filterNot(exclusions::hidesFromRecommendations)
-                                if (videos.isEmpty()) ChipFeed.Empty else ChipFeed.Videos(videos)
+                            when (chip) {
+                                is HomeChip.Discover -> {
+                                    val discovered =
+                                        guestFeed.buildDiscover(
+                                            n = HomeChipParams.MAX_VIDEOS,
+                                            filters = { HomeFeedCacheFilters(exclusions = context.exclusions()) },
+                                        )
+                                    val videos =
+                                        discovered
+                                            .distinctBy { it.id }
+                                            .filterValid()
+                                            .filterWatched(context.watched())
+                                    if (videos.isEmpty()) ChipFeed.Empty else ChipFeed.Videos(videos)
+                                }
+
+                                is HomeChip.TopicChannel -> {
+                                    val page = YouTube.topicChannel(chip.channelId).getOrNull()
+                                    if (page == null) {
+                                        ChipFeed.Failed
+                                    } else {
+                                        val exclusions = context.exclusions()
+                                        val videos =
+                                            page.videos
+                                                .distinctBy { it.id }
+                                                .filterValid()
+                                                .filterWatched(context.watched())
+                                                .filterNot(exclusions::hidesFromRecommendations)
+                                        if (videos.isEmpty()) ChipFeed.Empty else ChipFeed.Videos(videos)
+                                    }
+                                }
+
+                                is HomeChip.Topic -> {
+                                    val page = YouTube.serverHome(params = chip.params).getOrNull()
+                                    if (page == null) {
+                                        ChipFeed.Failed
+                                    } else {
+                                        val exclusions = context.exclusions()
+                                        val videos =
+                                            page.videos
+                                                .distinctBy { it.id }
+                                                .filterValid()
+                                                .filterWatched(context.watched())
+                                                .filterNot(exclusions::hidesFromRecommendations)
+                                        if (videos.isEmpty()) ChipFeed.Empty else ChipFeed.Videos(videos)
+                                    }
+                                }
+
+                                else -> {
+                                    return@launch
+                                }
                             }
                         } catch (cancellation: CancellationException) {
                             throw cancellation
                         } catch (error: Exception) {
-                            Log.d(TAG, "Chip ${topic.key} failed: ${error.message}")
+                            Log.d(TAG, "Chip ${chip.key} failed: ${error.message}")
                             ChipFeed.Failed
                         }
-                    if (feed != ChipFeed.Failed) cache.put(topic, feed, System.currentTimeMillis())
+                    if (feed != ChipFeed.Failed) cache.put(chip, feed, System.currentTimeMillis())
                     chipsState.update {
-                        if (it.selected == topic.key) it.copy(feed = feed, isRefreshing = false) else it
+                        if (it.selected == chip.key) it.copy(feed = feed, isRefreshing = false) else it
                     }
                 }
         }

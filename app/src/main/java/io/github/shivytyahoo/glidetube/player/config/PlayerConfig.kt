@@ -39,7 +39,14 @@ object PlayerConfig {
     const val LOW_MEMORY_MAX_SAFE_MAIN_BUFFER_MS = 18_000
     const val LOW_MEMORY_MAX_SAFE_MAIN_MIN_BUFFER_MS = 8_000
 
-    const val MAIN_TARGET_BUFFER_BYTES = 96 * 1024 * 1024
+    /**
+     * Byte budget for the main player's read-ahead. The loader stops above the min buffer once
+     * this is allocated, so at 2160p it capped the buffer near the 60 s min instead of letting
+     * it reach the 300 s window. 144 MB lines up with the size Media3 derives for a muxed
+     * stream when no explicit budget is set (~137 MB), and lets the buffer reach ~80 s at
+     * 2160p. The low-memory tiers below are untouched.
+     */
+    const val MAIN_TARGET_BUFFER_BYTES = 144 * 1024 * 1024
 
     /** Smaller target buffer budgets for devices with 256-384 MB app heaps. */
     const val LOW_MEMORY_MAIN_TARGET_BUFFER_BYTES = 4 * 1024 * 1024
@@ -105,8 +112,16 @@ object PlayerConfig {
     /** Share of the bandwidth estimate a stream may use, for Auto's own picks and Media3's ladder alike. */
     const val AUTO_BANDWIDTH_FRACTION = 0.7f
 
-    /** Buffer a ladder needs before Media3 moves it up a quality (Media3's default). */
-    const val ABR_MIN_BUFFER_FOR_QUALITY_INCREASE_MS = 10_000
+    /**
+     * Buffer that must be ahead before Auto climbs a rung — Media3's upgrade gate and our own
+     * ceiling-raise guard share this value. At the 10 s default the climb fired ~5 s after a tap
+     * on a burst-inflated estimate (199–206 Mbps on a link sustaining a few), while the buffer
+     * was barely past the gate; the first segment at the new rung then took tens of seconds to
+     * arrive and the shallow buffer drained to zero. 30 s makes the climb follow demonstrated
+     * throughput: the buffer builds fast at the start rung, so a healthy link still climbs
+     * within seconds, while a slow one stays low until it has actually banked buffer.
+     */
+    const val ABR_MIN_BUFFER_FOR_QUALITY_INCREASE_MS = 30_000
 
     /**
      * Media3 holds the current quality while more than this is buffered. At its 25 s default a full

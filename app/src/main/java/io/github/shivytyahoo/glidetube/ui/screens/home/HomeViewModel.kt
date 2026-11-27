@@ -13,9 +13,12 @@ import io.github.shivytyahoo.glidetube.data.engagement.FeedInvalidationBus
 import io.github.shivytyahoo.glidetube.data.feed.FeedPrefetchQueue
 import io.github.shivytyahoo.glidetube.data.feed.FeedPrefetchRequest
 import io.github.shivytyahoo.glidetube.data.local.CachedHomeVideo
+import io.github.shivytyahoo.glidetube.data.local.GuestTasteStore
 import io.github.shivytyahoo.glidetube.data.local.HomeFeedCacheFilters
 import io.github.shivytyahoo.glidetube.data.local.HomeFeedCacheRepository
+import io.github.shivytyahoo.glidetube.data.local.LocalDataManager
 import io.github.shivytyahoo.glidetube.data.local.SessionHistory
+import io.github.shivytyahoo.glidetube.data.local.VideoHistoryEntry
 import io.github.shivytyahoo.glidetube.data.model.Video
 import io.github.shivytyahoo.glidetube.data.model.toVideo
 import io.github.shivytyahoo.glidetube.data.repository.YouTubeRepository
@@ -56,6 +59,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.withTimeoutOrNull
+import java.time.LocalDate
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
@@ -85,6 +89,9 @@ class HomeViewModel
         private val viewHistory: SessionHistory,
         private val chipFeeds: HomeChipFeeds,
         private val searchHistory: io.github.shivytyahoo.glidetube.data.local.SearchHistoryRepository,
+        private val guestFeed: GuestHomeFeed,
+        private val tasteStore: GuestTasteStore,
+        private val localDataManager: LocalDataManager,
         savedStateHandle: SavedStateHandle,
         @ApplicationContext private val appContext: Context,
     ) : ViewModel() {
@@ -104,6 +111,10 @@ class HomeViewModel
             private const val GUEST_FALLBACK_MAX_VIDEOS = 24
             private const val GUEST_FALLBACK_PAGE_SIZE = 12
             private const val GUEST_FALLBACK_TIMEOUT_MS = 15_000L
+
+            // A view is settled — its position will not move again — once finished, or
+            // five minutes old, or superseded by a newer entry.
+            private const val SETTLED_VIEW_STALE_MS = 5 * 60 * 1000L
 
             // Saved rows of each source ranked again on load-more; the best of them fill the page.
             private const val RESERVE_RERANK_PER_SOURCE = 16
@@ -178,6 +189,11 @@ class HomeViewModel
         private var guestSeedRotation = 0
         private var guestFallbackPool: GuestFallbackPool? = null
         private var isGuestFallbackFeed = false
+        private var isGuestEngineFeed = false
+
+        /** The latest local watch history; the guest feed's seeds. */
+        @Volatile
+        private var latestHistory: List<VideoHistoryEntry> = emptyList()
 
         // Changes with every feed load, so work cancelled by leaving Home can tell it from a reload.
         @Volatile
@@ -255,6 +271,7 @@ class HomeViewModel
                     playerPreferences.continueWatchingEnabled,
                     playerPreferences.hideWatchedShorts,
                 ) { history, hideWatched, threshold, continueWatchingEnabled, hideWatchedShorts ->
+                    latestHistory = history
                     filterHomeHistory(
                         history = history,
                         hideWatchedVideos = hideWatched,
@@ -276,6 +293,19 @@ class HomeViewModel
                             shorts = shorts,
                             continueWatchingVideos = result.continueWatchingVideos,
                         )
+                    }
+                    // The taste learns here, lazily, from the history that already exists:
+                    // no player file is touched, and nothing is learned while history is off.
+                    learnSettledViews(latestHistory)
+                    val watchedTodayMs = localDataManager.watchLedger.first()[LocalDate.now()] ?: 0L
+                    val minutesToday = (watchedTodayMs / 60_000).toInt()
+                    val words = tasteStore.interests()
+                    _uiState.update { state ->
+                        if (state.todayWatchedMinutes == minutesToday && state.interests == words) {
+                            state
+                        } else {
+                            state.copy(todayWatchedMinutes = minutesToday, interests = words)
+                        }
                     }
                 }
             }
@@ -472,6 +502,7 @@ class HomeViewModel
             homePrefetchQueue.reset()
             guestFallbackPool = null
             isGuestFallbackFeed = false
+            isGuestEngineFeed = false
             synchronized(homePrefetchWorkerLock) {
                 homePrefetchJob?.cancel()
             }
@@ -620,9 +651,47 @@ class HomeViewModel
                     if (page == null || (page.videos.isEmpty() && page.shorts.isEmpty())) {
                         if (!YouTube.isSignedIn()) {
                             // The server browse serves no feed to this visitor, so the feed is
-                            // seeded instead: the session's searches first, then the trending
-                            // chart. The pool stays for load-more, so scrolling never ends at
-                            // the first 24 videos.
+                            // built on the device instead, from what was watched and searched
+                            // here: related videos, liked channels, keyword searches. It works
+                            // from the first open — starter topics seed it until the taste
+                            // learns — and improves as more is watched. The playlist pool
+                            // below stays as the last resort.
+                            learnFromRecentSearches()
+                            val engineFeed =
+                                withTimeoutOrNull(GUEST_FALLBACK_TIMEOUT_MS) {
+                                    guestFeed.buildGuestFeed(
+                                        n = GUEST_FALLBACK_MAX_VIDEOS,
+                                        skip = previousFeedIds,
+                                        history = latestHistory,
+                                        filters = { cacheFilters() },
+                                    )
+                                }
+                            val engineVideos =
+                                engineFeed?.videos.orEmpty().filterWatched(watchedVideoIds.value)
+                            if (engineVideos.isNotEmpty()) {
+                                isGuestEngineFeed = true
+                                ShivLog.i("home guest engine videos=${engineVideos.size} shelves=${engineFeed?.shelves?.size ?: 0}")
+                                _uiState.update { state ->
+                                    state.copy(
+                                        videos = engineVideos,
+                                        shorts = emptyList(),
+                                        isLoading = false,
+                                        isRefreshing = false,
+                                        error = null,
+                                        isFlowFeed = true,
+                                        hasMorePages = true,
+                                        lastRefreshTime = System.currentTimeMillis(),
+                                        origins = engineFeed?.origins.orEmpty(),
+                                        shelves = engineFeed?.shelves.orEmpty(),
+                                    )
+                                }
+                                HomeFeedCache.update(engineVideos, emptyList())
+                                runCatching { persistentHomeFeedCache.saveLastFeed(engineVideos) }
+                                return@launch
+                            }
+                            // The engine found nothing to rank, so the feed is seeded instead:
+                            // the session's searches first, then the trending chart. The pool
+                            // stays for load-more, so scrolling never ends at the first 24 videos.
                             val pool =
                                 GuestFallbackPool(
                                     repository = repository,
@@ -651,6 +720,7 @@ class HomeViewModel
                                         hasMorePages = pool.hasMore,
                                         lastRefreshTime = System.currentTimeMillis(),
                                         origins = emptyMap(),
+                                        shelves = emptyList(),
                                     )
                                 }
                                 HomeFeedCache.update(fallback, emptyList())
@@ -702,6 +772,7 @@ class HomeViewModel
                             error = null,
                             lastRefreshTime = System.currentTimeMillis(),
                             origins = emptyMap(),
+                            shelves = emptyList(),
                         )
                     }
                     HomeFeedCache.update(videos, shorts)
@@ -720,6 +791,39 @@ class HomeViewModel
                 .map { it.query }
                 .filter { it.isNotBlank() }
                 .distinct()
+
+        /**
+         * The taste learns lazily from the persisted local history: a view counts once it is
+         * settled — finished, or old enough that its position will not move again, or
+         * superseded by a newer entry — and never twice for the same position. The player
+         * itself is untouched, and nothing is learned while history is off.
+         */
+        private suspend fun learnSettledViews(history: List<VideoHistoryEntry>) {
+            if (playerPreferences.isWatchHistorySavingBlocked()) return
+            val now = System.currentTimeMillis()
+            for ((index, entry) in history.withIndex()) {
+                val positionMs = entry.position
+                val durationMs = entry.duration
+                val finished = durationMs > 0 && positionMs >= durationMs * 95 / 100
+                val stale = now - entry.timestamp > SETTLED_VIEW_STALE_MS
+                val superseded = index > 0
+                if ((finished || stale || superseded) && !tasteStore.isLearned(entry.videoId, positionMs)) {
+                    tasteStore.learnWatch(
+                        video = entry.toResumeVideo(),
+                        watchedSec = (positionMs / 1000).toInt(),
+                        lengthSec = (durationMs / 1000).toInt(),
+                    )
+                }
+            }
+        }
+
+        /** This session's searches teach the taste its keywords; deduped in the store. */
+        private suspend fun learnFromRecentSearches() {
+            if (playerPreferences.isWatchHistorySavingBlocked()) return
+            for (query in guestFallbackQueries()) {
+                tasteStore.learnSearch(query)
+            }
+        }
 
         /** A country's trending music videos: YouTube Music's charts page names the chart playlist. */
         private suspend fun trendingChartVideos(): List<Video> {
@@ -742,8 +846,27 @@ class HomeViewModel
             held: HeldPage?,
             lastAttempt: Boolean,
         ): PrefetchAttempt {
-            // A guest feed has no server continuation: its next page comes from the seed pool.
+            // A guest feed has no server continuation: its next page comes from the engine,
+            // then from the seed pool.
             if (serverContinuation == null) {
+                if (isGuestEngineFeed) {
+                    val page =
+                        withTimeoutOrNull(GUEST_FALLBACK_TIMEOUT_MS) {
+                            guestFeed.buildGuestFeed(
+                                n = GUEST_FALLBACK_PAGE_SIZE,
+                                skip = _uiState.value.videos.mapTo(HashSet()) { it.id },
+                                history = latestHistory,
+                                filters = { cacheFilters() },
+                            )
+                        }
+                    val videos = page?.videos.orEmpty().filterWatched(watchedVideoIds.value)
+                    return finishPrefetchPage(
+                        (held?.videos.orEmpty() + videos).distinctBy { it.id },
+                        HeldPage(emptyList(), held?.origins.orEmpty() + page?.origins.orEmpty()),
+                        generation,
+                        lastAttempt,
+                    )
+                }
                 val pool =
                     guestFallbackPool.takeIf { isGuestFallbackFeed }
                         ?: return PrefetchAttempt(LoadMoreOutcome.EXHAUSTED)
