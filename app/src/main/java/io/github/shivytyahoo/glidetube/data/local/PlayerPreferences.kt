@@ -258,6 +258,7 @@ class PlayerPreferences(
         val HOME_VIEW_MODE = stringPreferencesKey("home_view_mode")
         val HOME_FEED_COLUMNS = stringPreferencesKey("home_feed_columns")
         val HOME_FEED_ENABLED = booleanPreferencesKey("home_feed_enabled")
+        val SHOW_LOCAL_FEATURES_SIGNED_IN = booleanPreferencesKey("show_local_features_signed_in")
         val REFRESH_HOME_ON_RESELECT = booleanPreferencesKey("refresh_home_on_reselect")
         val RELATED_CARD_STYLE = stringPreferencesKey("related_card_style")
 
@@ -1329,6 +1330,19 @@ class PlayerPreferences(
     suspend fun setHomeFeedEnabled(enabled: Boolean) {
         context.playerPreferencesDataStore.edit { preferences ->
             preferences[Keys.HOME_FEED_ENABLED] = enabled
+        }
+    }
+
+    // Discover/Live/More while signed in (opt-in; default is the server feed only)
+    val showLocalFeaturesWhenSignedIn: Flow<Boolean> =
+        context.playerPreferencesDataStore.data
+            .map { preferences ->
+                preferences[Keys.SHOW_LOCAL_FEATURES_SIGNED_IN] ?: false
+            }
+
+    suspend fun setShowLocalFeaturesWhenSignedIn(enabled: Boolean) {
+        context.playerPreferencesDataStore.edit { preferences ->
+            preferences[Keys.SHOW_LOCAL_FEATURES_SIGNED_IN] = enabled
         }
     }
 
