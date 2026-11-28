@@ -56,6 +56,15 @@ internal object ContentIndex {
             section = R.string.settings_section_home,
             destination = page,
         )
+    val localFeaturesWhenSignedIn =
+        SettingEntry(
+            key = "content.home.local_features_signed_in",
+            title = R.string.content_settings_home_local_features_title,
+            summary = R.string.content_settings_home_local_features_subtitle,
+            keywords = R.string.settings_keywords_local_features,
+            section = R.string.settings_section_home,
+            destination = page,
+        )
     val subsVideos =
         SettingEntry(
             key = "content.subs.videos",
@@ -204,6 +213,7 @@ internal object ContentIndex {
             homeShortsShelf,
             homeSubscriptions,
             hideWatchedHome,
+            localFeaturesWhenSignedIn,
             subsVideos,
             subsShorts,
             subsShortsShelf,
