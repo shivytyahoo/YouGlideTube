@@ -3,6 +3,7 @@ package io.github.shivytyahoo.glidetube.player.factory
 import android.os.Handler
 import android.os.Looper
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.TransferListener
 import androidx.media3.exoplayer.upstream.BandwidthMeter
 import androidx.media3.exoplayer.upstream.DefaultBandwidthMeter
 import io.github.shivytyahoo.glidetube.player.config.PlayerConfig
@@ -48,6 +49,8 @@ internal class CappedBandwidthMeter(
     }
 
     override fun getTimeToFirstByteEstimateUs(): Long = delegate.timeToFirstByteEstimateUs
+
+    override fun getTransferListener(): TransferListener? = delegate.transferListener
 
     override fun addEventListener(
         handler: Handler,

@@ -74,7 +74,7 @@ internal object AdaptiveDashManifest {
             representations
                 .groupBy { it.format.sampleMimeType }
                 .values
-                .mapIndexed { index, set -> AdaptationSet(index, C.TRACK_TYPE_VIDEO, set, emptyList(), emptyList(), emptyList()) }
+                .mapIndexed { index, set -> AdaptationSet(index.toLong(), C.TRACK_TYPE_VIDEO, set, emptyList(), emptyList(), emptyList()) }
         val audioSets = audioAdaptationSets(audioStreams, firstId = videoSets.size)
         return DashManifest(
             C.TIME_UNSET,

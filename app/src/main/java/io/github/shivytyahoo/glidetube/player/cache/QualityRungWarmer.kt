@@ -3,18 +3,18 @@ package io.github.shivytyahoo.glidetube.player.cache
 import android.net.Uri
 import android.util.Log
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DataSpec
+import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.datasource.cache.CacheWriter
 import io.github.shivytyahoo.glidetube.utils.PerformanceDispatcher
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import org.schabi.newpipe.extractor.stream.VideoStream
 import java.io.IOException
-import kotlin.coroutines.coroutineContext
 
 /**
  * Warms a tapped quality rung's first bytes into the video cache, through the same cache the
@@ -72,18 +72,18 @@ internal class QualityRungWarmer(
         } catch (e: IOException) {
             // A superseded warm is cancelled, not failed; anything else just leaves the
             // rung cold, and the switch still plays — it fetches the bytes instead.
-            if (coroutineContext()[Job]?.isActive == true) Log.d(TAG, "Rung warm skipped: ${e.javaClass.simpleName}")
+            if (currentCoroutineContext()[Job]?.isActive == true) Log.d(TAG, "Rung warm skipped: ${e.javaClass.simpleName}")
         }
     }
 
     private suspend fun write(
-        source: DataSource,
+        source: CacheDataSource,
         uri: Uri,
         position: Long,
         length: Long,
     ) {
         if (length <= 0) return
-        coroutineContext().ensureActive()
+        currentCoroutineContext().ensureActive()
         val spec =
             DataSpec
                 .Builder()
@@ -92,7 +92,7 @@ internal class QualityRungWarmer(
                 .setLength(length)
                 .build()
         val writer = CacheWriter(source, spec, null, null)
-        val handle = coroutineContext()[Job]?.invokeOnCompletion { writer.cancel() }
+        val handle = currentCoroutineContext()[Job]?.invokeOnCompletion { writer.cancel() }
         try {
             writer.cache()
         } finally {
