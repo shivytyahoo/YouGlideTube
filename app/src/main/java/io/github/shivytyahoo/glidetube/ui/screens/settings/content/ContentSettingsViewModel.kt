@@ -20,6 +20,7 @@ class ContentSettingsViewModel
         val homeShortsShelf = preferences.homeShortsShelfEnabled.asState(true)
         val homeSubscriptions = preferences.homeSubscriptionsEnabled.asState(true)
         val hideWatchedHome = preferences.hideWatchedVideosFromHome.asState(false)
+        val localFeaturesWhenSignedIn = preferences.showLocalFeaturesWhenSignedIn.asState(false)
 
         val subsVideos = preferences.subscriptionShowVideos.asState(true)
         val subsShorts = preferences.subscriptionShowShorts.asState(true)
@@ -51,6 +52,8 @@ class ContentSettingsViewModel
         fun setHomeSubscriptions(value: Boolean) = write { preferences.setHomeSubscriptionsEnabled(value) }
 
         fun setHideWatchedHome(value: Boolean) = write { preferences.setHideWatchedVideosFromHome(value) }
+
+        fun setLocalFeaturesWhenSignedIn(value: Boolean) = write { preferences.setShowLocalFeaturesWhenSignedIn(value) }
 
         fun setSubsVideos(value: Boolean) = write { preferences.setSubscriptionShowVideos(value) }
 

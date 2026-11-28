@@ -58,6 +58,7 @@ internal fun ContentSettingsScreen(
             switch(ContentIndex.homeShortsShelf, viewModel.homeShortsShelf, viewModel::setHomeShortsShelf, enabled = shortsContent)
             switch(ContentIndex.homeSubscriptions, viewModel.homeSubscriptions, viewModel::setHomeSubscriptions)
             switch(ContentIndex.hideWatchedHome, viewModel.hideWatchedHome, viewModel::setHideWatchedHome)
+            switch(ContentIndex.localFeaturesWhenSignedIn, viewModel.localFeaturesWhenSignedIn, viewModel::setLocalFeaturesWhenSignedIn)
         }
         group(key = "content.music", header = R.string.screen_title_music) {
             nav(
