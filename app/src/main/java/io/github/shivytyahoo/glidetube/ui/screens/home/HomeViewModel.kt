@@ -199,6 +199,10 @@ class HomeViewModel
         @Volatile
         private var feedGeneration = 0
 
+        /** The Settings opt-in for local menus while signed in; read by applyLocalFeatures. */
+        @Volatile
+        private var localFeaturesOptIn = false
+
         // The server feed's next-page token; null when the server has no page loaded or left.
         @Volatile
         private var serverContinuation: String? = null
@@ -224,6 +228,16 @@ class HomeViewModel
 
         fun enrichChipVideo(video: Video) = chipFeeds.enrichVisible(video)
 
+        /**
+         * Discover/Live/More show for guests, and for signed-in users who opt in (Settings).
+         * The feed itself never changes: signed in, it stays the server feed.
+         */
+        private fun applyLocalFeatures() {
+            val enabled = !YouTube.isSignedIn() || localFeaturesOptIn
+            _uiState.update { if (it.showLocalFeatures == enabled) it else it.copy(showLocalFeatures = enabled) }
+            chipFeeds.setLocalFeaturesEnabled(enabled)
+        }
+
         init {
             chipFeeds.attach(
                 scope = viewModelScope,
@@ -242,6 +256,13 @@ class HomeViewModel
                     .distinctUntilChanged()
                     .drop(1)
                     .collect { refreshFeed() }
+            }
+            // The opt-in for local menus while signed in: the chips follow it live, no restart.
+            viewModelScope.launch {
+                playerPreferences.showLocalFeaturesWhenSignedIn.collect { enabled ->
+                    localFeaturesOptIn = enabled
+                    applyLocalFeatures()
+                }
             }
             if (HomeFeedCache.isFresh()) {
                 _uiState.update {
@@ -623,6 +644,8 @@ class HomeViewModel
                     shelves = if (signedIn) emptyList() else it.shelves,
                 )
             }
+            // Sign-in state can change between loads; the menus follow it.
+            applyLocalFeatures()
 
             feedJob =
                 viewModelScope.launch(PerformanceDispatcher.networkIO) {

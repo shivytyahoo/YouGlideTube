@@ -17,6 +17,12 @@ data class HomeUiState(
     val isFlowFeed: Boolean = false,
     /** Signed out: the empty state offers search and sign-in instead of a bare error. */
     val isGuest: Boolean = false,
+    /**
+     * Discover/Live/More chips and the More menu show: always for guests, and for signed-in
+     * users who opt in (Settings). The feed itself never changes — signed in, it stays the
+     * server feed.
+     */
+    val showLocalFeatures: Boolean = false,
     val lastRefreshTime: Long = 0L,
     /** Why each card is on Home; channel memory cards also say so under their title. */
     val origins: Map<String, HomeCardOrigin> = emptyMap(),

@@ -175,7 +175,7 @@ fun HomeScreen(
                         chipRowState.heightOffset = 0f
                         viewModel.selectChip(key)
                     },
-                    moreLabels = if (uiState.isGuest) (topicChannels.keys - topTopicChannels.toSet()).toList() else emptyList(),
+                    moreLabels = if (uiState.showLocalFeatures) (topicChannels.keys - topTopicChannels.toSet()).toList() else emptyList(),
                 )
             }
             ResettableHomePullToRefreshBox(
