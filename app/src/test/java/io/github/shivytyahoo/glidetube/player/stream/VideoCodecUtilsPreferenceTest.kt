@@ -13,7 +13,7 @@ class VideoCodecUtilsPreferenceTest {
     private val defaultOrder = VideoCodecUtils.preferredVideoMimeTypes()
 
     @Test
-    fun `no preference keeps the decode-cost order`() {
+    fun `no preference keeps the default order`() {
         assertArrayEquals(defaultOrder, VideoCodecUtils.preferredVideoMimeTypes("auto"))
         assertArrayEquals(defaultOrder, VideoCodecUtils.preferredVideoMimeTypes(null))
         assertArrayEquals(defaultOrder, VideoCodecUtils.preferredVideoMimeTypes(""))
@@ -65,13 +65,13 @@ class VideoCodecUtilsPreferenceTest {
         )
     }
 
-    // Without a fallback the decode-cost order still applies, which puts H.264 ahead of VP9 (#812).
+    // Without a fallback the lightest-first order still applies, which puts VP9 ahead of H.264.
     @Test
     fun `a lone preferred codec leaves the rest in the built-in order`() {
         assertEquals(-1, VideoCodecUtils.codecRankWithPreference("av1", "av1"))
         assertTrue(
-            VideoCodecUtils.codecRankWithPreference("h264", "av1") <
-                VideoCodecUtils.codecRankWithPreference("vp9", "av1"),
+            VideoCodecUtils.codecRankWithPreference("vp9", "av1") <
+                VideoCodecUtils.codecRankWithPreference("h264", "av1"),
         )
     }
 

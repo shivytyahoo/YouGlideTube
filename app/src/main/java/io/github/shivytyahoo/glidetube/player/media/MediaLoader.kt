@@ -36,6 +36,7 @@ import io.github.shivytyahoo.glidetube.player.stream.ResolvedCaption
 import io.github.shivytyahoo.glidetube.player.stream.StreamProcessor
 import io.github.shivytyahoo.glidetube.player.stream.VideoCodecUtils
 import io.github.shivytyahoo.glidetube.player.surface.SurfaceManager
+import io.github.shivytyahoo.glidetube.utils.ShivLog
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.schabi.newpipe.extractor.stream.AudioStream
 import org.schabi.newpipe.extractor.stream.VideoStream
@@ -294,6 +295,34 @@ class MediaLoader(
         }
     }
 
+    /**
+     * One stable telemetry line per load, kept in-app for the Diagnostics report: which
+     * manifest the player is adapting over, and which codec families it carries. Same
+     * key=value shape as the quality-switch lines.
+     */
+    private fun logManifestSource(
+        resolver: VideoPlaybackResolver,
+        selectedStreams: List<VideoStream>,
+        mediaId: String,
+        isLiveStream: Boolean,
+        hlsUrl: String?,
+    ) {
+        val source =
+            when {
+                isLiveStream && !hlsUrl.isNullOrEmpty() -> "live-hls"
+                resolver.resolvedNativeDash -> "native"
+                resolver.resolvedAdaptiveLadder -> "generated-ladder"
+                else -> "generated-single"
+            }
+        val families =
+            selectedStreams
+                .map { VideoCodecUtils.codecKeyFromStream(it) }
+                .distinct()
+                .sorted()
+                .joinToString(",")
+        ShivLog.i("manifestSource id=$mediaId src=$source fams=$families")
+    }
+
     private fun reattachSurface(player: ExoPlayer) {
         surfaceManager?.let { sm ->
             val holder = sm.getSurfaceHolder()
@@ -438,6 +467,7 @@ class MediaLoader(
                     ).also {
                         onAdaptiveLadder(resolver.resolvedAdaptiveLadder)
                         lastSourceWasMultiRungDash = resolver.resolvedMultiRungDash
+                        logManifestSource(resolver, selectedStreams, mediaId, isLiveStream, hlsUrl)
                     }
             }
 

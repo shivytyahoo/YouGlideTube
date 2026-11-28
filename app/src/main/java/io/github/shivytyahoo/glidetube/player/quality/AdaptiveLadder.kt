@@ -5,9 +5,11 @@ import io.github.shivytyahoo.glidetube.player.stream.VideoCodecUtils
 import org.schabi.newpipe.extractor.stream.VideoStream
 
 /**
- * The qualities Auto hands to Media3 as one source: every describable stream in the anchor's codec
- * and colour depth, one per height. Media3 cannot switch between codecs or between SDR and HDR
- * without a visible decoder change, so those never share a ladder.
+ * The qualities Auto hands to Media3 as one source: one rung per height, the lightest stream at
+ * that height, across codec families — the manifest carries one AdaptationSet per family, so the
+ * selector can move between families without a reload. A weak device keeps the old single-family
+ * ladder: it stutters on AV1/VP9 even where they claim hardware decode. SDR and HDR never share
+ * a ladder: Media3 cannot switch between them without a visible decoder change.
  */
 internal object AdaptiveLadder {
     private const val MIN_RUNGS = 2
@@ -17,20 +19,28 @@ internal object AdaptiveLadder {
         anchor: VideoStream?,
         streams: List<VideoStream>,
         decodes: ((VideoStream) -> Boolean)? = null,
+        weakDevice: Boolean = false,
     ): List<VideoStream> {
         anchor ?: return emptyList()
-        val codec = VideoCodecUtils.codecKeyFromStream(anchor)
         val deep = isHighBitDepth(anchor)
-        return streams
-            .filter {
+        val candidates =
+            streams.filter {
                 AdaptiveDashManifest.canDescribe(it) &&
-                    VideoCodecUtils.codecKeyFromStream(it) == codec &&
                     isHighBitDepth(it) == deep &&
-                    it.format == anchor.format &&
                     (decodes == null || decodes(it))
-            }.groupBy(VideoCodecUtils::qualityHeightFromStream)
+            }
+        // A weak device plays H.264 only: the anchor's family is the whole ladder, as before.
+        val family =
+            if (weakDevice) {
+                val codec = VideoCodecUtils.codecKeyFromStream(anchor)
+                candidates.filter { VideoCodecUtils.codecKeyFromStream(it) == codec && it.format == anchor.format }
+            } else {
+                candidates
+            }
+        return family
+            .groupBy(VideoCodecUtils::qualityHeightFromStream)
             .values
-            .map { sameHeight -> sameHeight.maxBy { it.bitrate } }
+            .map { sameHeight -> sameHeight.minBy { it.bitrate } }
             .sortedBy { it.bitrate }
             .takeIf { it.size >= MIN_RUNGS }
             .orEmpty()
@@ -54,9 +64,9 @@ internal object AdaptiveLadder {
         if (pinned != null) {
             // A pinned quality is the viewer's explicit choice: it escapes the decoder gate
             // the way it escapes the size cap, and plays alone if its ladder comes out empty.
-            rungs(pinned, streams)
+            rungs(pinned, streams, weakDevice = weakDevice)
         } else {
-            rungs(anchorFor(streams, preferredCodec, bandwidthEstimateBps, weakDevice, familyOrder, decodes), streams, decodes)
+            rungs(anchorFor(streams, preferredCodec, bandwidthEstimateBps, weakDevice, familyOrder, decodes), streams, decodes, weakDevice)
         }
 
     /**

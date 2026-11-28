@@ -25,7 +25,7 @@ import androidx.media3.common.util.Util
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.SeekParameters
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
-import androidx.media3.exoplayer.upstream.DefaultBandwidthMeter
+import androidx.media3.exoplayer.upstream.BandwidthMeter
 import androidx.media3.session.MediaSession
 import dagger.hilt.android.EntryPointAccessors
 import io.github.shivytyahoo.glidetube.data.local.PlayerPreferences
@@ -47,6 +47,7 @@ import io.github.shivytyahoo.glidetube.player.audio.AudioSessionAnnouncer
 import io.github.shivytyahoo.glidetube.player.audio.eq.EqualizerAudioProcessor
 import io.github.shivytyahoo.glidetube.player.cache.DiskReadAhead
 import io.github.shivytyahoo.glidetube.player.cache.PlayerCacheManager
+import io.github.shivytyahoo.glidetube.player.cache.QualityRungWarmer
 import io.github.shivytyahoo.glidetube.player.config.DeviceCapabilities
 import io.github.shivytyahoo.glidetube.player.config.PlayerConfig
 import io.github.shivytyahoo.glidetube.player.config.VideoSizeCap
@@ -146,7 +147,7 @@ class EnhancedPlayerManager private constructor() {
     // Core player components
     private var player: ExoPlayer? = null
     private var trackSelector: DefaultTrackSelector? = null
-    private var bandwidthMeter: DefaultBandwidthMeter? = null
+    private var bandwidthMeter: BandwidthMeter? = null
     private var videoEqualizer: EqualizerAudioProcessor? = null
     private var eqObserver: Job? = null
     private var audioEffects: AudioEffectsEntryPoint? = null
@@ -565,6 +566,7 @@ class EnhancedPlayerManager private constructor() {
     private val backgroundServiceManager = BackgroundServiceManager()
     private var cacheManager: PlayerCacheManager? = null
     private var diskReadAhead: DiskReadAhead? = null
+    private var qualityRungWarmer: QualityRungWarmer? = null
     private var qualityManager: QualityManager? = null
     private var surfaceManager: SurfaceManager? = null
     private var sponsorBlockHandler: SponsorBlockHandler? = null
@@ -737,6 +739,7 @@ class EnhancedPlayerManager private constructor() {
                 weakDevice = weakDevice,
                 familyOrder = tvCodecOrder,
                 tvMimeTypes = tvMimeTypes,
+                onWarmRung = { stream, position -> qualityRungWarmer?.warm(stream, position) },
             )
 
         // A rung the hardware cannot decode is not a rung at all: Auto's ladder is filtered
@@ -868,6 +871,7 @@ class EnhancedPlayerManager private constructor() {
                         .also(built::addAnalyticsListener)
                 }
             }
+        qualityRungWarmer = cacheManager?.let { QualityRungWarmer(it, scope) }
         player?.addAnalyticsListener(
             RenderedFirstFrameListener(currentVideoId = { currentVideoId }) { videoId -> _firstFrameVideoId.value = videoId },
         )
@@ -2482,7 +2486,7 @@ class EnhancedPlayerManager private constructor() {
                             translateTo = preferredSubtitleLanguage,
                         ),
                 durationSeconds = InnerTubeVideoMapper.durationSeconds(extraction),
-                dashManifestUrl = extraction.liveDashUrl,
+                dashManifestUrl = extraction.dashManifestUrl ?: extraction.liveDashUrl,
                 streamType = InnerTubeVideoMapper.streamType(extraction),
                 relatedVideos = visibleRelatedCandidates(video.id),
                 preferredCodec = preferredCodecKey,
@@ -3675,6 +3679,8 @@ class EnhancedPlayerManager private constructor() {
         audioSessionAnnouncer = null
         diskReadAhead?.release()
         diskReadAhead = null
+        qualityRungWarmer?.cancel()
+        qualityRungWarmer = null
         // Persist the measured estimate so the next start seeds the ABR from the real
         // link speed instead of the default.
         val estimateToPersist = bandwidthMeter?.bitrateEstimate ?: 0L

@@ -36,6 +36,14 @@ import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
+/**
+ * The clients GVS is not currently refusing to serve. See [ClientGateTracker]. A gate is a
+ * property of the client on this network, not of the visitor: it survives a visitor identity
+ * rotation and lapses only on its 30-minute TTL, so a gated client stays out of every race
+ * until then. Top-level (not a member) so the ladder's gate exclusion is unit-testable.
+ */
+internal fun List<YouTubeClient>.ungated(): List<YouTubeClient> = filterNot { ClientGateTracker.isGated(it.clientName) }
+
 object InnerTubeVideoStreamExtractor {
     private const val TAG = "InnerTubeVideoExtractor"
     private const val PER_CLIENT_TIMEOUT_MS = 6000L
@@ -70,8 +78,6 @@ object InnerTubeVideoStreamExtractor {
     private val N_PARAM_REGEX = Regex("""(?:^|[?&])n=([^&]+)""")
     private val POT_PARAM_REGEX = Regex("""[?&]pot=""")
 
-    @Volatile
-    private var lastSeenIdentityGeneration = WebPoTokenSession.identityGeneration
     private val extractionCoalescer =
         InFlightRequestCoalescer<ExtractionKey, VideoExtractionResult?>(
             CoroutineScope(SupervisorJob() + Dispatchers.IO),
@@ -214,6 +220,13 @@ object InnerTubeVideoStreamExtractor {
         val liveHlsUrl: String? = null,
         val liveDashUrl: String? = null,
         /**
+         * The player response's own DASH manifest URL for a VOD: the manifest carries every
+         * codec family, so the player can adapt across them instead of a generated
+         * single-family ladder. Null when the response carries none — the generated ladder
+         * is the fallback. Live results keep using [liveDashUrl].
+         */
+        val dashManifestUrl: String? = null,
+        /**
          * Tracking URLs minted for WEB by a WEB player response, when the
          * winning response came from another client. The history beacons
          * must present a blob minted for the client they claim: a
@@ -313,7 +326,6 @@ object InnerTubeVideoStreamExtractor {
         withContext(Dispatchers.IO) {
             Log.w(TAG, "Extraction start for $videoId (forceSabr=$forceSabr, method=${forcedMethod.name})")
             PlayerDiagnostics.logWarning(TAG, "extract start $videoId forceSabr=$forceSabr method=${forcedMethod.name}")
-            dropGatesOnIdentityChange()
             blockedVideoIds.remove(videoId)
             goneVideoIds.remove(videoId)
             if (forceSabr) {
@@ -371,7 +383,6 @@ object InnerTubeVideoStreamExtractor {
             val reroll = if (fullWall) WebPoTokenSession.rerollAfterPlayerWall(walledGeneration) else null
             if (reroll == PlayerWallReroll.REROLLED) {
                 PlayerDiagnostics.logWarning(TAG, "every client bot-walled $videoId, retrying once with a fresh visitor")
-                dropGatesOnIdentityChange()
                 failureReasons = mutableListOf()
                 walkLadder(
                     videoId,
@@ -471,7 +482,6 @@ object InnerTubeVideoStreamExtractor {
                     reRaced = true
                     Log.w(TAG, "Fast clients walled for $videoId — re-rolled the visitor, re-racing them")
                     PlayerDiagnostics.logWarning(TAG, "fast path walled $videoId — re-rolled visitor, re-racing")
-                    dropGatesOnIdentityChange()
                     failureReasons.clear()
                     continue
                 }
@@ -713,24 +723,6 @@ object InnerTubeVideoStreamExtractor {
         PlayabilityVerdict.block(failureReasons, freshVisitorWalled)?.let { blockedVideoIds[videoId] = it }
     }
 
-    /** The clients GVS is not currently refusing to serve. See [ClientGateTracker]. */
-    private fun List<YouTubeClient>.ungated(): List<YouTubeClient> = filterNot { ClientGateTracker.isGated(it.clientName) }
-
-    /**
-     * A demotion is a verdict GVS reached about one visitor identity. Once that identity has been
-     * replaced the verdict says nothing, so the ladder gets its fast clients back immediately
-     * instead of waiting out the registry's timer.
-     */
-    private fun dropGatesOnIdentityChange() {
-        val generation = WebPoTokenSession.identityGeneration
-        if (generation == lastSeenIdentityGeneration) return
-        lastSeenIdentityGeneration = generation
-        if (ClientGateTracker.gatedClients().isEmpty()) return
-        Log.w(TAG, "Visitor identity rotated — clearing client demotions")
-        PlayerDiagnostics.logWarning(TAG, "visitor identity rotated — client demotions cleared")
-        ClientGateTracker.clear()
-    }
-
     private fun resultMode(r: VideoExtractionResult): String =
         when {
             r.isLive -> "LIVE"
@@ -813,8 +805,7 @@ object InnerTubeVideoStreamExtractor {
      * already is WEB, so nothing is fetched; [WEB_TRACKING_DEFERRED] otherwise. [fetchWebTracking]
      * keeps its own error handling — a failed fetch returns its reason and never throws
      * except on cancellation — so this can never break playback. The fetch is guarded
-     * on [WebPoTokenSession.identityGeneration], the same hook
-     * [dropGatesOnIdentityChange] uses: if the visitor identity rotated between
+     * on [WebPoTokenSession.identityGeneration]: if the visitor identity rotated between
      * deferring and fetching (wall re-roll, attestation-stuck rotation, manual session
      * reset), the fetch is dropped instead of minting and presenting a blob for a
      * visitor the playback no longer belongs to. Sign-out / account switch does NOT
@@ -1215,6 +1206,7 @@ object InnerTubeVideoStreamExtractor {
                         playerResponse = playerResponse,
                         usedClient = client,
                         sabrInfo = null,
+                        dashManifestUrl = playerResponse.streamingData?.dashManifestUrl?.takeIf { it.isNotBlank() },
                         webTracking = null,
                         webTrackFail = webFail,
                     )
@@ -1487,6 +1479,7 @@ object InnerTubeVideoStreamExtractor {
                 playerResponse = playerResponse,
                 usedClient = client,
                 sabrInfo = sabrInfo,
+                dashManifestUrl = playerResponse.streamingData?.dashManifestUrl?.takeIf { it.isNotBlank() },
             )
         } catch (e: CancellationException) {
             throw e

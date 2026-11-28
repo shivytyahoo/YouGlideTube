@@ -16,21 +16,15 @@ class VideoErrorMapperTest {
         }
 
     @Test
-    fun `a bot wall on the visitor offers a session reset instead of blaming the network`() {
-        val error = VideoErrorMapper.from(context, PlaybackBlockedException(PlaybackBlock.BOT_WALL))
+    fun `a bot or network wall never names the network`() {
+        // Walls no longer surface: the extractor maps them to no cause, so the mapper
+        // must never produce the blocking message for them either. They fall through
+        // to the generic blocked mapping.
+        val botWall = VideoErrorMapper.from(context, PlaybackBlockedException(PlaybackBlock.BOT_WALL))
+        val networkWall = VideoErrorMapper.from(context, PlaybackBlockedException(PlaybackBlock.NETWORK_WALL))
 
-        assertThat(error.message).isEqualTo("string:${R.string.error_bot_wall_session}")
-        assertThat(error.hint).isEqualTo("string:${R.string.error_bot_wall_session_hint}")
-        assertThat(error.isRetryable).isTrue()
-        assertThat(error.offersSessionReset).isTrue()
-    }
-
-    @Test
-    fun `a wall that held for a fresh visitor names the network, and no VPN unless one is on (#1354)`() {
-        val error = VideoErrorMapper.from(context, PlaybackBlockedException(PlaybackBlock.NETWORK_WALL))
-
-        assertThat(error.message).isEqualTo("string:${R.string.error_bot_wall}")
-        assertThat(error.hint).isEqualTo("string:${R.string.error_bot_wall_network_hint}")
+        assertThat(botWall.message).isEqualTo("string:${R.string.error_login_required}")
+        assertThat(networkWall.message).isEqualTo("string:${R.string.error_login_required}")
     }
 
     @Test

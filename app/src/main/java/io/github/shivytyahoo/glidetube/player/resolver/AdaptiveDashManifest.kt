@@ -67,8 +67,15 @@ internal object AdaptiveDashManifest {
                 .firstNotNullOfOrNull { stream -> stream.itagItem?.approxDurationMs?.takeIf { it > 0 } }
                 ?: (durationSeconds * 1_000L)
         if (durationMs <= 0) return null
-        val video = AdaptationSet(0, C.TRACK_TYPE_VIDEO, representations, emptyList(), emptyList(), emptyList())
-        val audioSets = audioAdaptationSets(audioStreams)
+        // One AdaptationSet per codec family: representations in one set must share a mime
+        // type for Media3 to adapt between them, so each family gets its own set and the
+        // track selector moves between sets instead of within one.
+        val videoSets =
+            representations
+                .groupBy { it.format.sampleMimeType }
+                .values
+                .mapIndexed { index, set -> AdaptationSet(index, C.TRACK_TYPE_VIDEO, set, emptyList(), emptyList(), emptyList()) }
+        val audioSets = audioAdaptationSets(audioStreams, firstId = videoSets.size)
         return DashManifest(
             C.TIME_UNSET,
             durationMs,
@@ -82,7 +89,7 @@ internal object AdaptiveDashManifest {
             null,
             null,
             null,
-            listOf(Period(null, 0, listOf(video) + audioSets)),
+            listOf(Period(null, 0, videoSets + audioSets)),
         )
     }
 
@@ -91,7 +98,10 @@ internal object AdaptiveDashManifest {
      * can pick rather than a second copy of the default audio. The grouping key is the same one
      * the audio-track picker uses, so the manifest and the picker agree on what a track is.
      */
-    private fun audioAdaptationSets(audioStreams: List<AudioStream>): List<AdaptationSet> {
+    private fun audioAdaptationSets(
+        audioStreams: List<AudioStream>,
+        firstId: Int,
+    ): List<AdaptationSet> {
         val grouped =
             audioStreams
                 .filter(::canDescribeAudio)
@@ -106,7 +116,7 @@ internal object AdaptiveDashManifest {
                 }
         return grouped.entries.mapIndexed { index, (_, streams) ->
             AdaptationSet(
-                (index + 1).toLong(),
+                (firstId + index).toLong(),
                 C.TRACK_TYPE_AUDIO,
                 streams.map(::audioRepresentation),
                 emptyList(),

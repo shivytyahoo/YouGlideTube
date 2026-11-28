@@ -3,8 +3,6 @@ package io.github.shivytyahoo.glidetube.player.error
 import android.content.Context
 import android.util.Log
 import io.github.shivytyahoo.glidetube.R
-import io.github.shivytyahoo.glidetube.network.appTrafficUsesVpn
-import io.github.shivytyahoo.glidetube.player.stream.PlaybackBlock
 import io.github.shivytyahoo.glidetube.player.stream.PlaybackBlockedException
 import org.schabi.newpipe.extractor.exceptions.AccountTerminatedException
 import org.schabi.newpipe.extractor.exceptions.AgeRestrictedContentException
@@ -124,31 +122,9 @@ object VideoErrorMapper {
                 )
             }
 
-            throwable is PlaybackBlockedException && throwable.block == PlaybackBlock.BOT_WALL -> {
-                VideoError(
-                    message = context.getString(R.string.error_bot_wall_session),
-                    hint = context.getString(R.string.error_bot_wall_session_hint),
-                    isRetryable = true,
-                    isUserActionable = true,
-                    offersSessionReset = true,
-                )
-            }
-
-            // Only a wall that held for a fresh visitor names the network, and only a VPN that is
-            // actually on is named: most walled users have none (#1354).
-            throwable is PlaybackBlockedException && throwable.block == PlaybackBlock.NETWORK_WALL -> {
-                VideoError(
-                    message = context.getString(R.string.error_bot_wall),
-                    hint =
-                        context.getString(
-                            if (context.appTrafficUsesVpn()) R.string.error_bot_wall_hint else R.string.error_bot_wall_network_hint,
-                        ),
-                    isRetryable = true,
-                    isUserActionable = true,
-                    offersSessionReset = true,
-                )
-            }
-
+            // A wall never surfaces as an error: the extractor maps it to no cause and the
+            // load retries silently, so the only PlaybackBlockedException left is the
+            // sign-in wall, which genuinely needs an account.
             throwable is PlaybackBlockedException -> {
                 VideoError(
                     message = context.getString(R.string.error_login_required),

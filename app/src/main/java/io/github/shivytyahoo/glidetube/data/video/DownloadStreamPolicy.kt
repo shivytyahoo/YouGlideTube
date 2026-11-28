@@ -25,9 +25,9 @@ object DownloadStreamPolicy {
 
     /**
      * Codec order within one resolution for a *download*, which is deliberately not
-     * [VideoCodecUtils.playbackCodecRank]: playback ranks h264 first because it is the codec every
-     * decoder handles, while a download ranks vp9 first because it is the smallest file the app can
-     * mux reliably, and av1 above the legacy vp8/hevc ladder.
+     * [VideoCodecUtils.playbackCodecRank]: playback ranks av1 first because it is the
+     * lightest rung at a height, while a download ranks vp9 first because it is the
+     * smallest file the app can mux reliably, and av1 above the legacy vp8/hevc ladder.
      */
     val DOWNLOAD_CODEC_PRIORITY = mapOf("vp9" to 0, "h264" to 1, "av1" to 2, "vp8" to 3, "hevc" to 4)
 

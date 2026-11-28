@@ -11,13 +11,14 @@ class AdaptiveLadderTest {
     private fun heights(rungs: List<org.schabi.newpipe.extractor.stream.VideoStream>) = rungs.map(VideoCodecUtils::qualityHeightFromStream)
 
     @Test
-    fun `a ladder holds every height of the anchor's codec, lowest bitrate first`() {
+    fun `a ladder holds every height across families, lightest bitrate first`() {
         val anchor = h264(720, 2_500_000)
         val streams = listOf(h264(1080, 4_500_000), anchor, h264(360, 700_000), vp9(480, 900_000))
 
         val rungs = AdaptiveLadder.rungs(anchor, streams)
 
-        assertThat(heights(rungs)).containsExactly(360, 720, 1080).inOrder()
+        assertThat(heights(rungs)).containsExactly(360, 480, 720, 1080).inOrder()
+        assertThat(VideoCodecUtils.codecKeyFromStream(rungs[1])).isEqualTo("vp9")
     }
 
     @Test
@@ -41,29 +42,29 @@ class AdaptiveLadderTest {
     }
 
     @Test
-    fun `one height keeps its highest bitrate copy`() {
+    fun `one height keeps its lightest bitrate copy`() {
         val anchor = h264(720, 2_500_000)
         val richer = h264(720, 2_900_000)
 
         val rungs = AdaptiveLadder.rungs(anchor, listOf(anchor, richer, h264(360, 700_000)))
 
-        assertThat(rungs.last()).isSameInstanceAs(richer)
+        assertThat(rungs.last()).isSameInstanceAs(anchor)
     }
 
     @Test
-    fun `a pinned preload gets the ladder around the pin, an Auto one follows the codec preference`() {
+    fun `a pinned preload gets the ladder around the pin, lightest copy per height`() {
         val streams = listOf(h264(720, 2_500_000), h264(360, 700_000), vp9(720, 2_000_000), vp9(360, 600_000))
 
         val pinned = AdaptiveLadder.forPreload(streams[0], streams, null)
         assertThat(heights(pinned)).containsExactly(360, 720).inOrder()
-        assertThat(pinned.map(VideoCodecUtils::codecKeyFromStream).distinct()).containsExactly("h264")
+        assertThat(pinned.map(VideoCodecUtils::codecKeyFromStream).distinct()).containsExactly("vp9")
         val rungs = AdaptiveLadder.forPreload(null, streams, "vp9")
         assertThat(rungs.map(VideoCodecUtils::codecKeyFromStream).distinct()).containsExactly("vp9")
     }
 
     @Test
     fun `a weak device anchors on H264 even with an AV1 preference`() {
-        val streams = listOf(av1(1080, 8_000_000), av1(720, 4_000_000), h264(1080, 4_500_000), h264(720, 2_500_000))
+        val streams = listOf(av1(1080, 1_500_000), av1(720, 900_000), h264(1080, 4_500_000), h264(720, 2_500_000))
 
         val rungs = AdaptiveLadder.forPreload(null, streams, "av1", weakDevice = true)
         assertThat(rungs.map(VideoCodecUtils::codecKeyFromStream).distinct()).containsExactly("h264")

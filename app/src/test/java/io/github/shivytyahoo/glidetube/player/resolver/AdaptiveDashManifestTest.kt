@@ -87,6 +87,19 @@ class AdaptiveDashManifestTest {
     }
 
     @Test
+    fun `each codec family gets its own adaptation set`() {
+        val ladder =
+            AdaptiveDashManifest.build(
+                listOf(h264(360, 700_000), vp9(720, 2_000_000), h264(1080, 4_500_000)),
+                212,
+            )!!
+
+        val videoSets = ladder.getPeriod(0).adaptationSets.filter { it.type == C.TRACK_TYPE_VIDEO }
+        assertThat(videoSets).hasSize(2)
+        assertThat(videoSets.flatMap { it.representations }).hasSize(3)
+    }
+
+    @Test
     fun `a WebM rung keeps its container`() {
         val ladder = AdaptiveDashManifest.build(listOf(vp9(360, 600_000), vp9(720, 2_000_000)), 212)!!
 

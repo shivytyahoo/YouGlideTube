@@ -89,18 +89,22 @@ class PlayerFactory {
             )
     }
 
-    fun createBandwidthMeter(context: Context): DefaultBandwidthMeter {
+    fun createBandwidthMeter(context: Context): BandwidthMeter {
         // Seed from the last measured estimate so the ABR starts at the real link speed
         // instead of re-walking the ladder after every restart; an unseeded first launch
         // falls back to the (deliberately modest) default estimate. The seed is capped:
         // a stale-high estimate from another network (fast Wi-Fi, now slow 4G) would
-        // otherwise start the session at 4K and stall the first seconds.
+        // otherwise start the session at 4K and stall the first seconds. The returned
+        // meter additionally caps the live estimate at the sustained throughput, so a
+        // burst-inflated reading never picks a rung the link cannot hold.
         val seeded = ensurePrefs(context).bandwidthEstimateBps?.coerceIn(100_000L, PlayerConfig.MAX_INITIAL_BANDWIDTH_ESTIMATE_BPS)
-        return DefaultBandwidthMeter
-            .Builder(context)
-            .setInitialBitrateEstimate(seeded ?: PlayerConfig.INITIAL_BANDWIDTH_ESTIMATE)
-            .setResetOnNetworkTypeChange(true)
-            .build()
+        val delegate =
+            DefaultBandwidthMeter
+                .Builder(context)
+                .setInitialBitrateEstimate(seeded ?: PlayerConfig.INITIAL_BANDWIDTH_ESTIMATE)
+                .setResetOnNetworkTypeChange(true)
+                .build()
+        return CappedBandwidthMeter(delegate)
     }
 
     fun createTrackSelector(

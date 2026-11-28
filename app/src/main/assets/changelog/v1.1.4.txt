@@ -1,0 +1,11 @@
+VERSION: 1.1.4
+DATE: 2026-11-28
+• ⚡ Quality switches are instant now: the player picks the lightest stream at each height — AV1 first, then VP9, then H.264 — so 1080p plays on a slow connection instead of spinning and dropping to 720p
+• 🎞️ The quality ladder spans every codec family now: one rung per height across AV1, VP9 and H.264, so switching families no longer needs a reload
+• 📡 Videos play from YouTube's own DASH manifest when it is available: the app now picks it up for every video, not just live streams, and falls back to its own multi-family ladder when it isn't
+• ⏩ Tapping a quality warms it up first: its opening bytes are fetched into the cache before the switch, so the new quality starts without a spinner
+• 📶 Quality picks now trust sustained speed, not burst speed: the bandwidth estimate is capped at what the link actually sustains, so Auto stops climbing onto qualities the connection can't hold
+• 📉 Quality steps down faster when the connection drops: the wait before stepping down is now 25 seconds instead of 3 minutes
+• 📋 Diagnostics now tell a tap from Auto: quality-switch lines record whether you picked it or Auto climbed, and each load records which manifest played and which codec families it carried
+• 🩺 Diagnostics report header fixed: it now says YouGlideTube Player Diagnostic
+• 🛡️ The blocking screen is gone: when one video source refuses to play, the app now silently tries the next one until the video plays

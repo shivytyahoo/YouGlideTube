@@ -56,6 +56,10 @@ class VideoPlaybackResolver(
     var resolvedMultiRungDash = false
         private set
 
+    /** Whether the last [resolve] played YouTube's own manifest rather than a generated one. */
+    var resolvedNativeDash = false
+        private set
+
     fun resolve(
         videoStreams: List<VideoStream>,
         audioStream: AudioStream?,
@@ -69,6 +73,7 @@ class VideoPlaybackResolver(
     ): MediaSource? {
         resolvedAdaptiveLadder = false
         resolvedMultiRungDash = false
+        resolvedNativeDash = false
         Log.d(
             TAG,
             "Resolving playback: ${videoStreams.size} video streams, audio=${audioStream != null}, " +
@@ -134,6 +139,7 @@ class VideoPlaybackResolver(
                         ).build()
 
                 resolvedMultiRungDash = true
+                resolvedNativeDash = true
                 return androidx.media3.exoplayer.dash.DashMediaSource
                     .Factory(liveDashDataSourceFactory)
                     .createMediaSource(liveDashItem)
@@ -160,6 +166,7 @@ class VideoPlaybackResolver(
                         .setMimeType(androidx.media3.common.MimeTypes.APPLICATION_MPD)
                         .build()
                 resolvedMultiRungDash = true
+                resolvedNativeDash = true
                 return androidx.media3.exoplayer.dash.DashMediaSource
                     .Factory(dashDataSourceFactory)
                     .createMediaSource(dashItem)

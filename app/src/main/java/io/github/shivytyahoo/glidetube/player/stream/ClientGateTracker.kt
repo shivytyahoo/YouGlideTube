@@ -85,9 +85,10 @@ open class ClientGateRegistry(
 }
 
 /**
- * The process-wide registry. Deliberately not persisted: a gate is a property of the current
- * network and visitor identity, and a stale one written to disk would demote a working client for
- * a user who has since moved networks.
+ * The process-wide registry. Deliberately not persisted: a gate is a property of the client on
+ * the current network, and a stale one written to disk would demote a working client for a user
+ * who has since moved networks. A gate survives a visitor identity rotation and lapses only on
+ * its 30-minute TTL.
  */
 object ClientGateTracker : ClientGateRegistry(
     ttlMs = TimeUnit.MINUTES.toMillis(30),
@@ -97,6 +98,9 @@ object ClientGateTracker : ClientGateRegistry(
 /**
  * The app clients GVS walls per visitor rather than per client (#921): a fresh visitor is served
  * on them again, so a gate on one of these replaces the identity as well as demoting the client.
- * IOS_PRODUCER is walled the same way as VISIONOS — an unattested iOS app client.
+ * IOS_PRODUCER is walled the same way as VISIONOS — an unattested iOS app client. ANDROID_VR is
+ * deliberately absent: its attestation gate is a property of the client on this network (a new
+ * visitor does not give it a PoToken), so gating it must not trigger a re-roll. Its gate survives
+ * identity rotation and lapses only on its 30-minute TTL.
  */
-private val VISITOR_WALLED_CLIENTS = setOf("VISIONOS", "IOS_PRODUCER", "ANDROID_VR")
+private val VISITOR_WALLED_CLIENTS = setOf("VISIONOS", "IOS_PRODUCER")

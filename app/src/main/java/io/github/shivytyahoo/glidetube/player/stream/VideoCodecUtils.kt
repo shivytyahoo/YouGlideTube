@@ -203,15 +203,21 @@ object VideoCodecUtils {
         fps: Int,
     ): String = if (fps >= HIGH_FRAME_RATE_FPS) "${height}p$fps" else "${height}p"
 
+    /**
+     * The built-in codec order, lightest first: AV1 carries a rung in roughly half the bytes
+     * of the same height in H.264, so on a link that cannot sustain H.264 1080p the AV1 rung
+     * still plays. A weak device is the exception — [codecRankWithPreference] forces H.264
+     * first there, whatever this order says.
+     */
     fun playbackCodecRank(stream: VideoStream): Int = playbackCodecRank(codecKeyFromStream(stream))
 
     fun playbackCodecRank(codecKey: String): Int =
         when (codecKey) {
-            "h264" -> 0
+            "av1" -> 0
             "vp9" -> 1
-            "vp8" -> 2
+            "h264" -> 2
             "hevc" -> 3
-            "av1" -> 4
+            "vp8" -> 4
             else -> 5
         }
 
@@ -288,13 +294,14 @@ object VideoCodecUtils {
         return (ordered + DEFAULT_VIDEO_MIME_TYPES.filterNot { it in ordered }).toTypedArray()
     }
 
+    /** The track selector's mime order: lightest codec first, matching [playbackCodecRank]. */
     private val DEFAULT_VIDEO_MIME_TYPES =
         arrayOf(
-            "video/avc",
-            "video/x-vnd.on2.vp9",
-            "video/x-vnd.on2.vp8",
-            "video/hevc",
             "video/av01",
+            "video/x-vnd.on2.vp9",
+            "video/avc",
+            "video/hevc",
+            "video/x-vnd.on2.vp8",
         )
 
     private val MIME_TYPE_BY_CODEC_KEY =

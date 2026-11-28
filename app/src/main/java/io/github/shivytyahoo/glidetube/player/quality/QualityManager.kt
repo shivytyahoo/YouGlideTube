@@ -3,7 +3,7 @@ package io.github.shivytyahoo.glidetube.player.quality
 import android.util.Log
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
-import androidx.media3.exoplayer.upstream.DefaultBandwidthMeter
+import androidx.media3.exoplayer.upstream.BandwidthMeter
 import io.github.shivytyahoo.glidetube.player.config.PlayerConfig
 import io.github.shivytyahoo.glidetube.player.config.VideoSizeCap
 import io.github.shivytyahoo.glidetube.player.config.adaptiveTrackSelectorDefaults
@@ -18,7 +18,7 @@ import org.schabi.newpipe.extractor.stream.VideoStream
 
 @UnstableApi
 class QualityManager(
-    private val bandwidthMeter: DefaultBandwidthMeter?,
+    private val bandwidthMeter: BandwidthMeter?,
     private val trackSelector: DefaultTrackSelector?,
     private val videoSizeCap: VideoSizeCap,
     private val stateFlow: MutableStateFlow<EnhancedPlayerState>,
@@ -31,6 +31,8 @@ class QualityManager(
     // The track selector's mime order on TV, so a later quality switch does not silently
     // revert it to the phone order.
     private val tvMimeTypes: Array<String>? = null,
+    // Warms a tapped rung's first bytes into the cache before the switch moves to it.
+    private val onWarmRung: ((VideoStream, Long) -> Unit)? = null,
 ) {
     companion object {
         private const val TAG = "QualityManager"
@@ -204,6 +206,7 @@ class QualityManager(
             // A pinned quality is the viewer's explicit choice: it escapes the decoder gate
             // the way it escapes the size cap.
             decodes = if (manualQualityHeight == null) decodesRung else null,
+            weakDevice = weakDevice,
         )
 
     /** The decoder gate for Auto ladders; null keeps every rung, which is also what tests see. */
@@ -227,11 +230,11 @@ class QualityManager(
 
     /**
      * Whether [targetStream] is a rung of the loaded multi-rung manifest. Call before adopting
-     * the target as the current stream: the check anchors on the loaded ladder's family, which
-     * the current stream still carries. A native manifest carries every format, so any
-     * available stream is a rung of it; a generated ladder carries only its own rungs, so the
-     * target must be one of them. A codec-family change, or a height the loaded family does
-     * not carry, still needs a reload.
+     * the target as the current stream: the check anchors on the loaded ladder, which the
+     * current stream still carries. A native manifest carries every format, so any available
+     * stream is a rung of it; a generated ladder carries one rung per height across families,
+     * so a target at a height the ladder carries — in any family — is a rung. A height the
+     * loaded ladder does not carry still needs a reload.
      */
     fun isRungOfLoadedLadder(targetStream: VideoStream): Boolean {
         if (!isMultiRungDashSource) return false
@@ -264,7 +267,7 @@ class QualityManager(
                     )
                 }.sortedWith(
                     compareByDescending<QualityOption> { it.height }
-                        .thenBy { VideoCodecUtils.playbackCodecRank(it.codecKey) }
+                        .thenBy { VideoCodecUtils.codecRankWithPreference(it.codecKey, preferredCodecKey, weakDevice, familyOrder) }
                         .thenByDescending { it.bitrate },
                 )
     }
@@ -314,12 +317,13 @@ class QualityManager(
         val fromStream = currentVideoStream
         val seamless = isRungOfLoadedLadder(targetStream)
         currentVideoStream = targetStream
+        onWarmRung?.invoke(targetStream, currentPosition)
         if (seamless) {
             switchDashQualitySeamlessly(targetStream.height, targetHeight)
         } else {
             onQualitySwitch(targetStream, currentPosition)
         }
-        logQualitySwitch(videoId, fromStream, targetStream, viaSeamless = seamless)
+        logQualitySwitch(videoId, fromStream, targetStream, viaSeamless = seamless, manual = true)
 
         stateFlow.value =
             stateFlow.value.copy(
@@ -361,12 +365,13 @@ class QualityManager(
         currentVideoStream = targetStream
         Log.d(TAG, "Switching to FIXED quality: ${targetHeight}p ${VideoCodecUtils.codecLabelFromKey(targetCodec)}")
 
+        onWarmRung?.invoke(targetStream, currentPosition)
         if (seamless) {
             switchDashQualitySeamlessly(targetStream.height, targetHeight)
         } else {
             onQualitySwitch(targetStream, currentPosition)
         }
-        logQualitySwitch(videoId, fromStream, targetStream, viaSeamless = seamless)
+        logQualitySwitch(videoId, fromStream, targetStream, viaSeamless = seamless, manual = true)
 
         stateFlow.value =
             stateFlow.value.copy(
@@ -519,6 +524,7 @@ class QualityManager(
         fromStream: VideoStream?,
         targetStream: VideoStream?,
         viaSeamless: Boolean,
+        manual: Boolean = false,
     ) {
         val itag =
             targetStream?.itagItem?.id?.toString()
@@ -527,7 +533,8 @@ class QualityManager(
         ShivLog.i(
             "qualitySwitch id=${videoId ?: "?"} from=${fromStream?.let(::qualityHeight) ?: 0}p " +
                 "to=${targetStream?.let(::qualityHeight) ?: 0}p itag=$itag " +
-                "via=${if (viaSeamless) "seamless" else "reload"} src=${if (isMultiRungDashSource) "ladder" else "single"}",
+                "via=${if (viaSeamless) "seamless" else "reload"} src=${if (isMultiRungDashSource) "ladder" else "single"} " +
+                "origin=${if (manual) "manual" else "auto"}",
         )
     }
 
@@ -665,7 +672,6 @@ class QualityManager(
                     .setPreferredVideoMimeTypes(*(tvMimeTypes ?: PlayerConfig.PREFERRED_VIDEO_MIME_TYPES))
                     .setMinVideoSize(0, minHeight)
                     .setMaxVideoSize(Int.MAX_VALUE, maxHeight)
-                    .setForceHighestSupportedBitrate(true)
                     .build()
             selector.setParameters(params)
             Log.d(TAG, "DASH seamless quality switch: constrained raw max height to ${maxHeight}px for ${qualityHeight}p")

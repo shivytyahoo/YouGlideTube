@@ -38,6 +38,19 @@ internal data class StreamPreferences(
 )
 
 /**
+ * What a failed extraction means for the player screen. A wall (BOT_WALL or NETWORK_WALL) is
+ * never an error to show — the load retries silently instead — so it maps to no cause and the
+ * generic retryable error. Only a sign-in wall still surfaces, because that video genuinely
+ * needs an account.
+ */
+internal fun failureCauseForBlock(block: PlaybackBlock?): Throwable? =
+    when (block) {
+        PlaybackBlock.BOT_WALL, PlaybackBlock.NETWORK_WALL -> null
+        PlaybackBlock.LOGIN_REQUIRED -> PlaybackBlockedException(block)
+        null -> null
+    }
+
+/**
  * Turns a video id into something the player screen can play.
  *
  * A finished download wins outright and costs no network; otherwise it runs the InnerTube client
@@ -258,7 +271,7 @@ class PlaybackLoadResolver
         }
 
         private fun extractionFailureCause(videoId: String): Throwable? =
-            InnerTubeVideoStreamExtractor.blockOf(videoId)?.let(::PlaybackBlockedException)
+            failureCauseForBlock(InnerTubeVideoStreamExtractor.blockOf(videoId))
 
         /**
          * Starts the <720p SABR upgrade for a direct result that already shipped, as a child of

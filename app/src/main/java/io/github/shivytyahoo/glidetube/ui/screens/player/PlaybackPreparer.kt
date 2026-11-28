@@ -93,6 +93,7 @@ internal class PlaybackPreparer(
         speedContext = speedContext,
         isCurrent = isCurrent,
         preferSabrOverride = step.sabrPreferred,
+        dashManifestUrl = step.result.dashManifestUrl,
     )
 
     suspend fun prepareMergedStreams(
@@ -246,6 +247,7 @@ internal class PlaybackPreparer(
         isCurrent: () -> Boolean,
         speedContext: PlaybackSpeedContext = PlaybackSpeedContext.Unknown,
         preferSabrOverride: Boolean = false,
+        dashManifestUrl: String? = null,
     ) = withContext(Dispatchers.Main) {
         if (!isCurrent()) return@withContext
         if (playerManager.isPreparedForPlayback(videoId)) return@withContext
@@ -278,7 +280,7 @@ internal class PlaybackPreparer(
             audioStreams = audioStreams,
             subtitles = subtitles,
             durationSeconds = durationSeconds,
-            dashManifestUrl = null,
+            dashManifestUrl = dashManifestUrl,
             hlsUrl = null,
             streamType = StreamType.VIDEO_STREAM,
             startPosition = resumePosition,

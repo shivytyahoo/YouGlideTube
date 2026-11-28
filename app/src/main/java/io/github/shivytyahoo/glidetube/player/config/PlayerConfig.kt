@@ -139,6 +139,17 @@ object PlayerConfig {
     const val AUTO_BANDWIDTH_FRACTION = 0.7f
 
     /**
+     * The sustained-throughput cap on the bandwidth estimate (see SustainedBandwidth in the
+     * quality package): a chunk's burst phase inflates the meter far above the link (172 Mbps
+     * link), so the estimate a rung is picked from is capped at the median of the last few
+     * completed transfers, with headroom. The cap only applies once enough samples exist.
+     */
+    const val SUSTAINED_BANDWIDTH_MIN_SAMPLES = 3
+    const val SUSTAINED_BANDWIDTH_WINDOW_SAMPLES = 5
+    const val SUSTAINED_BANDWIDTH_HEADROOM = 1.5f
+    const val SUSTAINED_BANDWIDTH_FLOOR_BPS = 500_000L
+
+    /**
      * Buffer that must be ahead before Auto climbs a rung — Media3's upgrade gate and our own
      * ceiling-raise guard share this value. At the 10 s default the climb fired ~5 s after a tap
      * on a burst-inflated estimate (199–206 Mbps on a link sustaining a few), while the buffer
@@ -150,11 +161,11 @@ object PlayerConfig {
     const val ABR_MIN_BUFFER_FOR_QUALITY_INCREASE_MS = 30_000
 
     /**
-     * Media3 holds the current quality while more than this is buffered. At its 25 s default a full
-     * 300 s buffer drains for 275 s before a collapsed network steps down; the midpoint of the main
-     * buffer window cuts that to 120 s.
+     * Media3 holds the current quality while more than this is buffered. At its 25 s default
+     * a full 300 s buffer drains for 275 s before a collapsed network steps down; the old
+     * midpoint of the main buffer window held it for 120 s instead.
      */
-    const val ABR_MAX_BUFFER_FOR_QUALITY_DECREASE_MS = (MAX_SAFE_MAIN_MIN_BUFFER_MS + MAX_SAFE_MAIN_BUFFER_MS) / 2
+    const val ABR_MAX_BUFFER_FOR_QUALITY_DECREASE_MS = 25_000
 
     /** Interval for bandwidth checks during playback (5 seconds) */
     const val BANDWIDTH_CHECK_INTERVAL_MS = 5000L
