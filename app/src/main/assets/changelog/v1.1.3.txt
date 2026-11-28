@@ -1,34 +1,34 @@
 VERSION: 1.1.3
 DATE: 2026-11-27
-- Update prompt: when a newer version is out, the app now shows a dialog with what's new on every open — Update now, Skip this version, or Later
-- What's new after an update: the first time the app opens after an update, it shows what's new in that version, with All releases and Close
-- Videos buffer far ahead now: tapping a video fills the buffer well ahead within seconds, and quality only climbs after 30 seconds is banked, so playback doesn't stall on a slow connection
-- Home feed without sign-in, rebuilt: a personal feed built on your device from what you watch — with a greeting, Continue watching, Your interests and shelves for you
-- Discover and More: a Discover chip with fresh videos outside what you already like, and a More menu with Music, News, Sports, Learning, Gaming and Fashion & beauty, each with its own real feed
-- Shorts playback is Auto by default now: Shorts quality defaults to Auto on Wi-Fi and mobile data, like video, instead of 720p on Wi-Fi and 480p on mobile data
-- Live streams sit closer to live now: low-latency streams play nearer the live edge, and the player gently speeds up or slows down to hold it
-- Streaming starts faster on videos that need it: the engine warms up in the background after launch, so the first such video doesn't wait on it
-- The next video is ready before the current one ends: it starts loading 20 seconds from the end, so advancing feels instant (skipped on mobile data unless it's from your queue)
-- Videos now play at a consistent loudness: each video's own loudness is used to bring loud videos down to the same level, like music already did
-- Buffering further ahead respects smaller devices: on phones with less memory the long buffer is capped to a third of the heap instead of risking a crash
-- Videos with dubs now offer every audio track in the player: switch languages without reloading, with the original marked as the main track
-- Failed requests back off politely now: rate limits pause briefly and hold other requests too, and a cut-off response is asked for again
-- The streaming engine gives up sooner when it's stuck: a stale session is refreshed after repeated failures, cooled off after more, and a 90-second stall falls back instead of spinning
-- Quality now skips rungs your device can't decode: Auto never climbs onto a resolution or codec with no hardware decoder for it
-- Shorts swipe instantly now: the next few and previous few reels load their video and audio in advance, so there's no spinner when you swipe either way
-- Equalizer gains stereo width, balance and night mode: widen or narrow the stereo image, shift sound left or right, and even out loud and quiet parts late at night
-- Videos that need signature solving start faster now: the player script is fetched TV-first, several signatures are solved in one pass, and recent player versions are kept ready
-- If a video starts playing from the wrong place, the stream now restarts a few seconds earlier instead of skipping ahead
-- Streaming fetches stay closer to what you're actually watching: fetching pauses when it's 24 MB ahead and resumes as you watch, instead of running far ahead
-- Subscription videos show their lengths with fewer requests: each channel's list is fetched once per visit instead of asking for every video one by one
-- Save new videos from a channel: turn it on from a channel page or Downloads settings, and new uploads from that channel are saved automatically, up to three per check, on unmetered connections
-- Forward button: after going back, the top bar now offers a forward button to return to where you were
-- A settings file that can't be read is now kept aside for diagnosis instead of being discarded, and the app starts with defaults
-- Images no longer crossfade on phones with little memory, so lists scroll smoother there
-- Holding a video card briefly now warms up its stream and details, so tapping it opens faster
-- Downloads can now be saved as a single file from the Downloads screen, with the video and audio merged into one file
-- Downloads settings can now move your saved videos or music to a new folder, and a failed move puts everything back
-- Settings can now be backed up to one file and restored from it, from Settings, Backup & restore
-- If the app crashes while starting, the next launch now offers safe mode or resetting settings instead of crashing again
-- People: add the people who use this device, each with their own settings and an optional PIN, and pick who's watching when the app opens
-- New setting: show Discover, Live and More on Home even when signed in, from Settings, Content, Home (off by default)
+• 🔔 Update prompt: when a newer version is out, the app now shows a dialog with what's new on every open — Update now, Skip this version, or Later
+• 🆕 What's new after an update: the first time the app opens after an update, it shows what's new in that version, with All releases and Close
+• ⏩ Videos buffer far ahead now: tapping a video fills the buffer well ahead within seconds, and quality only climbs after 30 seconds is banked, so playback doesn't stall on a slow connection
+• 🏠 Home feed without sign-in, rebuilt: a personal feed built on your device from what you watch — with a greeting, Continue watching, Your interests and shelves for you
+• 🔍 Discover and More: a Discover chip with fresh videos outside what you already like, and a More menu with Music, News, Sports, Learning, Gaming and Fashion & beauty, each with its own real feed
+• 🎞️ Shorts playback is Auto by default now: Shorts quality defaults to Auto on Wi-Fi and mobile data, like video, instead of 720p on Wi-Fi and 480p on mobile data
+• 📡 Live streams sit closer to live now: low-latency streams play nearer the live edge, and the player gently speeds up or slows down to hold it
+• ⚡ Streaming starts faster on videos that need it: the engine warms up in the background after launch, so the first such video doesn't wait on it
+• ⏩ The next video is ready before the current one ends: it starts loading 20 seconds from the end, so advancing feels instant (skipped on mobile data unless it's from your queue)
+• 🔊 Videos now play at a consistent loudness: each video's own loudness is used to bring loud videos down to the same level, like music already did
+• 📱 Buffering further ahead respects smaller devices: on phones with less memory the long buffer is capped to a third of the heap instead of risking a crash
+• 🎧 Videos with dubs now offer every audio track in the player: switch languages without reloading, with the original marked as the main track
+• 🔄 Failed requests back off politely now: rate limits pause briefly and hold other requests too, and a cut-off response is asked for again
+• ⏱️ The streaming engine gives up sooner when it's stuck: a stale session is refreshed after repeated failures, cooled off after more, and a 90-second stall falls back instead of spinning
+• 📉 Quality now skips rungs your device can't decode: Auto never climbs onto a resolution or codec with no hardware decoder for it
+• ⚡ Shorts swipe instantly now: the next few and previous few reels load their video and audio in advance, so there's no spinner when you swipe either way
+• 🎵 Equalizer gains stereo width, balance and night mode: widen or narrow the stereo image, shift sound left or right, and even out loud and quiet parts late at night
+• 🔓 Videos that need signature solving start faster now: the player script is fetched TV-first, several signatures are solved in one pass, and recent player versions are kept ready
+• 🔄 If a video starts playing from the wrong place, the stream now restarts a few seconds earlier instead of skipping ahead
+• 📶 Streaming fetches stay closer to what you're actually watching: fetching pauses when it's 24 MB ahead and resumes as you watch, instead of running far ahead
+• 📺 Subscription videos show their lengths with fewer requests: each channel's list is fetched once per visit instead of asking for every video one by one
+• 📥 Save new videos from a channel: turn it on from a channel page or Downloads settings, and new uploads from that channel are saved automatically, up to three per check, on unmetered connections
+• ➡️ Forward button: after going back, the top bar now offers a forward button to return to where you were
+• 🛟 A settings file that can't be read is now kept aside for diagnosis instead of being discarded, and the app starts with defaults
+• 🖼️ Images no longer crossfade on phones with little memory, so lists scroll smoother there
+• 👆 Holding a video card briefly now warms up its stream and details, so tapping it opens faster
+• 📁 Downloads can now be saved as a single file from the Downloads screen, with the video and audio merged into one file
+• 🗂️ Downloads settings can now move your saved videos or music to a new folder, and a failed move puts everything back
+• 💾 Settings can now be backed up to one file and restored from it, from Settings, Backup & restore
+• 🛡️ If the app crashes while starting, the next launch now offers safe mode or resetting settings instead of crashing again
+• 👥 People: add the people who use this device, each with their own settings and an optional PIN, and pick who's watching when the app opens
+• ⚙️ New setting: show Discover, Live and More on Home even when signed in, from Settings, Content, Home (off by default)
