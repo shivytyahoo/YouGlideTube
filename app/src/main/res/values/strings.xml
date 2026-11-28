@@ -1142,6 +1142,8 @@
     <string name="content_settings_header_home_feed">Home Feed</string>
     <string name="content_settings_home_feed_title">Enable Home Feed</string>
     <string name="content_settings_home_feed_subtitle">Show recommendations on Home</string>
+    <string name="content_settings_home_local_features_title">Discover &amp; topic menus when signed in</string>
+    <string name="content_settings_home_local_features_subtitle">Show Discover, Live and More on Home even after signing in</string>
     <string name="content_settings_home_reselect_refresh_title">Refresh Home when reselected</string>
     <string name="content_settings_home_reselect_refresh_subtitle">Tap Home again at the top to reload it</string>
     <string name="content_settings_home_feed_disabled_title">Home Feed Disabled</string>
@@ -1209,6 +1211,7 @@
     <string name="settings_battery_saver_title">Battery saver</string>
     <string name="settings_battery_saver_subtitle">Animations, glass and previews off — the fastest, lightest app</string>
     <string name="settings_keywords_battery_saver">battery saver, fast, light, animations off, speed</string>
+    <string name="settings_keywords_local_features">discover, more, topics, signed in, local feed, home chips</string>
     <string name="content_settings_header_shorts">Shorts</string>
     <string name="content_settings_shorts_content_title">Show Shorts</string>
     <string name="content_settings_shorts_content_subtitle">Hide Shorts everywhere. Saved Shorts and history are kept.</string>
