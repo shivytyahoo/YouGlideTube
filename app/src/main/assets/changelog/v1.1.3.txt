@@ -31,3 +31,4 @@ DATE: 2026-11-27
 - Settings can now be backed up to one file and restored from it, from Settings, Backup & restore
 - If the app crashes while starting, the next launch now offers safe mode or resetting settings instead of crashing again
 - People: add the people who use this device, each with their own settings and an optional PIN, and pick who's watching when the app opens
+- New setting: show Discover, Live and More on Home even when signed in, from Settings, Content, Home (off by default)
