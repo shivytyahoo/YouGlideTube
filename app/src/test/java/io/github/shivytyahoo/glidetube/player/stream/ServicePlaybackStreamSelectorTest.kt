@@ -191,6 +191,7 @@ class ServicePlaybackStreamSelectorTest {
         val webm = video("webm", "1080p", format = MediaFormat.WEBM)
 
         assertEquals("webm", select(videos = listOf(avc, webm), quality = VideoQuality.Q_1080P, codec = "vp9").first?.id)
-        assertEquals("avc", select(videos = listOf(webm, avc), quality = VideoQuality.Q_1080P, codec = "avc").first?.id)
+        // The preference carries the VideoCodec codecKey, "h264" — "avc" is not a codec key.
+        assertEquals("avc", select(videos = listOf(webm, avc), quality = VideoQuality.Q_1080P, codec = "h264").first?.id)
     }
 }

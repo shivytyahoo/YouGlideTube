@@ -98,7 +98,8 @@ class ShortsStreamResolverTest {
 
             assertEquals(1, extractions.get())
             assertEquals(listOf(1080, 720, 480, 480), qualities.map { it.heightClass })
-            assertEquals(listOf("VP9", "H264", "VP9", "AV1"), qualities.map { it.codecLabel })
+            // Same height, lightest codec first: AV1 outranks VP9 at 480p after the codec-order flip.
+            assertEquals(listOf("VP9", "H264", "AV1", "VP9"), qualities.map { it.codecLabel })
             assertEquals(listOf("English original", "French"), tracks.map { it.label })
             assertTrue(tracks.first().isOriginal)
             assertEquals(160_000, tracks.first().bitrate)

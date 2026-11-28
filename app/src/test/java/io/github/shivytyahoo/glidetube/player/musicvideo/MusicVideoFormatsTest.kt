@@ -20,7 +20,7 @@ class MusicVideoFormatsTest {
         )
 
     @Test
-    fun `the tallest picture within the cap wins, in the codec phones decode in hardware`() {
+    fun `the tallest picture within the cap wins, lightest codec first`() {
         val formats =
             listOf(
                 video(137, "avc1.640028", 1080),
@@ -29,7 +29,7 @@ class MusicVideoFormatsTest {
                 video(135, "avc1.4d401e", 480),
             )
 
-        assertThat(MusicVideoFormats.pick(formats, MusicVideoFormats.WIFI_MAX_HEIGHT)?.itag).isEqualTo(136)
+        assertThat(MusicVideoFormats.pick(formats, MusicVideoFormats.WIFI_MAX_HEIGHT)?.itag).isEqualTo(247)
         assertThat(MusicVideoFormats.pick(formats, MusicVideoFormats.CELLULAR_MAX_HEIGHT)?.itag).isEqualTo(135)
     }
 

@@ -5,7 +5,7 @@ import io.github.shivytyahoo.glidetube.player.stream.VideoCodecUtils
 
 /**
  * The picture stream for a song shown in the music player. The video fills only the artwork box,
- * so it stays at or under [maxHeight] and prefers the codec phones decode in hardware.
+ * so it stays at or under [maxHeight] and prefers the lightest codec.
  */
 internal object MusicVideoFormats {
     const val WIFI_MAX_HEIGHT = 720
