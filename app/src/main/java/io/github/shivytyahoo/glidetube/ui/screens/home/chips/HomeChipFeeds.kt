@@ -59,6 +59,17 @@ class HomeChipFeeds
         private val enrichInFlight = ConcurrentHashMap.newKeySet<String>()
         private val enrichAttempts = ConcurrentHashMap<String, Int>()
 
+        /** Discover/Live/More show: guests always, signed-in users only with the opt-in on. */
+        @Volatile
+        private var localFeaturesEnabled = false
+
+        /** The opt-in from Settings; republishes the row so the chips appear or go away live. */
+        fun setLocalFeaturesEnabled(enabled: Boolean) {
+            if (localFeaturesEnabled == enabled) return
+            localFeaturesEnabled = enabled
+            publishChips()
+        }
+
         @Volatile
         private var topics: List<HomeChip.Topic> = emptyList()
 
@@ -80,6 +91,7 @@ class HomeChipFeeds
             this.savedState = savedState
             this.context = context
             this.network = network
+            localFeaturesEnabled = !YouTube.isSignedIn()
             chipsState.update { it.copy(selected = savedState[SELECTED_KEY] ?: HomeChip.All.key) }
             publishChips()
         }
@@ -127,20 +139,21 @@ class HomeChipFeeds
 
         /**
          * The local chips select() may resolve. The row only shows Discover and Live, but the
-         * More menu builds its topics on the fly, so they resolve here too. Guest-only, like
-         * the row's own local chips: signed in, the server feed supplies the chips.
+         * More menu builds its topics on the fly, so they resolve here too. Guests always see
+         * them; signed in, only with the opt-in on — otherwise the server feed supplies the chips.
          */
         private fun selectableLocalChips(): List<HomeChip> =
-            if (YouTube.isSignedIn()) {
-                emptyList()
-            } else {
+            if (localFeaturesEnabled) {
                 localChips + topicChannels.map { (label, channelId) -> HomeChip.TopicChannel(label, channelId) }
+            } else {
+                emptyList()
             }
 
         private fun publishChips() {
             if (!::scope.isInitialized) return
-            // The row's local chips are guest-only: signed in, the server feed supplies the chips.
-            val local = if (YouTube.isSignedIn()) emptyList<HomeChip>() else localChips
+            // The row's local chips are guest-only unless the opt-in is on: signed in, the
+            // server feed supplies the chips.
+            val local = if (localFeaturesEnabled) localChips else emptyList()
             val all = listOf<HomeChip>(HomeChip.All) + local + topics
             chipsState.update { state ->
                 if (all.none { it.key == state.selected }) {
